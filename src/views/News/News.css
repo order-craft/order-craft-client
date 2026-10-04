@@ -1,0 +1,33 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden; /* Prevent horizontal scroll */
+  width: 100%;
+  height: 100%; /* Ensure full height is respected */
+}
+
+/* Container styles to prevent overflow */
+.container {
+  max-width: 100%; /* Ensure the container doesn't exceed the viewport */
+  overflow-x: hidden; /* Prevent horizontal scroll inside the container */
+  padding: 0 15px; /* Add padding for responsiveness */
+  box-sizing: border-box; /* Ensure padding doesn't affect width */
+}
+
+/* Prevent unnecessary margin from bootstrap row */
+.row {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Prevent Col from exceeding boundaries */
+.col {
+  padding: 0 15px; /* Add padding only within bounds */
+  box-sizing: border-box; /* Avoid overflow due to padding */
+}
+
+/* InfiniteScroll loader alignment */
+.infinite-scroll-component__outerdiv {
+  overflow-x: hidden; /* Prevent loader or content from causing overflow */
+}

@@ -1,0 +1,1 @@
+//Highlight days with the highest sales

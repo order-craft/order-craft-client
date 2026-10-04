@@ -1,0 +1,109 @@
+.card-container {
+  min-height: 200px;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
+  background-color: #ffffff;
+}
+
+.card-container:hover {
+  transform: translateY(-5px);
+  border-color: #6c757d; /* Neutral gray for hover */
+}
+
+.selected-card {
+  border-color: #007bff; /* Distinct blue for selected */
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5); /* Add a subtle blue glow */
+  transform: none; /* Disable hover transform when selected */
+}
+
+.card-price {
+  color: #555; /* Neutral gray for prices */
+  font-weight: bold;
+}
+
+.card-text {
+  color: #333;
+}
+
+.payed-border {
+  border-left: 8px solid #4caf50; /* Soft green for paid */
+}
+
+.not-payed-border {
+  border-left: 8px solid #f44336; /* Soft red for not paid */
+}
+
+.total-card,
+.unpaid-card {
+  border-radius: 8px; /* Slightly smaller border radius */
+  padding: 15px; /* Reduced padding */
+  margin: 10px 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f9f9f9; /* Light neutral background */
+}
+
+.total-card h5,
+.unpaid-card h5 {
+  font-weight: bold;
+  color: #333; /* Standard dark text */
+}
+
+.total-card p,
+.unpaid-card p {
+  font-size: 1.2rem; /* Slightly smaller font size */
+  color: #555; /* Neutral gray for text */
+}
+
+.bg-light {
+  background-color: #f8f9fa !important;
+}
+
+.bg-primary {
+  background-color: #007bff !important;
+  color: #ffffff;
+}
+
+.bg-success,
+.bg-warning,
+.bg-danger {
+  background-color: #f9f9f9 !important; /* Uniform light background */
+  color: #333; /* Standard text color */
+}
+/* Responsive modal adjustments */
+@media (max-width: 768px) {
+  .responsive-touch-modal .modal-dialog {
+    margin: 0.5rem auto;
+    max-width: 95%;
+  }
+  
+  .responsive-touch-modal .product-list {
+    max-height: 50vh !important;
+  }
+  
+  .bg-light-hover:hover {
+    background-color: inherit !important;
+  }
+}
+
+/* Better touch feedback */
+.quantity-btn {
+  min-width: 40px;
+  transition: transform 0.1s;
+}
+
+.quantity-btn:active {
+  transform: scale(0.95);
+}
+
+/* Product item hover only on non-touch devices */
+@media (hover: hover) and (pointer: fine) {
+  .bg-light-hover:hover {
+    background-color: #f8f9fa !important;
+  }
+}

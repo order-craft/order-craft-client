@@ -1,0 +1,345 @@
+.clickable-card {
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.clickable-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.plan-management-modal .modal-content {
+    border: none;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+  }
+  
+  .plan-card {
+    transition: transform 0.2s;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+  
+  .plan-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  }
+  
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, #321fdb 0%, #1f1498 100%);
+  }
+  /* Add to your stylesheet */
+.hover-shadow:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+  }
+  .transition-all {
+    transition: all 0.3s ease;
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { 
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to { 
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  /* Add to your CSS file */
+.table-card-image {
+    transition: all 0.3s ease;
+  }
+  
+  .table-card:hover .table-card-image {
+    filter: brightness(0.9);
+  }
+  /* Custom responsive adjustments */
+@media (max-width: 768px) {
+  .table-header-controls {
+    width: 100%;
+  }
+  .table-header-controls select {
+    margin-bottom: 0.5rem;
+  }
+}
+
+/*
+plan modal CSS
+*/
+/* Modal Container */
+.plan-management-modal {
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Styles */
+.modal-header {
+  background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+  color: white;
+  padding: 1rem 1.5rem;
+  border-bottom: none;
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.modal-close-btn {
+  color: white;
+  font-size: 1.5rem;
+  opacity: 1;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+}
+
+/* Scrollable Content Area */
+.modal-scrollable-content {
+  overflow-y: auto;
+  max-height: calc(90vh - 120px); /* Adjust based on header/footer height */
+  flex: 1;
+}
+
+.modal-body-content {
+  padding: 1.5rem;
+}
+
+/* Sections */
+.create-plan-section,
+.existing-plans-section {
+  margin-bottom: 2rem;
+  background: #f8f9fa;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.icon-wrapper {
+  background: #3a7bd5;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+.icon-wrapper svg {
+  color: white;
+  width: 18px;
+  height: 18px;
+}
+
+/* Form Styles */
+.plan-form {
+  margin-top: 1.5rem;
+}
+
+.form-input {
+  margin-bottom: 1.25rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.submit-btn {
+  border-radius: 50px;
+  padding: 0.5rem 1.75rem;
+}
+
+/* Plans Grid */
+.plans-grid {
+  margin-top: 1rem;
+}
+
+.plan-card {
+  height: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background-color: white;
+  border-bottom: 1px solid #eee;
+}
+
+.plan-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.tables-count {
+  border-radius: 50px;
+  padding: 0.25rem 0.75rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.plan-description {
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.75rem; /* Creates consistent space between all items */
+  justify-content: flex-end; /* Aligns buttons to the right */
+  padding: 0.5rem 0; /* Optional: adds vertical spacing */
+}
+
+.action-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.empty-state svg {
+  margin-bottom: 1rem;
+  color: #dee2e6;
+}
+
+/* Footer */
+.modal-footer {
+  background: #f8f9fa;
+  border-top: 1px solid #eee;
+  padding: 1rem 1.5rem;
+  position: sticky;
+  bottom: 0;
+  z-index: 1050;
+}
+
+.close-btn {
+  border-radius: 50px;
+  padding: 0.5rem 1.75rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .modal-body-content {
+    padding: 1rem;
+  }
+  
+  .create-plan-section,
+  .existing-plans-section {
+    padding: 1rem;
+  }
+  
+  .plans-grid {
+    gap: 1rem;
+  }
+  
+  .plan-card {
+    margin-bottom: 1rem;
+  }
+}
+/* Plan Card Styles */
+.plan-card {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background-color: #f8f9fa;
+}
+
+.plan-title {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.tables-count {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.action-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+/* Add to your stylesheet if needed */
+.dropdown-toggle::after {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.card-img-wrapper {
+  height: 150px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

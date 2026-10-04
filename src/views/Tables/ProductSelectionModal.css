@@ -1,0 +1,87 @@
+.select-products-modal .modal-content {
+  border-radius: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.select-products-modal .modal-header {
+  border-bottom: none;
+  padding: 16px;
+}
+
+.select-products-modal .modal-title {
+  font-weight: bold;
+  font-size: 1.25rem;
+}
+
+.product-list {
+  background-color: #f8f9fa;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.product-item {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: #ffffff;
+  border-radius: 6px;
+  transition: box-shadow 0.2s;
+}
+
+.product-item:hover {
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Paid Product Styling */
+.paid-product-item {
+  background-color: #e9ecef; /* Light gray background for paid items */
+  opacity: 0.8;
+  position: relative;
+}
+
+.paid-product-item .product-details {
+  color: #6c757d; /* Muted text color */
+}
+
+.paid-product-item .custom-checkbox {
+  opacity: 0.5; /* Semi-transparent for disabled effect */
+}
+
+.paid-badge {
+  display: inline-block;
+  font-size: 0.8rem;
+  color: #28a745;
+  font-weight: bold;
+}
+
+.total-selected {
+  font-size: 1.1rem;
+  color: #007bff;
+}
+
+.custom-checkbox {
+  transform: scale(1.2);
+  margin-right: 4px;
+}
+
+.cancel-button,
+.confirm-button {
+  width: 100%;
+  border-radius: 6px;
+}
+
+.cancel-button {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.confirm-button {
+  background-color: #007bff;
+  color: #fff;
+  box-shadow: 0px 4px 8px rgba(0, 123, 255, 0.4);
+  transition: background-color 0.2s;
+}
+
+.confirm-button:hover {
+  background-color: #0056b3;
+}

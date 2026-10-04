@@ -1,0 +1,35 @@
+.reactions-container {
+  position: relative;
+  display: inline-block;
+}
+
+.like-button {
+  padding: 8px 12px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  background-color: white;
+}
+
+.reactions-popup {
+  display: flex;
+  gap: 8px;
+  position: absolute;
+  top: -50px; /* Adjust for your layout */
+  left: 0;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  padding: 10px;
+  z-index: 100;
+}
+
+.reaction-emoji {
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.reaction-emoji:hover {
+  transform: scale(1.3);
+}
