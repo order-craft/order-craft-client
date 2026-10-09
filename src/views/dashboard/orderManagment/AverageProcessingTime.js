@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from "react";
 import {
   CCard,
   CCardBody,
@@ -15,105 +15,108 @@ import {
   CListGroup,
   CListGroupItem,
   CProgressBar,
-} from '@coreui/react'
-import axios from 'axios'
-import { BaseUrl } from '../../../helpers/BaseUrl'
-import { GetToken } from '../../../helpers/GetToken'
-import CIcon from '@coreui/icons-react'
-import { cilClock, cilChart, cilCalendar, cilCheckCircle } from '@coreui/icons'
-import { useSelector } from 'react-redux'
-import translations from '../../../app/Language'
+} from "@coreui/react";
+import axios from "axios";
+import { BaseUrl } from "../../../helpers/BaseUrl";
+import { GetToken } from "../../../helpers/GetToken";
+import CIcon from "@coreui/icons-react";
+import { cilClock, cilChart, cilCalendar, cilCheckCircle } from "@coreui/icons";
+import { useSelector } from "react-redux";
+import translations from "../../../app/Language";
 
 const AverageProcessingTime = () => {
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
-  const [avgTimes, setAvgTimes] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [timeframe, setTimeframe] = useState('custom') // 'today', 'week', 'month', 'custom'
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [avgTimes, setAvgTimes] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [timeframe, setTimeframe] = useState("custom"); // 'today', 'week', 'month', 'custom'
 
-  const token = GetToken()
+  const token = GetToken();
 
-  const t = useSelector((state) => state.language)
-  const Language = translations[t]
+  const t = useSelector((state) => state.language);
+  const Language = translations[t];
 
   const presetDateRanges = {
     today: () => {
-      const today = new Date()
+      const today = new Date();
       return {
-        start: today.toISOString().split('T')[0],
-        end: today.toISOString().split('T')[0],
-      }
+        start: today.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
     },
     week: () => {
-      const today = new Date()
-      const weekStart = new Date(today)
-      weekStart.setDate(today.getDate() - today.getDay())
+      const today = new Date();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - today.getDay());
       return {
-        start: weekStart.toISOString().split('T')[0],
-        end: today.toISOString().split('T')[0],
-      }
+        start: weekStart.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
     },
     month: () => {
-      const today = new Date()
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+      const today = new Date();
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       return {
-        start: monthStart.toISOString().split('T')[0],
-        end: today.toISOString().split('T')[0],
-      }
+        start: monthStart.toISOString().split("T")[0],
+        end: today.toISOString().split("T")[0],
+      };
     },
-  }
+  };
 
   const handleTimeframeChange = (selected) => {
-    setTimeframe(selected)
-    if (selected !== 'custom') {
-      const { start, end } = presetDateRanges[selected]()
-      setStartDate(start)
-      setEndDate(end)
+    setTimeframe(selected);
+    if (selected !== "custom") {
+      const { start, end } = presetDateRanges[selected]();
+      setStartDate(start);
+      setEndDate(end);
     }
-  }
+  };
 
   const fetchAverageProcessingTime = async () => {
     if (!startDate || !endDate) {
-      setError('Please select both start and end dates')
-      return
+      setError("Please select both start and end dates");
+      return;
     }
 
-    setLoading(true)
-    setError(null)
-    setAvgTimes(null)
+    setLoading(true);
+    setError(null);
+    setAvgTimes(null);
 
     try {
       const response = await axios.post(
         `${BaseUrl}/dashboard/average-processing-time`,
         { startDate, endDate },
         { headers: { Authorization: `Bearer ${token}` } },
-      )
-      setAvgTimes(response.data)
+      );
+      setAvgTimes(response.data);
 
-      console.log(response.data)
+      console.log(response.data);
     } catch (error) {
-      console.error('Error fetching average processing time:', error)
-      setError(error.response?.data?.message || 'Failed to fetch data. Please try again.')
+      console.error("Error fetching average processing time:", error);
+      setError(
+        error.response?.data?.message ||
+          "Failed to fetch data. Please try again.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const formatMinutes = (minutes) => {
-    if (minutes < 60) return `${Math.round(minutes)} minutes`
-    const hours = Math.floor(minutes / 60)
-    const mins = Math.round(minutes % 60)
-    return `${hours}h ${mins}m`
-  }
+    if (minutes < 60) return `${Math.round(minutes)} minutes`;
+    const hours = Math.floor(minutes / 60);
+    const mins = Math.round(minutes % 60);
+    return `${hours}h ${mins}m`;
+  };
 
   const calculateEfficiency = (time) => {
     // Assuming lower time is better (adjust thresholds as needed)
-    if (time < 30) return Language.Excellent
-    if (time < 60) return Language.Good
-    if (time < 90) return Language.Average
-    return Language.NeedsImprovement
-  }
+    if (time < 30) return Language.Excellent;
+    if (time < 60) return Language.Good;
+    if (time < 90) return Language.Average;
+    return Language.NeedsImprovement;
+  };
 
   return (
     <CCard className="dashboard-card">
@@ -127,32 +130,32 @@ const AverageProcessingTime = () => {
         <div className="mb-4">
           <div className="d-flex flex-wrap gap-2 mb-3">
             <CButton
-              color={timeframe === 'today' ? 'primary' : 'outline-secondary'}
-              onClick={() => handleTimeframeChange('today')}
+              color={timeframe === "today" ? "primary" : "outline-secondary"}
+              onClick={() => handleTimeframeChange("today")}
             >
               {Language.Today}
             </CButton>
             <CButton
-              color={timeframe === 'week' ? 'primary' : 'outline-secondary'}
-              onClick={() => handleTimeframeChange('week')}
+              color={timeframe === "week" ? "primary" : "outline-secondary"}
+              onClick={() => handleTimeframeChange("week")}
             >
               {Language.ThisWeek}
             </CButton>
             <CButton
-              color={timeframe === 'month' ? 'primary' : 'outline-secondary'}
-              onClick={() => handleTimeframeChange('month')}
+              color={timeframe === "month" ? "primary" : "outline-secondary"}
+              onClick={() => handleTimeframeChange("month")}
             >
               {Language.ThisMonth}
             </CButton>
             <CButton
-              color={timeframe === 'custom' ? 'primary' : 'outline-secondary'}
-              onClick={() => handleTimeframeChange('custom')}
+              color={timeframe === "custom" ? "primary" : "outline-secondary"}
+              onClick={() => handleTimeframeChange("custom")}
             >
               {Language.CustomRange}
             </CButton>
           </div>
 
-          {timeframe === 'custom' && (
+          {timeframe === "custom" && (
             <CRow className="g-3">
               <CCol md={6}>
                 <CFormLabel>{Language.StartDate}</CFormLabel>
@@ -160,7 +163,7 @@ const AverageProcessingTime = () => {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  max={endDate || new Date().toISOString().split('T')[0]}
+                  max={endDate || new Date().toISOString().split("T")[0]}
                 />
               </CCol>
               <CCol md={6}>
@@ -170,7 +173,7 @@ const AverageProcessingTime = () => {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   min={startDate}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={new Date().toISOString().split("T")[0]}
                 />
               </CCol>
             </CRow>
@@ -181,7 +184,7 @@ const AverageProcessingTime = () => {
           <div>
             {startDate && endDate && (
               <CBadge color="info" className="fs-6">
-                {new Date(startDate).toLocaleDateString()} -{' '}
+                {new Date(startDate).toLocaleDateString()} -{" "}
                 {new Date(endDate).toLocaleDateString()}
               </CBadge>
             )}
@@ -191,8 +194,12 @@ const AverageProcessingTime = () => {
             onClick={fetchAverageProcessingTime}
             disabled={loading || !startDate || !endDate}
           >
-            {loading ? <CSpinner size="sm" /> : <CIcon icon={cilChart} className="me-1" />}
-            {loading ? 'Analyzing...' : 'Analyze Efficiency'}
+            {loading ? (
+              <CSpinner size="sm" />
+            ) : (
+              <CIcon icon={cilChart} className="me-1" />
+            )}
+            {loading ? "Analyzing..." : "Analyze Efficiency"}
           </CButton>
         </div>
 
@@ -201,8 +208,13 @@ const AverageProcessingTime = () => {
             {error}
           </CAlert>
         )}
-
-        {avgTimes && (
+        {avgTimes?.statusFlowDisabled && (
+          <CAlert color="info" className="mt-3">
+            {Language.statusFlowDisabledNotice ||
+              "Order status flow is disabled for this business — processing times are not tracked."}
+          </CAlert>
+        )}
+        {avgTimes && !avgTimes.statusFlowDisabled && (
           <div className="mt-4">
             <h4 className="mb-4 text-center">
               <CIcon icon={cilClock} className="me-2" />
@@ -229,7 +241,7 @@ const AverageProcessingTime = () => {
                         value={avgTimes.avgPendingToPreparing}
                         // max={120}
                         className="mb-3"
-                        style={{ height: '10px' }}
+                        style={{ height: "10px" }}
                       >
                         <CProgressBar
                           color="warning"
@@ -239,7 +251,8 @@ const AverageProcessingTime = () => {
                       </CProgress>
                       <div className="text-center">
                         <CBadge color="warning">
-                          {Language.Efficiency}: {calculateEfficiency(avgTimes.avgPendingToPreparing)}
+                          {Language.Efficiency}:{" "}
+                          {calculateEfficiency(avgTimes.avgPendingToPreparing)}
                         </CBadge>
                       </div>
                     </div>
@@ -247,13 +260,17 @@ const AverageProcessingTime = () => {
                       <CListGroupItem>
                         <div className="d-flex justify-content-between">
                           <span>{Language.Fastest}</span>
-                          <span>{formatMinutes(avgTimes.minPendingToPreparing)}</span>
+                          <span>
+                            {formatMinutes(avgTimes.minPendingToPreparing)}
+                          </span>
                         </div>
                       </CListGroupItem>
                       <CListGroupItem>
                         <div className="d-flex justify-content-between">
                           <span>{Language.Slowest}</span>
-                          <span>{formatMinutes(avgTimes.maxPendingToPreparing)}</span>
+                          <span>
+                            {formatMinutes(avgTimes.maxPendingToPreparing)}
+                          </span>
                         </div>
                       </CListGroupItem>
                     </CListGroup>
@@ -265,7 +282,10 @@ const AverageProcessingTime = () => {
                 <CCard className="h-100">
                   <CCardBody>
                     <h5 className="d-flex align-items-center">
-                      <CIcon icon={cilCheckCircle} className="me-2 text-success" />
+                      <CIcon
+                        icon={cilCheckCircle}
+                        className="me-2 text-success"
+                      />
                       {Language.OrderCompletion}
                     </h5>
                     <div className="my-3">
@@ -280,17 +300,23 @@ const AverageProcessingTime = () => {
                         value={Math.min(avgTimes.avgPreparingToCompleted, 180)}
                         max={180}
                         className="mb-3"
-                        style={{ height: '10px' }}
+                        style={{ height: "10px" }}
                       >
                         <CProgressBar
                           color="success"
-                          value={Math.min(avgTimes.avgPreparingToCompleted, 180)}
+                          value={Math.min(
+                            avgTimes.avgPreparingToCompleted,
+                            180,
+                          )}
                           max={180}
                         />
                       </CProgress>
                       <div className="text-center">
                         <CBadge color="success">
-                          {Language.Efficiency}: {calculateEfficiency(avgTimes.avgPreparingToCompleted)}
+                          {Language.Efficiency}:{" "}
+                          {calculateEfficiency(
+                            avgTimes.avgPreparingToCompleted,
+                          )}
                         </CBadge>
                       </div>
                     </div>
@@ -298,13 +324,17 @@ const AverageProcessingTime = () => {
                       <CListGroupItem>
                         <div className="d-flex justify-content-between">
                           <span>{Language.Fastest}</span>
-                          <span>{formatMinutes(avgTimes.minPreparingToCompleted)}</span>
+                          <span>
+                            {formatMinutes(avgTimes.minPreparingToCompleted)}
+                          </span>
                         </div>
                       </CListGroupItem>
                       <CListGroupItem>
                         <div className="d-flex justify-content-between">
                           <span>{Language.Slowest}</span>
-                          <span>{formatMinutes(avgTimes.maxPreparingToCompleted)}</span>
+                          <span>
+                            {formatMinutes(avgTimes.maxPreparingToCompleted)}
+                          </span>
                         </div>
                       </CListGroupItem>
                     </CListGroup>
@@ -315,8 +345,8 @@ const AverageProcessingTime = () => {
 
             <div className="mt-4 text-center text-muted small">
               <CIcon icon={cilCalendar} className="me-1" />
-              {Language.Datafrom} {new Date(startDate).toLocaleDateString()} {Language.to} {' '}
-              {new Date(endDate).toLocaleDateString()}
+              {Language.Datafrom} {new Date(startDate).toLocaleDateString()}{" "}
+              {Language.to} {new Date(endDate).toLocaleDateString()}
             </div>
           </div>
         )}
@@ -347,7 +377,7 @@ const AverageProcessingTime = () => {
         }
       `}</style>
     </CCard>
-  )
-}
+  );
+};
 
-export default AverageProcessingTime
+export default AverageProcessingTime;

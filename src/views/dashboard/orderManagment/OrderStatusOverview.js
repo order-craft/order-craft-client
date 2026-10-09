@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react";
 import {
   CCard,
   CCardBody,
@@ -20,106 +20,120 @@ import {
   CProgress,
   CFormSelect,
   CAlert,
-} from '@coreui/react'
-import axios from 'axios'
-import { io } from 'socket.io-client'
-import { BaseUrl } from '../../../helpers/BaseUrl'
-import { GetToken } from '../../../helpers/GetToken'
-import CIcon from '@coreui/icons-react'
-import { cilClock, cilCheckCircle, cilFire, cilInfo, cilListRich } from '@coreui/icons'
-import { useSelector } from 'react-redux'
-import translations from '../../../app/Language'
+} from "@coreui/react";
+import axios from "axios";
+import { io } from "socket.io-client";
+import { BaseUrl } from "../../../helpers/BaseUrl";
+import { GetToken } from "../../../helpers/GetToken";
+import CIcon from "@coreui/icons-react";
+import {
+  cilClock,
+  cilCheckCircle,
+  cilFire,
+  cilInfo,
+  cilListRich,
+} from "@coreui/icons";
+import { useSelector } from "react-redux";
+import translations from "../../../app/Language";
 
 const OrderStatusOverview = () => {
-  const [orders, setOrders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [activeKey, setActiveKey] = useState(1)
-  const [filterOption, setFilterOption] = useState('all') // 'all', 'today', 'thisWeek'
-  const token = GetToken()
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeKey, setActiveKey] = useState(1);
+  const [filterOption, setFilterOption] = useState("all"); // 'all', 'today', 'thisWeek'
+  const [statusFlowEnabled, setStatusFlowEnabled] = useState(true);
+  const token = GetToken();
 
-  const t = useSelector((state) => state.language)
-  const Language = translations[t]
+  const t = useSelector((state) => state.language);
+  const Language = translations[t];
 
   const fetchOrders = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const response = await axios.get(`${BaseUrl}/order/orders/ordersfifo`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
-      setOrders(response.data.orders)
+      });
+      setOrders(response.data.orders);
     } catch (error) {
-      console.error('Failed to fetch orders:', error)
+      console.error("Failed to fetch orders:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchOrders()
-    const socket = io(BaseUrl, { auth: { token } })
+    fetchOrders();
+    const socket = io(BaseUrl, { auth: { token } });
 
-    socket.on('newOrder', fetchOrders)
-    socket.on('orderUpdated', fetchOrders)
-
-    return () => socket.disconnect()
-  }, [])
+    socket.on("newOrder", fetchOrders);
+    socket.on("orderUpdated", fetchOrders);
+    socket.on("tenantConfigChanged", (cfg) => {
+      setStatusFlowEnabled(cfg.statusFlowEnabled !== false);
+      fetchOrders();
+    });
+    return () => socket.disconnect();
+  }, []);
 
   const convertMinutesToDHM = (minutes) => {
-    const days = Math.floor(minutes / (24 * 60))
-    const hours = Math.floor((minutes % (24 * 60)) / 60)
-    const mins = minutes % 60
+    const days = Math.floor(minutes / (24 * 60));
+    const hours = Math.floor((minutes % (24 * 60)) / 60);
+    const mins = minutes % 60;
 
-    let result = []
-    if (days > 0) result.push(`${days}d`)
-    if (hours > 0) result.push(`${hours}h`)
-    if (mins > 0 || (days === 0 && hours === 0)) result.push(`${mins}m`)
+    let result = [];
+    if (days > 0) result.push(`${days}d`);
+    if (hours > 0) result.push(`${hours}h`);
+    if (mins > 0 || (days === 0 && hours === 0)) result.push(`${mins}m`);
 
-    return result.join(' ')
-  }
+    return result.join(" ");
+  };
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'pending':
+      case "pending":
         return (
           <CBadge color="warning">
             <CIcon icon={cilClock} className="me-1" /> {Language.pending}
           </CBadge>
-        )
-      case 'preparing':
+        );
+      case "preparing":
         return (
           <CBadge color="info">
             <CIcon icon={cilFire} className="me-1" /> {Language.Preparing}
           </CBadge>
-        )
-      case 'completed':
+        );
+      case "completed":
         return (
           <CBadge color="success">
-            <CIcon icon={cilCheckCircle} className="me-1" /> {Language.completed}
+            <CIcon icon={cilCheckCircle} className="me-1" />{" "}
+            {Language.completed}
           </CBadge>
-        )
+        );
       default:
-        return <CBadge color="secondary">{status}</CBadge>
+        return <CBadge color="secondary">{status}</CBadge>;
     }
-  }
+  };
 
   const filterOrders = (orders) => {
-    const now = new Date()
-    const today = new Date(now.setHours(0, 0, 0, 0))
-    const weekStart = new Date(today)
-    weekStart.setDate(today.getDate() - today.getDay())
+    const now = new Date();
+    const today = new Date(now.setHours(0, 0, 0, 0));
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
 
     return orders.filter((order) => {
-      const orderDate = new Date(order.createdAt)
-      if (filterOption === 'today') return orderDate >= today
-      if (filterOption === 'thisWeek') return orderDate >= weekStart
-      return true
-    })
-  }
+      const orderDate = new Date(order.createdAt);
+      if (filterOption === "today") return orderDate >= today;
+      if (filterOption === "thisWeek") return orderDate >= weekStart;
+      return true;
+    });
+  };
 
   const renderOrderCard = (order) => {
     const totalPrice = order.products
-      .reduce((sum, product) => sum + product.product?.price * product.quantity, 0)
-      .toFixed(2)
+      .reduce(
+        (sum, product) => sum + product.product?.price * product.quantity,
+        0,
+      )
+      .toFixed(2);
 
     return (
       <CCard key={order._id} className="mb-3 order-card">
@@ -131,13 +145,19 @@ const OrderStatusOverview = () => {
                 {Language.order} #{order.orderNumber}
               </h5>
               <div className="d-flex align-items-center">
-                <span className="me-3">{Language.Table} {order.table?.number || 'N/A'}</span>
+                <span className="me-3">
+                  {Language.Table} {order.table?.number || "N/A"}
+                </span>
                 {getStatusBadge(order.status)}
               </div>
             </div>
             <div className="text-end">
-              <div className="fw-bold">{totalPrice} {Language.TND}</div>
-              <small className="text-muted">{new Date(order.createdAt).toLocaleTimeString()}</small>
+              <div className="fw-bold">
+                {totalPrice} {Language.TND}
+              </div>
+              <small className="text-muted">
+                {new Date(order.createdAt).toLocaleTimeString()}
+              </small>
             </div>
           </div>
 
@@ -145,12 +165,16 @@ const OrderStatusOverview = () => {
             <CAccordionItem itemKey="1">
               <CAccordionHeader>
                 <span className="fw-semibold">
-                  {order.products.length} {order.products.length === 1 ? 'Item' : 'Items'}
+                  {order.products.length}{" "}
+                  {order.products.length === 1 ? "Item" : "Items"}
                 </span>
               </CAccordionHeader>
               <CAccordionBody>
                 {order.products.map((product, index) => (
-                  <div key={index} className="d-flex justify-content-between py-2 border-bottom">
+                  <div
+                    key={index}
+                    className="d-flex justify-content-between py-2 border-bottom"
+                  >
                     <div>
                       <span className="fw-medium">{product.product?.name}</span>
                       <div className="small text-muted">
@@ -164,7 +188,10 @@ const OrderStatusOverview = () => {
                     </div>
                     <div className="text-end">
                       <div>x{product.quantity}</div>
-                      <div>{(product.product?.price * product.quantity).toFixed(2)} {Language.TND}</div>
+                      <div>
+                        {(product.product?.price * product.quantity).toFixed(2)}{" "}
+                        {Language.TND}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -172,43 +199,60 @@ const OrderStatusOverview = () => {
             </CAccordionItem>
           </CAccordion>
 
-          <div className="mt-3">
-            <h6 className="mb-2">
-              <CIcon icon={cilClock} className="me-2" />
-              {Language.TimeSpent}
-            </h6>
-            {Object.entries(order.statusDurations).map(([status, duration], index) => {
-              const durationInMinutes = Math.floor(parseInt(duration, 10) / 60000)
-              const formattedDuration = convertMinutesToDHM(durationInMinutes)
-              const percentage = (durationInMinutes / 120) * 100 // Assuming 120 minutes is max for visualization
+          {statusFlowEnabled && (
+            <div className="mt-3">
+              <h6 className="mb-2">
+                <CIcon icon={cilClock} className="me-2" />
+                {Language.TimeSpent}
+              </h6>
+              {Object.entries(order.statusDurations).map(
+                ([status, duration], index) => {
+                  const durationInMinutes = Math.floor(
+                    parseInt(duration, 10) / 60000,
+                  );
+                  const formattedDuration =
+                    convertMinutesToDHM(durationInMinutes);
+                  const percentage = (durationInMinutes / 120) * 100; // Assuming 120 minutes is max for visualization
 
-              return (
-                <div key={index} className="mb-2">
-                  <div className="d-flex justify-content-between small mb-1">
-                    <span className="text-capitalize">{status}</span>
-                    <span>{formattedDuration}</span>
-                  </div>
-                  <CProgress
-                    thin
-                    color={
-                      status === 'pending' ? 'warning' : status === 'preparing' ? 'info' : 'success'
-                    }
-                    value={Math.min(percentage, 100)}
-                    className="mb-3"
-                  />
-                </div>
-              )
-            })}
-          </div>
+                  return (
+                    <div key={index} className="mb-2">
+                      <div className="d-flex justify-content-between small mb-1">
+                        <span className="text-capitalize">{status}</span>
+                        <span>{formattedDuration}</span>
+                      </div>
+                      <CProgress
+                        thin
+                        color={
+                          status === "pending"
+                            ? "warning"
+                            : status === "preparing"
+                              ? "info"
+                              : "success"
+                        }
+                        value={Math.min(percentage, 100)}
+                        className="mb-3"
+                      />
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          )}
         </CCardBody>
       </CCard>
-    )
-  }
+    );
+  };
 
-  const filteredOrders = filterOrders(orders)
-  const pendingOrders = filteredOrders.filter((order) => order.status === 'pending')
-  const preparingOrders = filteredOrders.filter((order) => order.status === 'preparing')
-  const completedOrders = filteredOrders.filter((order) => order.status === 'completed')
+  const filteredOrders = filterOrders(orders);
+  const pendingOrders = filteredOrders.filter(
+    (order) => order.status === "pending",
+  );
+  const preparingOrders = filteredOrders.filter(
+    (order) => order.status === "preparing",
+  );
+  const completedOrders = filteredOrders.filter(
+    (order) => order.status === "completed",
+  );
 
   return (
     <CRow>
@@ -225,7 +269,7 @@ const OrderStatusOverview = () => {
                   value={filterOption}
                   onChange={(e) => setFilterOption(e.target.value)}
                   className="me-2"
-                  style={{ width: '120px' }}
+                  style={{ width: "120px" }}
                 >
                   <option value="all">{Language.AllTime}</option>
                   <option value="today">{Language.Today}</option>
@@ -239,20 +283,33 @@ const OrderStatusOverview = () => {
           </CCardHeader>
           <CCardBody>
             <CNav variant="tabs" role="tablist" className="mb-4">
+              {statusFlowEnabled && (
+                <CNavItem>
+                  <CNavLink
+                    active={activeKey === 1}
+                    onClick={() => setActiveKey(1)}
+                  >
+                    <CIcon icon={cilClock} className="me-1" />
+                    {Language.Pending} ({pendingOrders.length})
+                  </CNavLink>
+                </CNavItem>
+              )}
+              {statusFlowEnabled && (
+                <CNavItem>
+                  <CNavLink
+                    active={activeKey === 2}
+                    onClick={() => setActiveKey(2)}
+                  >
+                    <CIcon icon={cilFire} className="me-1" />
+                    {Language.Preparing} ({preparingOrders.length})
+                  </CNavLink>
+                </CNavItem>
+              )}
               <CNavItem>
-                <CNavLink active={activeKey === 1} onClick={() => setActiveKey(1)}>
-                  <CIcon icon={cilClock} className="me-1" />
-                  {Language.Pending} ({pendingOrders.length})
-                </CNavLink>
-              </CNavItem>
-              <CNavItem>
-                <CNavLink active={activeKey === 2} onClick={() => setActiveKey(2)}>
-                  <CIcon icon={cilFire} className="me-1" />
-                  {Language.Preparing} ({preparingOrders.length})
-                </CNavLink>
-              </CNavItem>
-              <CNavItem>
-                <CNavLink active={activeKey === 3} onClick={() => setActiveKey(3)}>
+                <CNavLink
+                  active={activeKey === 3}
+                  onClick={() => setActiveKey(3)}
+                >
                   <CIcon icon={cilCheckCircle} className="me-1" />
                   {Language.completed} ({completedOrders.length})
                 </CNavLink>
@@ -267,24 +324,28 @@ const OrderStatusOverview = () => {
                 </div>
               ) : (
                 <>
-                  <CTabPane visible={activeKey === 1}>
-                    {pendingOrders.length > 0 ? (
-                      pendingOrders.map(renderOrderCard)
-                    ) : (
-                      <CAlert color="info" className="text-center">
-                        {Language.Nopendingordersatthemoment}
-                      </CAlert>
-                    )}
-                  </CTabPane>
-                  <CTabPane visible={activeKey === 2}>
-                    {preparingOrders.length > 0 ? (
-                      preparingOrders.map(renderOrderCard)
-                    ) : (
-                      <CAlert color="info" className="text-center">
-                        {Language.Noordersbeingpreparedcurrently}
-                      </CAlert>
-                    )}
-                  </CTabPane>
+                  {statusFlowEnabled && (
+                    <CTabPane visible={activeKey === 1}>
+                      {pendingOrders.length > 0 ? (
+                        pendingOrders.map(renderOrderCard)
+                      ) : (
+                        <CAlert color="info" className="text-center">
+                          {Language.Nopendingordersatthemoment}
+                        </CAlert>
+                      )}
+                    </CTabPane>
+                  )}
+                  {statusFlowEnabled && (
+                    <CTabPane visible={activeKey === 2}>
+                      {preparingOrders.length > 0 ? (
+                        preparingOrders.map(renderOrderCard)
+                      ) : (
+                        <CAlert color="info" className="text-center">
+                          {Language.Noordersbeingpreparedcurrently}
+                        </CAlert>
+                      )}
+                    </CTabPane>
+                  )}
                   <CTabPane visible={activeKey === 3}>
                     {completedOrders.length > 0 ? (
                       completedOrders.map(renderOrderCard)
@@ -336,7 +397,7 @@ const OrderStatusOverview = () => {
         }
       `}</style>
     </CRow>
-  )
-}
+  );
+};
 
-export default OrderStatusOverview
+export default OrderStatusOverview;

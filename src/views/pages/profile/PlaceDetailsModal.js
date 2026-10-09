@@ -1,5 +1,5 @@
-import React from 'react'
-import PropTypes from 'prop-types'
+import React from "react";
+import PropTypes from "prop-types";
 import {
   CModal,
   CModalHeader,
@@ -15,11 +15,25 @@ import {
   CCard,
   CCardBody,
   CFormText,
-} from '@coreui/react'
-import CIcon from '@coreui/icons-react'
-import { cilLocationPin, cilBuilding, cilImage, cilSave, cilX } from '@coreui/icons'
+  CFormSwitch,
+} from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import {
+  cilLocationPin,
+  cilBuilding,
+  cilImage,
+  cilSave,
+  cilX,
+} from "@coreui/icons";
 
-const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onSave }) => {
+const PlaceDetailsModal = ({
+  visible,
+  onClose,
+  data,
+  onChange,
+  onFileChange,
+  onSave,
+}) => {
   return (
     <CModal
       visible={visible}
@@ -31,7 +45,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
     >
       <CModalHeader className="bg-gradient-info text-white">
         <CIcon icon={cilBuilding} className="me-2" />
-        {data?.placeName ? `Edit ${data.placeName}` : 'Add New Place'}
+        {data?.placeName ? `Edit ${data.placeName}` : "Add New Place"}
       </CModalHeader>
       <CModalBody className="p-4">
         <CCard className="shadow-sm mb-4">
@@ -48,7 +62,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   type="text"
                   name="placeName"
                   placeholder="Enter place name"
-                  value={data?.placeName || ''}
+                  value={data?.placeName || ""}
                   onChange={onChange}
                 />
               </CCol>
@@ -58,7 +72,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   type="text"
                   name="phoneNumber"
                   placeholder="Enter phone number"
-                  value={data?.phoneNumber || ''}
+                  value={data?.phoneNumber || ""}
                   onChange={onChange}
                 />
               </CCol>
@@ -71,7 +85,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   type="text"
                   name="PlaceAddress"
                   placeholder="Enter full address"
-                  value={data?.PlaceAddress || ''}
+                  value={data?.PlaceAddress || ""}
                   onChange={onChange}
                 />
               </CCol>
@@ -92,7 +106,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 <CFormInput
                   type="file"
                   name="placeLogo"
-                  onChange={(e) => onFileChange(e, 'logo')}
+                  onChange={(e) => onFileChange(e, "logo")}
                   className="mb-2"
                 />
                 <CFormText>Recommended size: 200x200px</CFormText>
@@ -112,7 +126,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 <CFormInput
                   type="file"
                   name="placePicture"
-                  onChange={(e) => onFileChange(e, 'place')}
+                  onChange={(e) => onFileChange(e, "place")}
                   className="mb-2"
                 />
                 <CFormText>Recommended size: 800x600px</CFormText>
@@ -145,7 +159,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   type="number"
                   name="distance"
                   placeholder="Enter distance"
-                  value={data?.distance || ''}
+                  value={data?.distance || ""}
                   onChange={onChange}
                 />
               </CCol>
@@ -155,7 +169,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   type="text"
                   name="lat"
                   placeholder="Enter latitude"
-                  value={data?.lat || ''}
+                  value={data?.lat || ""}
                   onChange={onChange}
                 />
               </CCol>
@@ -165,17 +179,53 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   type="text"
                   name="long"
                   placeholder="Enter longitude"
-                  value={data?.long || ''}
+                  value={data?.long || ""}
                   onChange={onChange}
                 />
               </CCol>
             </CRow>
           </CCardBody>
         </CCard>
+        <CCard className="shadow-sm mt-4">
+          <CCardBody>
+            <h5 className="mb-3 text-info">Order Workflow</h5>
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="pe-3">
+                <div className="fw-bold">Enable order status tracking</div>
+                <CFormText>
+                  When on, orders go through Pending → Preparing → Completed.
+                  When off, orders are placed directly as &quot;Placed&quot; and
+                  the staff only handle payment.
+                </CFormText>
+              </div>
+              <CFormSwitch
+                id="statusFlowEnabledSwitch"
+                checked={
+                  data?.statusFlowEnabled === undefined
+                    ? true
+                    : data.statusFlowEnabled
+                }
+                onChange={(e) =>
+                  onChange({
+                    target: {
+                      name: "statusFlowEnabled",
+                      value: e.target.checked,
+                    },
+                  })
+                }
+              />
+            </div>
+          </CCardBody>
+        </CCard>
       </CModalBody>
 
       <CModalFooter className="border-top-0">
-        <CButton color="secondary" onClick={onClose} variant="outline" shape="rounded-pill">
+        <CButton
+          color="secondary"
+          onClick={onClose}
+          variant="outline"
+          shape="rounded-pill"
+        >
           <CIcon icon={cilX} className="me-2" />
           Cancel
         </CButton>
@@ -185,8 +235,8 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
         </CButton>
       </CModalFooter>
     </CModal>
-  )
-}
+  );
+};
 
 PlaceDetailsModal.propTypes = {
   visible: PropTypes.bool.isRequired,
@@ -203,7 +253,8 @@ PlaceDetailsModal.propTypes = {
     picturePreview: PropTypes.string,
     lat: PropTypes.string,
     long: PropTypes.string,
+    statusFlowEnabled: PropTypes.bool,
   }),
-}
+};
 
-export default PlaceDetailsModal
+export default PlaceDetailsModal;

@@ -60,12 +60,15 @@ const OrdersTable = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeKey, setActiveKey] = useState(1);
+
   const [updatedOrders, setUpdatedOrders] = useState({});
   const [selectedPlanFilter, setSelectedPlanFilter] = useState("all");
   const [availablePlans, setAvailablePlans] = useState([]);
   const [onlyTakeawayDelivery, setOnlyTakeawayDelivery] = useState(false);
   const [typeFilter, setTypeFilter] = useState("all");
   const [timeFilter, setTimeFilter] = useState("today"); // 'today', 'thisWeek', 'all'
+  const [statusFlowEnabled, setStatusFlowEnabled] = useState(true);
+
   const token = GetToken();
   const t = useSelector((state) => state.language);
   const Language = translations[t];
@@ -82,6 +85,7 @@ const OrdersTable = () => {
       });
       setOrders(response.data.orders);
       setAvailablePlans(response.data.plans);
+      setStatusFlowEnabled(response.data.statusFlowEnabled !== false);
     } catch (error) {
       console.error("Failed to fetch orders:", error);
     } finally {
@@ -89,11 +93,21 @@ const OrdersTable = () => {
     }
   };
 
+  // When the flow is toggled off, force the active tab to point at a valid pane
+  // When the flow flips off while a hidden tab is active, jump to "Completed/Placed"
+  useEffect(() => {
+    if (!statusFlowEnabled && (activeKey === 1 || activeKey === 2)) {
+      setActiveKey(3);
+    }
+  }, [statusFlowEnabled, activeKey]);
   useEffect(() => {
     fetchOrders();
     const socket = io(BaseUrl, { auth: { token } });
 
     socket.on("newOrder", (newOrder) => {
+      // Ignore deleteOrder-style emits (they send an id string)
+      if (typeof newOrder === "string" || !newOrder?._id) return;
+
       setOrders((prevOrders) => {
         const existingOrderIndex = prevOrders.findIndex(
           (order) => order._id === newOrder._id,
@@ -123,7 +137,10 @@ const OrdersTable = () => {
         prevOrders.filter((order) => order._id !== deletedOrderId),
       );
     });
-
+    socket.on("tenantConfigChanged", (cfg) => {
+      setStatusFlowEnabled(cfg.statusFlowEnabled !== false);
+      fetchOrders();
+    });
     return () => {
       socket.disconnect();
     };
@@ -424,15 +441,24 @@ const OrdersTable = () => {
                 )}
               </h5>
               <div className="d-flex align-items-center">
-                <CBadge color={getStatusColor(order.status)} className="me-2">
+                <CBadge
+                  color={
+                    !statusFlowEnabled && order.status === "completed"
+                      ? "info"
+                      : getStatusColor(order.status)
+                  }
+                  className="me-2"
+                >
                   {getStatusIcon(order.status)}
-                  {order.status === "pending"
-                    ? Language.pending
-                    : order.status === "preparing"
-                      ? Language.preparing
-                      : order.status === "completed"
-                        ? Language.completed
-                        : Language.cancelled}
+                  {!statusFlowEnabled && order.status === "completed"
+                    ? Language.placed
+                    : order.status === "pending"
+                      ? Language.pending
+                      : order.status === "preparing"
+                        ? Language.preparing
+                        : order.status === "completed"
+                          ? Language.completed
+                          : Language.cancelled}
                 </CBadge>
                 {updatedOrders[order._id] && (
                   <CBadge color="primary" className="me-2">
@@ -565,50 +591,54 @@ const OrdersTable = () => {
             </div>
           )}
 
-          {order.status !== "completed" && order.status !== "cancelled" && (
-            <div className="d-flex justify-content-end mt-3">
-              <CButton
-                color={order.status === "pending" ? "info" : "success"}
-                onClick={() => {
-                  const newStatus =
-                    order.status === "pending" ? "preparing" : "completed";
-                  updateOrderStatus(order._id, newStatus);
-                }}
-                disabled={loading}
-                className="me-2"
-              >
-                {loading ? (
-                  <CSpinner size="sm" />
-                ) : order.status === "pending" ? (
-                  <>
-                    <CIcon icon={cilFire} className="me-1" />
-                    {Language.moveToPreparing}
-                  </>
-                ) : (
-                  <>
-                    <CIcon icon={cilCheckCircle} className="me-1" />
-                    {Language.moveToCompleted}
-                  </>
-                )}
-              </CButton>
-              {order.status === "pending" && (
+          {(statusFlowEnabled ||
+            order.status === "pending" ||
+            order.status === "preparing") &&
+            order.status !== "completed" &&
+            order.status !== "cancelled" && (
+              <div className="d-flex justify-content-end mt-3">
                 <CButton
-                  color="danger"
-                  onClick={() => cancelOrder(order._id)}
+                  color={order.status === "pending" ? "info" : "success"}
+                  onClick={() => {
+                    const newStatus =
+                      order.status === "pending" ? "preparing" : "completed";
+                    updateOrderStatus(order._id, newStatus);
+                  }}
                   disabled={loading}
+                  className="me-2"
                 >
                   {loading ? (
                     <CSpinner size="sm" />
+                  ) : order.status === "pending" ? (
+                    <>
+                      <CIcon icon={cilFire} className="me-1" />
+                      {Language.moveToPreparing}
+                    </>
                   ) : (
                     <>
-                      <CIcon icon={cilBan} className="me-1" />
-                      {Language.cancelOrder}
+                      <CIcon icon={cilCheckCircle} className="me-1" />
+                      {Language.moveToCompleted}
                     </>
                   )}
                 </CButton>
-              )}
-            </div>
-          )}
+                {order.status === "pending" && (
+                  <CButton
+                    color="danger"
+                    onClick={() => cancelOrder(order._id)}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <CSpinner size="sm" />
+                    ) : (
+                      <>
+                        <CIcon icon={cilBan} className="me-1" />
+                        {Language.cancelOrder}
+                      </>
+                    )}
+                  </CButton>
+                )}
+              </div>
+            )}
         </CCardBody>
       </CCard>
     );
@@ -757,31 +787,36 @@ const OrdersTable = () => {
             </div>
 
             <CNav variant="tabs" role="tablist" className="mb-4">
-              <CNavItem>
-                <CNavLink
-                  active={activeKey === 1}
-                  onClick={() => setActiveKey(1)}
-                >
-                  <CIcon icon={cilClock} className="me-1" />
-                  {Language.pending} ({getTabCount("pending")})
-                </CNavLink>
-              </CNavItem>
-              <CNavItem>
-                <CNavLink
-                  active={activeKey === 2}
-                  onClick={() => setActiveKey(2)}
-                >
-                  <CIcon icon={cilFire} className="me-1" />
-                  {Language.preparing} ({getTabCount("preparing")})
-                </CNavLink>
-              </CNavItem>
+              {(statusFlowEnabled || getTabCount("pending") > 0) && (
+                <CNavItem>
+                  <CNavLink
+                    active={activeKey === 1}
+                    onClick={() => setActiveKey(1)}
+                  >
+                    <CIcon icon={cilClock} className="me-1" />
+                    {Language.pending} ({getTabCount("pending")})
+                  </CNavLink>
+                </CNavItem>
+              )}
+              {(statusFlowEnabled || getTabCount("preparing") > 0) && (
+                <CNavItem>
+                  <CNavLink
+                    active={activeKey === 2}
+                    onClick={() => setActiveKey(2)}
+                  >
+                    <CIcon icon={cilFire} className="me-1" />
+                    {Language.preparing} ({getTabCount("preparing")})
+                  </CNavLink>
+                </CNavItem>
+              )}
               <CNavItem>
                 <CNavLink
                   active={activeKey === 3}
                   onClick={() => setActiveKey(3)}
                 >
                   <CIcon icon={cilCheckCircle} className="me-1" />
-                  {Language.completed} ({getTabCount("completed")})
+                  {statusFlowEnabled ? Language.completed : Language.placed} (
+                  {getTabCount("completed")})
                 </CNavLink>
               </CNavItem>
               <CNavItem>
@@ -803,28 +838,32 @@ const OrdersTable = () => {
                 </div>
               ) : (
                 <>
-                  <CTabPane visible={activeKey === 1}>
-                    {getTabCount("pending") > 0 ? (
-                      filteredOrders
-                        .filter((order) => order.status === "pending")
-                        .map(renderOrderCard)
-                    ) : (
-                      <CAlert color="info" className="text-center">
-                        {Language.noPendingOrders}
-                      </CAlert>
-                    )}
-                  </CTabPane>
-                  <CTabPane visible={activeKey === 2}>
-                    {getTabCount("preparing") > 0 ? (
-                      filteredOrders
-                        .filter((order) => order.status === "preparing")
-                        .map(renderOrderCard)
-                    ) : (
-                      <CAlert color="info" className="text-center">
-                        {Language.noPreparingOrders}
-                      </CAlert>
-                    )}
-                  </CTabPane>
+                  {(statusFlowEnabled || getTabCount("pending") > 0) && (
+                    <CTabPane visible={activeKey === 1}>
+                      {getTabCount("pending") > 0 ? (
+                        filteredOrders
+                          .filter((order) => order.status === "pending")
+                          .map(renderOrderCard)
+                      ) : (
+                        <CAlert color="info" className="text-center">
+                          {Language.noPendingOrders}
+                        </CAlert>
+                      )}
+                    </CTabPane>
+                  )}
+                  {(statusFlowEnabled || getTabCount("preparing") > 0) && (
+                    <CTabPane visible={activeKey === 2}>
+                      {getTabCount("preparing") > 0 ? (
+                        filteredOrders
+                          .filter((order) => order.status === "preparing")
+                          .map(renderOrderCard)
+                      ) : (
+                        <CAlert color="info" className="text-center">
+                          {Language.noPreparingOrders}
+                        </CAlert>
+                      )}
+                    </CTabPane>
+                  )}
                   <CTabPane visible={activeKey === 3}>
                     {getTabCount("completed") > 0 ? (
                       filteredOrders
@@ -832,7 +871,9 @@ const OrdersTable = () => {
                         .map(renderOrderCard)
                     ) : (
                       <CAlert color="info" className="text-center">
-                        {Language.noCompletedOrders}
+                        {statusFlowEnabled
+                          ? Language.noCompletedOrders
+                          : Language.noPlacedOrders}
                       </CAlert>
                     )}
                   </CTabPane>
