@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CButton,
   CCard,
   CCardBody,
-  CCardHeader,
-  CCardTitle,
-  CRow,
   CCol,
+  CRow,
   CModal,
   CModalBody,
   CModalFooter,
@@ -21,6 +19,9 @@ import {
   CToast,
   CToastHeader,
   CToastBody,
+  CFormCheck,
+  CBadge,
+  CSpinner,
 } from "@coreui/react";
 import { CIcon } from "@coreui/icons-react";
 import {
@@ -28,12 +29,16 @@ import {
   cilCreditCard,
   cilCheckCircle,
   cilPrint,
+  cilPlus,
+  cilChevronBottom,
+  cilChevronTop,
+  cilInfo,
 } from "@coreui/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BaseUrl } from "../../helpers/BaseUrl";
 import Loading from "../../helpers/Loading";
-import "./TableDetails.css"; // Import the CSS file
+import "./TableDetails.css";
 import { GetToken } from "../../helpers/GetToken";
 import ProductSelectionModal from "./ProductSelectionModal";
 import jsPDF from "jspdf";
@@ -41,104 +46,147 @@ import ManualOrderModal from "./OrderModal";
 
 const TableDetails = () => {
   const { tableId } = useParams();
+
   const [table, setTable] = useState(null);
+  const [placeDetails, setPlaceDetails] = useState(null);
+  const [methods, setMethods] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [showMaualModal, setShowManualModal] = useState(false);
+
+  const [showManualModal, setShowManualModal] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [modalMessage, setModalMessage] = useState("");
-  const [modalError, setModalError] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [selectedOrderIndex, setSelectedOrderIndex] = useState();
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
 
+  const [expandedRows, setExpandedRows] = useState({});
   const [toasts, setToasts] = useState([]);
 
   const navigate = useNavigate();
   const token = GetToken();
 
-  // payment methods
-  const [methods, setMethods] = useState([]);
-  const axiosConfig = {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  };
-
-  const fetchMethods = async () => {
-    try {
-      setLoading(true);
-      const res = await axios.get(`${BaseUrl}/payment-methods`, axiosConfig);
-      setMethods(res.data);
-    } catch (error) {
-      showToast("Failed to fetch payment methods", "danger");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePlaceOrder = () => {
-    setModalMessage("Order placed successfully");
-    setShowModal(true);
-
-    // Refresh
-    fetchTableDetails();
-    fetchPlaceDetails();
-  };
+  /* ---------- data fetching ---------- */
   const fetchTableDetails = async () => {
     setLoading(true);
     try {
       const response = await axios.get(`${BaseUrl}/tables/${tableId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setTable(response.data);
     } catch (err) {
       setError("Error fetching table details");
       console.error(err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
-  const [placeDetails, setPlaceDetails] = useState();
+
   const fetchPlaceDetails = async () => {
-    setLoading(true);
     try {
       const response = await axios.get(`${BaseUrl}/auth/place-details`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       setPlaceDetails(response.data);
     } catch (err) {
-      setError("Error fetching place details");
-      console.error(err);
+      console.error("Error fetching place details", err);
     }
-    setLoading(false);
   };
+
+  const fetchMethods = async () => {
+    try {
+      const res = await axios.get(`${BaseUrl}/payment-methods`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      setMethods(res.data);
+    } catch (err) {
+      console.error("Failed to fetch payment methods", err);
+    }
+  };
+
   useEffect(() => {
     fetchTableDetails();
     fetchPlaceDetails();
     fetchMethods();
   }, [tableId]);
 
-  // showAlert implementation
-  const showAlert = (msg, color = "success") => {
-    const id = Date.now();
+  /* ---------- toasts ---------- */
+  const showToast = (msg, color = "success") => {
+    const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { id, msg, color }]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 5000);
   };
 
-  // remove toast when it’s closed
   const removeToast = (id) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
+  /* ---------- selection ---------- */
+  const handleSelectOrder = (orderId, orderPrice, isPayed) => {
+    if (isPayed) return;
+    setSelectedOrders((prev) => {
+      if (prev.some((o) => o.orderId === orderId)) {
+        return prev.filter((o) => o.orderId !== orderId);
+      }
+      return [...prev, { orderId, orderPrice }];
+    });
+  };
+
+  const toggleRow = (orderId) => {
+    setExpandedRows((prev) => ({ ...prev, [orderId]: !prev[orderId] }));
+  };
+
+  /* ---------- totals ---------- */
+  const computeOrderUnpaid = (order) => {
+    return order.products.reduce((acc, product) => {
+      const unpaidQuantity = product.quantity - (product.payedQuantity || 0);
+      const discount =
+        product.product.discountPercentage > 0
+          ? (product.product.discountPercentage / 100) * product.product.price
+          : 0;
+      const discountedPrice = product.product.price - discount;
+      return acc + unpaidQuantity * discountedPrice;
+    }, 0);
+  };
+
+  const totals = useMemo(() => {
+    if (!table?.orders) {
+      return { unpaid: 0, tips: 0, tipsPaid: 0, withTips: 0 };
+    }
+    let unpaid = 0;
+    let tips = 0;
+    let tipsPaid = 0;
+    table.orders.forEach((order) => {
+      unpaid += computeOrderUnpaid(order);
+      tips += order.tips || 0;
+      if (order.payed) tipsPaid += order.tips || 0;
+    });
+    return { unpaid, tips, tipsPaid, withTips: unpaid + tips };
+  }, [table]);
+
+  const selectedTotal = useMemo(() => {
+    if (!table?.orders) return 0;
+    return selectedOrders
+      .reduce((total, sel) => {
+        const fullOrder = table.orders.find((o) => o._id === sel.orderId);
+        if (!fullOrder) return total;
+        return total + computeOrderUnpaid(fullOrder);
+      }, 0)
+      .toFixed(2);
+  }, [selectedOrders, table]);
+
+  /* ---------- payment ---------- */
   const handleConfirmPayment = async (orderIds) => {
+    if (!selectedPaymentMethod) {
+      showToast("Please select a payment method first.", "warning");
+      return;
+    }
     setToasts([]);
     setLoading(true);
-
     try {
       const response = await axios.put(
         `${BaseUrl}/order/confirm/confirm-payment`,
@@ -151,223 +199,129 @@ const TableDetails = () => {
         },
       );
 
-      if (response.status === 200) {
-        const {
-          message = "Payment confirmed successfully",
-          warnings = [],
-          insufficientMaterials = [],
-        } = response.data;
+      const {
+        message = "Payment confirmed successfully",
+        warnings = [],
+        insufficientMaterials = [],
+        deficits = [],
+      } = response.data;
 
-        // Success alert
-        showAlert(message, "success");
-
-        // Any warnings
-        warnings.forEach((warning, idx) => {
-          setTimeout(
-            () => {
-              showAlert(warning, "warning");
-            },
-            500 * (idx + 1),
-          );
-        });
-
-        // Insufficient materials (if applicable)
-        if (insufficientMaterials.length > 0) {
-          const materialsText = insufficientMaterials.join(", ");
-          setTimeout(
-            () => {
-              showAlert(
-                `Insufficient stock for materials: ${materialsText}`,
-                "warning",
-              );
-            },
-            500 * (warnings.length + 1),
-          );
-        }
-        // Stock deficits (materials that ran out)
-        if (response.data.deficits && response.data.deficits.length > 0) {
-          response.data.deficits.forEach((d, idx) => {
-            const msg = `${d.rawMaterialName}: needed ${d.needed}${d.unit}, had ${d.available}${d.unit} — ${d.deficit}${d.unit} short`;
-            setTimeout(
-              () => showAlert(msg, "warning"),
-              500 * (warnings.length + insufficientMaterials.length + 1 + idx),
-            );
-          });
-        }
-
-        // Refresh and clear selection
-        fetchTableDetails();
-        setSelectedOrders([]);
-      } else {
-        // Non-200
-        showAlert("Failed to confirm payment", "danger");
-        console.error("Failed to confirm payment", response);
+      showToast(message, "success");
+      warnings.forEach((w, i) =>
+        setTimeout(() => showToast(w, "warning"), 400 * (i + 1)),
+      );
+      if (insufficientMaterials.length > 0) {
+        setTimeout(
+          () =>
+            showToast(
+              `Insufficient stock for materials: ${insufficientMaterials.join(", ")}`,
+              "warning",
+            ),
+          400 * (warnings.length + 1),
+        );
       }
-    } catch (error) {
-      // Determine error type
-      let errorMessage = "Error confirming payment";
+      deficits.forEach((d, i) => {
+        const msg = `${d.rawMaterialName}: needed ${d.needed}${d.unit}, had ${d.available}${d.unit} — ${d.deficit}${d.unit} short`;
+        setTimeout(
+          () => showToast(msg, "warning"),
+          400 * (warnings.length + insufficientMaterials.length + 1 + i),
+        );
+      });
 
-      if (error.response) {
-        errorMessage =
-          error.response.data?.error ||
-          error.response.data?.message ||
-          errorMessage;
-      } else if (error.request) {
-        errorMessage = "Network error. Please check your connection.";
-      }
-
-      showAlert(errorMessage, "danger");
-      console.error("Error in handleConfirmPayment:", error);
+      fetchTableDetails();
+      setSelectedOrders([]);
+    } catch (err) {
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Error confirming payment";
+      showToast(msg, "danger");
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectOrder = (orderId, orderPrice, isPayed) => {
-    if (isPayed) return; // Prevent selection if the order is already paid
-    setSelectedOrders((prevSelected) => {
-      if (prevSelected.some((order) => order.orderId === orderId)) {
-        return prevSelected.filter((order) => order.orderId !== orderId);
-      } else {
-        return [...prevSelected, { orderId, orderPrice }];
-      }
-    });
-  };
-
   const handleConfirmAllPayments = () => {
-    const allOrderIds = table.orders.map((order) => order._id);
-    handleConfirmPayment(allOrderIds);
+    const all = table.orders.map((o) => o._id);
+    handleConfirmPayment(all);
   };
 
   const handleConfirmSelectedPayments = () => {
-    const selectedOrderIds = selectedOrders.map((order) => order.orderId);
-    handleConfirmPayment(selectedOrderIds);
+    const ids = selectedOrders.map((o) => o.orderId);
+    handleConfirmPayment(ids);
   };
 
-  const calculateSelectedTotal = () => {
-    return selectedOrders
-      .reduce((total, selectedOrder) => {
-        const fullOrder = table?.orders.find(
-          (order) => order._id === selectedOrder.orderId,
-        );
-        if (!fullOrder) return total;
-
-        // Sum up the unpaid amount for each product in the selected order
-        const unpaidTotal = fullOrder.products.reduce((acc, product) => {
-          const unpaidQuantity =
-            product.quantity - (product.payedQuantity || 0);
-          const discount =
-            product.product.discountPercentage > 0
-              ? (product.product.discountPercentage / 100) *
-                product.product.price
-              : 0;
-          const discountedPrice = product.product.price - discount;
-          return acc + unpaidQuantity * discountedPrice;
-        }, 0);
-
-        return total + unpaidTotal;
-      }, 0)
-      .toFixed(2);
-  };
-
-  const handleCloseDetailsModal = () => {
-    setShowDetailsModal(false);
-  };
-  const handleCloseModal = () => {
-    setShowModal(false);
-  };
+  /* ---------- modals ---------- */
+  const handleCloseDetailsModal = () => setShowDetailsModal(false);
   const handleDetailsClick = (index) => {
     setSelectedOrderIndex(index);
     setShowDetailsModal(true);
   };
-  const handleRefetchData = () => {
-    fetchTableDetails(); // Refetch products when payment is confirmed or modal is closed
-  };
-  // Calculate total unpaid price for the order
+  const handleRefetchData = () => fetchTableDetails();
 
+  const handlePlaceOrder = () => {
+    showToast("Order placed successfully", "success");
+    fetchTableDetails();
+    fetchPlaceDetails();
+  };
+
+  /* ---------- print ---------- */
   const handlePrintReceipt = () => {
     const doc = new jsPDF();
-
-    // Set up margins and initial position
+    const pageWidth = doc.internal.pageSize.getWidth();
     const marginLeft = 10;
-    const marginTop = 20;
-    let yPos = marginTop;
+    let yPos = 20;
 
-    // Add restaurant logo (placeholder)
     const logoUrl =
-      "https://th.bing.com/th/id/OIP.REqzysVeL8E29CU3Is72ywHaE7?rs=1&pid=ImgDetMain"; // Replace with your logo URL
+      "https://th.bing.com/th/id/OIP.REqzysVeL8E29CU3Is72ywHaE7?rs=1&pid=ImgDetMain";
     const logoWidth = 50;
     const logoHeight = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const logoX = (pageWidth - logoWidth) / 2; // Center the logo horizontally
+    const logoX = (pageWidth - logoWidth) / 2;
     doc.addImage(logoUrl, "PNG", logoX, yPos, logoWidth, logoHeight);
-    yPos += 25; // Move down after the logo
+    yPos += 25;
 
-    // Add restaurant name and location
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    const restaurantName = placeDetails.placeName;
-    const restaurantNameWidth = doc.getTextWidth(restaurantName);
-    const restaurantNameX = (pageWidth - restaurantNameWidth) / 2; // Center the restaurant name
-    doc.text(restaurantName, restaurantNameX, yPos);
+    const name = placeDetails?.placeName || "";
+    doc.text(name, (pageWidth - doc.getTextWidth(name)) / 2, yPos);
     yPos += 10;
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "normal");
-    const restaurantLocation = "location";
-    const restaurantLocationWidth = doc.getTextWidth(restaurantLocation);
-    const restaurantLocationX = (pageWidth - restaurantLocationWidth) / 2; // Center the location
-    doc.text(restaurantLocation, restaurantLocationX, yPos);
+    const loc = "location";
+    doc.text(loc, (pageWidth - doc.getTextWidth(loc)) / 2, yPos);
     yPos += 10;
 
-    // Add table number, waiter's name, and dates
-    const tableNumberText = `Table Number: ${table?.number}`;
-    const tableNumberX = (pageWidth - doc.getTextWidth(tableNumberText)) / 2;
-    doc.text(tableNumberText, tableNumberX, yPos);
-    yPos += 7;
-
-    const waiterNameText = `Waiter's Name: John Doe`;
-    const waiterNameX = (pageWidth - doc.getTextWidth(waiterNameText)) / 2;
-    doc.text(waiterNameText, waiterNameX, yPos);
-    yPos += 7;
-
-    const orderDateText = `Order Date: ${new Date().toLocaleDateString()}`;
-    const orderDateX = (pageWidth - doc.getTextWidth(orderDateText)) / 2;
-    doc.text(orderDateText, orderDateX, yPos);
-    yPos += 7;
-
-    const printDateText = `Print Date: ${new Date().toLocaleDateString()}`;
-    const printDateX = (pageWidth - doc.getTextWidth(printDateText)) / 2;
-    doc.text(printDateText, printDateX, yPos);
-    yPos += 7;
-
-    const wifiPasswordText = `WiFi Password: guest123`;
-    const wifiPasswordX = (pageWidth - doc.getTextWidth(wifiPasswordText)) / 2;
-    doc.text(wifiPasswordText, wifiPasswordX, yPos);
-    yPos += 15;
-
-    // Add a line separator
+    const lines = [
+      `Table Number: ${table?.number}`,
+      "Waiter's Name: John Doe",
+      `Order Date: ${new Date().toLocaleDateString()}`,
+      `Print Date: ${new Date().toLocaleDateString()}`,
+      "WiFi Password: guest123",
+    ];
+    lines.forEach((line) => {
+      doc.text(line, (pageWidth - doc.getTextWidth(line)) / 2, yPos);
+      yPos += 7;
+    });
+    yPos += 8;
     doc.setLineWidth(0.5);
     doc.line(marginLeft, yPos, pageWidth - marginLeft, yPos);
     yPos += 10;
 
-    // Add orders
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    const orderDetailsText = "Order Details";
-    const orderDetailsX = (pageWidth - doc.getTextWidth(orderDetailsText)) / 2;
-    doc.text(orderDetailsText, orderDetailsX, yPos);
+    const hdr = "Order Details";
+    doc.text(hdr, (pageWidth - doc.getTextWidth(hdr)) / 2, yPos);
     yPos += 10;
 
     table?.orders.forEach((order, index) => {
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      const orderText = `Order ${index + 1}`;
-      const orderX = (pageWidth - doc.getTextWidth(orderText)) / 2;
-      doc.text(orderText, orderX, yPos);
+      const t = `Order ${index + 1}`;
+      doc.text(t, (pageWidth - doc.getTextWidth(t)) / 2, yPos);
       yPos += 7;
 
-      // Add products in the order
       order.products.forEach((product) => {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
@@ -375,82 +329,79 @@ const TableDetails = () => {
           product.product.discountPercentage > 0
             ? (product.product.discountPercentage / 100) * product.product.price
             : 0;
-        const discountedPrice = product.product.price - discount;
-        const productText = `${product.quantity} x ${product.product.name} - ${discountedPrice.toFixed(2)} TND`;
-        const productX = (pageWidth - doc.getTextWidth(productText)) / 2;
-        doc.text(productText, productX, yPos);
+        const dp = product.product.price - discount;
+        const txt = `${product.quantity} x ${product.product.name} - ${dp.toFixed(2)} TND`;
+        doc.text(txt, (pageWidth - doc.getTextWidth(txt)) / 2, yPos);
         yPos += 7;
       });
 
-      // Add total for the order
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      const orderTotalText = `Total: ${order.totalPrice.toFixed(2)} TND`;
-      const orderTotalX = (pageWidth - doc.getTextWidth(orderTotalText)) / 2;
-      doc.text(orderTotalText, orderTotalX, yPos);
+      const tot = `Total: ${order.totalPrice.toFixed(2)} TND`;
+      doc.text(tot, (pageWidth - doc.getTextWidth(tot)) / 2, yPos);
       yPos += 7;
-
-      // Add tips if any
       if (order.tips) {
-        const tipsText = `Tips: ${order.tips.toFixed(2)} TND`;
-        const tipsX = (pageWidth - doc.getTextWidth(tipsText)) / 2;
-        doc.text(tipsText, tipsX, yPos);
+        const tip = `Tips: ${order.tips.toFixed(2)} TND`;
+        doc.text(tip, (pageWidth - doc.getTextWidth(tip)) / 2, yPos);
         yPos += 7;
       }
-
-      // Add a line separator between orders
       doc.setLineWidth(0.2);
       doc.line(marginLeft, yPos, pageWidth - marginLeft, yPos);
       yPos += 10;
     });
 
-    // Add total amount and total tips for the entire table
     const totalAmount = table?.orders
-      .reduce((total, order) => total + order.totalPrice, 0)
+      .reduce((sum, o) => sum + o.totalPrice, 0)
       .toFixed(2);
     const totalTips = table?.orders
-      .reduce((total, order) => total + (order.tips || 0), 0)
+      .reduce((sum, o) => sum + (o.tips || 0), 0)
       .toFixed(2);
 
     doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    const totalAmountText = `Total Amount: ${totalAmount} TND`;
-    const totalAmountX = (pageWidth - doc.getTextWidth(totalAmountText)) / 2;
-    doc.text(totalAmountText, totalAmountX, yPos);
+    const a = `Total Amount: ${totalAmount} TND`;
+    const b = `Total Tips: ${totalTips} TND`;
+    doc.text(a, (pageWidth - doc.getTextWidth(a)) / 2, yPos);
+    yPos += 7;
+    doc.text(b, (pageWidth - doc.getTextWidth(b)) / 2, yPos);
     yPos += 7;
 
-    const totalTipsText = `Total Tips: ${totalTips} TND`;
-    const totalTipsX = (pageWidth - doc.getTextWidth(totalTipsText)) / 2;
-    doc.text(totalTipsText, totalTipsX, yPos);
-    yPos += 7;
-
-    // Add a thank you message
     doc.setFontSize(10);
     doc.setFont("helvetica", "italic");
-    const thankYouText = "Thank you for dining with us!";
-    const thankYouX = (pageWidth - doc.getTextWidth(thankYouText)) / 2;
-    doc.text(thankYouText, thankYouX, yPos);
+    const ty = "Thank you for dining with us!";
+    doc.text(ty, (pageWidth - doc.getTextWidth(ty)) / 2, yPos);
 
-    // Save the PDF
     doc.save(`table_${table?.number}_receipt.pdf`);
   };
 
-  if (loading) {
-    return <Loading />;
-  }
+  /* ---------- derived UI data ---------- */
+  const orders = table?.orders || [];
+  const hasUnpaid = orders.some((o) => !o.payed);
+  const planName = table?.plan?.name || "";
 
-  if (error) {
-    return <p className="text-danger">{error}</p>;
-  }
+  const getOrderStatus = (order) => {
+    if (order.payed) return { key: "paid", label: "Paid" };
+    const anyPaid = order.products.some((p) => (p.payedQuantity || 0) > 0);
+    if (anyPaid) return { key: "partial", label: "Partial" };
+    return { key: "unpaid", label: "Unpaid" };
+  };
+
+  const selectedMethodLabel = selectedPaymentMethod
+    ? methods.find((m) => m._id === selectedPaymentMethod)?.name
+    : "Payment Method";
+
+  if (loading && !table) return <Loading />;
+  if (error) return <p className="text-danger p-4">{error}</p>;
 
   return (
-    <CRow>
+    <div className="td-page">
+      {/* Toasts */}
       <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }, index) => (
+        {toasts.map(({ id, msg, color }) => (
           <CToast
-            key={index}
+            key={id}
             autohide
-            delay={3000}
+            delay={5000}
             color={color}
             visible
             onClose={() => removeToast(id)}
@@ -461,478 +412,352 @@ const TableDetails = () => {
         ))}
       </CToaster>
 
-      <p className="ms-3 text-center">Table {table?.number}</p>
+      {/* Header card */}
+      <div className="td-header mb-4">
+        <div className="td-header-top">
+          <div>
+            <h2 className="td-title">
+              Table {table?.number}
+              {planName && <span className="td-title-sub">· {planName}</span>}
+            </h2>
+            <div className="td-row-meta mt-1">
+              <span>
+                {orders.length} {orders.length === 1 ? "order" : "orders"}
+              </span>
+              {hasUnpaid && (
+                <CBadge color="warning" shape="rounded-pill">
+                  Unpaid
+                </CBadge>
+              )}
+            </div>
+          </div>
 
-      <CCol xs={12}>
-        <CCard className="mb-4">
-          <CCardHeader className="bg-white border-bottom shadow-sm px-3 px-md-4 py-3">
-            <div className="d-flex flex-wrap justify-content-end align-items-center gap-2 w-100 w-sm-auto">
-              {/* Left: Only the Back button */}
+          <div className="td-header-actions">
+            <CButton
+              color="light"
+              size="sm"
+              onClick={() => navigate(-1)}
+              className="rounded-pill px-3 d-flex align-items-center"
+            >
+              <CIcon icon={cilArrowLeft} className="me-2" />
+              Back
+            </CButton>
+
+            {/* Payment method dropdown */}
+            <CDropdown variant="btn-group">
+              <CDropdownToggle
+                color="light"
+                size="sm"
+                className="rounded-3 px-3 d-flex align-items-center border"
+              >
+                <CIcon icon={cilCreditCard} className="me-2 text-primary" />
+                <span className="fw-medium">{selectedMethodLabel}</span>
+              </CDropdownToggle>
+              <CDropdownMenu className="shadow border-0 mt-2 py-2">
+                {methods.length === 0 && (
+                  <CDropdownItem disabled>No methods configured</CDropdownItem>
+                )}
+                {methods.map((m) => (
+                  <CDropdownItem
+                    key={m._id}
+                    onClick={() => setSelectedPaymentMethod(m._id)}
+                    active={selectedPaymentMethod === m._id}
+                    className="py-2 px-3"
+                  >
+                    <strong>{m.name}</strong>
+                    {m.description && (
+                      <div className="text-muted small">{m.description}</div>
+                    )}
+                  </CDropdownItem>
+                ))}
+              </CDropdownMenu>
+            </CDropdown>
+
+            {/* Desktop-only action buttons */}
+            <div className="d-none d-md-flex gap-2">
+              <CButton
+                color="success"
+                size="sm"
+                className="rounded-pill px-3"
+                onClick={handleConfirmAllPayments}
+                disabled={!hasUnpaid}
+              >
+                <CIcon icon={cilCheckCircle} className="me-2" />
+                Confirm All
+              </CButton>
+              <CButton
+                color="primary"
+                size="sm"
+                className="rounded-pill px-3"
+                onClick={handleConfirmSelectedPayments}
+                disabled={selectedOrders.length === 0}
+              >
+                <CIcon icon={cilCheckCircle} className="me-2" />
+                Confirm Selected ({selectedOrders.length})
+              </CButton>
               <CButton
                 color="light"
                 size="sm"
-                onClick={() => navigate(-1)}
-                className="rounded-pill px-3 py-2 d-flex align-items-center shadow-sm"
+                variant="outline"
+                className="rounded-pill px-3"
+                onClick={handlePrintReceipt}
               >
-                <CIcon icon={cilArrowLeft} className="me-2" />
-                <span className="fw-medium">Back</span>
+                <CIcon icon={cilPrint} className="me-2" />
+                Print
               </CButton>
-
-              {/* Right: All other actions grouped together */}
-              <div className="d-flex flex-column flex-sm-row align-items-end align-items-sm-center gap-2 ms-auto">
-                {/* Payment Method Dropdown */}
-                <CDropdown variant="btn-group">
-                  <CDropdownToggle
-                    color="light"
-                    size="sm"
-                    className="rounded-3 px-3 py-2 d-flex align-items-center border shadow-sm"
-                  >
-                    <div className="d-flex align-items-center">
-                      <CIcon
-                        icon={cilCreditCard}
-                        className="me-2 text-primary"
-                      />
-                      <div className="text-start">
-                        {/* <div className="small text-muted">Payment Method</div> */}
-                        <div className="fw-medium">
-                          {selectedPaymentMethod
-                            ? methods.find(
-                                (m) => m._id === selectedPaymentMethod,
-                              )?.name
-                            : "Payment Method..."}
-                        </div>
-                      </div>
-                    </div>
-                  </CDropdownToggle>
-                  <CDropdownMenu className="shadow-lg border-0 mt-2 py-2">
-                    {methods.map((method) => (
-                      <CDropdownItem
-                        key={method._id}
-                        onClick={() => setSelectedPaymentMethod(method._id)}
-                        active={selectedPaymentMethod === method._id}
-                        className="py-2 px-3"
-                      >
-                        <div className="d-flex flex-column">
-                          <strong>{method.name}</strong>
-                          {method.description && (
-                            <span className="text-muted small">
-                              {method.description}
-                            </span>
-                          )}
-                        </div>
-                      </CDropdownItem>
-                    ))}
-                  </CDropdownMenu>
-                </CDropdown>
-
-                {/* Action buttons group */}
-                <div className="d-flex flex-column flex-sm-row gap-2">
-                  <CButton
-                    color="success"
-                    size="sm"
-                    onClick={handleConfirmAllPayments}
-                    disabled={!table?.orders.some((order) => !order.payed)}
-                    className="rounded-pill px-3 py-2 d-flex align-items-center shadow-sm"
-                  >
-                    <CIcon icon={cilCheckCircle} className="me-2" />
-                    <span>Confirm All</span>
-                  </CButton>
-
-                  <CButton
-                    color="primary"
-                    size="sm"
-                    onClick={handleConfirmSelectedPayments}
-                    disabled={selectedOrders.length === 0}
-                    className="rounded-pill px-3 py-2 d-flex align-items-center shadow-sm"
-                  >
-                    <CIcon icon={cilCheckCircle} className="me-2" />
-                    <span>Confirm Selected</span>
-                  </CButton>
-
-                  <CButton
-                    color="outline-dark"
-                    size="sm"
-                    onClick={handlePrintReceipt}
-                    className="rounded-pill px-3 py-2 d-flex align-items-center border shadow-sm"
-                  >
-                    <CIcon icon={cilPrint} className="me-2" />
-                    <span>Print Receipt</span>
-                  </CButton>
-                </div>
-              </div>
+              <CButton
+                color="warning"
+                size="sm"
+                className="rounded-pill px-3"
+                onClick={() => setShowManualModal(true)}
+              >
+                <CIcon icon={cilPlus} className="me-2" />
+                Place Order
+              </CButton>
             </div>
-          </CCardHeader>
 
-          <CCardBody>
-            <CButton
-              color="warning"
-              className="ms-2 btn-sm mb-4"
-              onClick={() => setShowManualModal(true)} // Add your function for placing an order here
-            >
-              Place Order
-            </CButton>
-            <CCardTitle>Total Orders: {table?.orders.length}</CCardTitle>
-            <CRow>
-              {table?.orders.map((order, index) => {
-                // Calculate total unpaid price for each order
-                const totalUnpaidPrice = order.products.reduce(
-                  (acc, product) => {
-                    const unpaidQuantity =
-                      product?.quantity - (product?.payedQuantity || 0);
-                    const discount =
-                      product.product.discountPercentage > 0
-                        ? (product.product.discountPercentage / 100) *
-                          product.product.price
-                        : 0;
-                    const discountedPrice = product.product.price - discount;
-                    return acc + unpaidQuantity * discountedPrice;
-                  },
-                  0,
-                );
+            {/* Mobile-only quick actions */}
+            <div className="d-flex d-md-none gap-2">
+              <CButton
+                color="success"
+                size="sm"
+                className="rounded-pill px-3"
+                onClick={handleConfirmAllPayments}
+                disabled={!hasUnpaid}
+              >
+                <CIcon icon={cilCheckCircle} />
+              </CButton>
+              <CButton
+                color="primary"
+                size="sm"
+                className="rounded-pill px-3"
+                onClick={handleConfirmSelectedPayments}
+                disabled={selectedOrders.length === 0}
+              >
+                <CIcon icon={cilCheckCircle} />
+              </CButton>
+              <CButton
+                color="light"
+                size="sm"
+                variant="outline"
+                className="rounded-pill px-3"
+                onClick={handlePrintReceipt}
+              >
+                <CIcon icon={cilPrint} />
+              </CButton>
+            </div>
+          </div>
+        </div>
 
-                return (
-                  <CCol xs={12} md={4} sm={6} key={order._id}>
-                    <CCard
-                      className={`card-container mb-4 ${
-                        order.payed ? "payed-border" : "not-payed-border"
-                      } ${
-                        selectedOrders.some(
-                          (selected) => selected.orderId === order._id,
-                        )
-                          ? "selected-card"
-                          : ""
-                      }`}
-                      onClick={() =>
+        {/* Desktop summary strip */}
+        <div className="td-summary-strip d-none d-md-grid">
+          <div className="td-summary-cell">
+            <div className="td-summary-label">Unpaid (Table)</div>
+            <div className="td-summary-value is-danger">
+              {totals.unpaid.toFixed(2)} TND
+            </div>
+          </div>
+          <div className="td-summary-cell">
+            <div className="td-summary-label">Selected</div>
+            <div className="td-summary-value">{selectedTotal} TND</div>
+          </div>
+          <div className="td-summary-cell">
+            <div className="td-summary-label">Tips (paid / total)</div>
+            <div className="td-summary-value is-warning">
+              {totals.tipsPaid.toFixed(2)} / {totals.tips.toFixed(2)} TND
+            </div>
+          </div>
+          <div className="td-summary-cell">
+            <div className="td-summary-label">Total (with tips)</div>
+            <div className="td-summary-value is-success">
+              {totals.withTips.toFixed(2)} TND
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Orders list */}
+      {orders.length === 0 ? (
+        <div className="td-list">
+          <div className="td-empty">
+            <CIcon icon={cilInfo} size="xl" className="mb-2 text-muted" />
+            <div>No orders yet on this table.</div>
+          </div>
+        </div>
+      ) : (
+        <div className="td-list">
+          {orders.map((order, index) => {
+            const status = getOrderStatus(order);
+            const unpaid = computeOrderUnpaid(order);
+            const isSelected = selectedOrders.some(
+              (o) => o.orderId === order._id,
+            );
+            const isExpanded = !!expandedRows[order._id];
+
+            return (
+              <div key={order._id}>
+                <div
+                  className={`td-row ${isSelected ? "is-selected" : ""} ${order.payed ? "is-paid" : ""}`}
+                  onClick={() => {
+                    if (order.payed) return;
+                    handleSelectOrder(order._id, order.totalPrice, order.payed);
+                  }}
+                >
+                  <div className="td-row-check">
+                    <CFormCheck
+                      checked={isSelected}
+                      disabled={order.payed}
+                      onChange={() =>
                         handleSelectOrder(
                           order._id,
                           order.totalPrice,
                           order.payed,
                         )
                       }
-                      style={{
-                        cursor: order.payed ? "not-allowed" : "pointer",
-                        opacity: order.payed ? 0.6 : 1,
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+
+                  <div className="td-row-main">
+                    <p className="td-row-title">Order #{index + 1}</p>
+                    <div className="td-row-meta">
+                      <span className={`td-status-pill ${status.key}`}>
+                        {status.label}
+                      </span>
+                      <span>{order.products.length} items</span>
+                      {order.tips ? (
+                        <span className="td-tip-line">
+                          · tip {order.tips.toFixed(2)} TND
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="d-flex align-items-center gap-2">
+                    <div className="td-row-amount">
+                      {unpaid.toFixed(2)} TND
+                      <small>unpaid</small>
+                    </div>
+                    <CButton
+                      color="secondary"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-circle p-1 d-inline-flex align-items-center justify-content-center"
+                      style={{ width: 30, height: 30 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleRow(order._id);
                       }}
+                      aria-label="Toggle details"
                     >
-                      <CCardBody className="position-relative">
-                        {/* Order Number on Top Left */}
-                        <CRow className="align-items-start">
-                          <CCol>
-                            <CButton color="light" size="sm" className="mb-2">
-                              {index + 1}
-                            </CButton>
-                          </CCol>
-                        </CRow>
+                      <CIcon
+                        icon={isExpanded ? cilChevronTop : cilChevronBottom}
+                      />
+                    </CButton>
+                  </div>
+                </div>
 
-                        {/* Products in the Middle */}
-                        <CRow
-                          className="product-list"
-                          style={{
-                            margin: "20px 0",
-                            maxHeight: "300px",
-                            overflowY: "auto",
-                            border: "1px solid #ddd",
-                            borderRadius: "5px",
-                            padding: "10px",
-                          }}
-                        >
-                          {order.products.map((product) => (
-                            <CRow
-                              key={product._id}
-                              className={`align-items-center my-2 product-item ${product.payedQuantity === product.quantity ? "bg-light" : ""}`}
-                            >
-                              <CCol xs={6}>
-                                <strong style={{ color: "black" }}>
-                                  {product?.product?.name}
-                                </strong>
-                                <div
-                                  style={{ color: "black" }}
-                                  className="small"
-                                >
-                                  {product.product.discountPercentage > 0
-                                    ? product.product.price -
-                                      (product.product.discountPercentage /
-                                        100) *
-                                        product.product.price
-                                    : product.product.price.toFixed(2)}{" "}
-                                  TND
-                                </div>
-                              </CCol>
-                              <CCol xs={6} className="text-end">
-                                <span
-                                  className="quantity"
-                                  style={{ fontWeight: "bold", color: "black" }}
-                                >
-                                  x {product.quantity}
-                                </span>
-                                <div
-                                  className="small"
-                                  style={{ color: "black" }}
-                                >
-                                  {(product.product.discountPercentage > 0
-                                    ? product.product.price -
-                                      (product.product.discountPercentage /
-                                        100) *
-                                        product.product.price
-                                    : product.product.price * product?.quantity
-                                  ).toFixed(2)}{" "}
-                                  TND
-                                </div>
-                              </CCol>
-                            </CRow>
-                          ))}
-                        </CRow>
+                {isExpanded && (
+                  <div className="td-expand">
+                    <table className="td-expand-table">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th className="num">Qty</th>
+                          <th className="num">Unit</th>
+                          <th className="num">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {order.products.map((p) => {
+                          const discount =
+                            p.product.discountPercentage > 0
+                              ? (p.product.discountPercentage / 100) *
+                                p.product.price
+                              : 0;
+                          const unit = p.product.price - discount;
+                          const lineTotal = unit * p.quantity;
+                          return (
+                            <tr key={p._id}>
+                              <td>{p.product?.name}</td>
+                              <td className="num">{p.quantity}</td>
+                              <td className="num">{unit.toFixed(2)}</td>
+                              <td className="num">{lineTotal.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
 
-                        {/* Details Button and Total Price */}
-                        <CRow className="mt-3">
-                          <CCol xs={6}>
-                            <CButton
-                              color="primary"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDetailsClick(index);
-                              }}
-                              disabled={order.payed}
-                            >
-                              Details
-                            </CButton>
-                          </CCol>
-                          <CCol xs={6} className="text-end">
-                            <strong>
-                              Unpaid: {totalUnpaidPrice.toFixed(2)} TND
-                            </strong>
-                          </CCol>
-                          {order.tips && (
-                            <CTooltip
-                              content={`Tip: ${order?.tips?.toFixed(2)} TND`}
-                            >
-                              <span
-                                style={{
-                                  backgroundColor: "#ffc107",
-                                  color: "#fff",
-                                  padding: "1px 4px", // Smaller padding for a smaller badge
-                                  borderRadius: "3px", // Slightly smaller border radius
-                                  margin: "15px auto", // Margin from all directions and centered horizontally
-                                  fontSize: "0.7rem", // Smaller font size
-                                  display: "inline-block", // To respect margin auto for centering
-                                  cursor: "pointer",
-                                }}
-                              >
-                                Tip : {order.tips} TND
-                              </span>
-                            </CTooltip>
-                          )}
-                        </CRow>
-                      </CCardBody>
-                    </CCard>
-                  </CCol>
-                );
-              })}
-            </CRow>
+                    <div className="td-expand-actions">
+                      <CButton
+                        color="primary"
+                        size="sm"
+                        className="rounded-pill px-3"
+                        disabled={order.payed}
+                        onClick={() => handleDetailsClick(index)}
+                      >
+                        Product-level payment
+                      </CButton>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-            {table?.orders.length > 0 && (
-              <>
-                <CCardBody>
-                  <CRow className="mt-4">
-                    <CCol xs={12} md={6}>
-                      <CCard className="unpaid-card bg-danger text-center text-white">
-                        <CCardBody>
-                          <h5>Unpaid Amount (Selected Orders)</h5>
-                          <p className="display-6">
-                            {calculateSelectedTotal()} TND
-                          </p>
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
+      {/* Sticky mobile summary */}
+      <div className="td-mobile-summary d-md-none">
+        <div className="td-summary-cell">
+          <div className="td-summary-label">Unpaid</div>
+          <div className="td-summary-value is-danger">
+            {totals.unpaid.toFixed(2)}
+          </div>
+        </div>
+        <div className="td-summary-cell">
+          <div className="td-summary-label">Selected</div>
+          <div className="td-summary-value">{selectedTotal}</div>
+        </div>
+        <div className="td-summary-cell">
+          <div className="td-summary-label">With Tips</div>
+          <div className="td-summary-value is-success">
+            {totals.withTips.toFixed(2)}
+          </div>
+        </div>
+      </div>
 
-                    <CCol xs={12} md={6}>
-                      <CCard className="unpaid-card bg-primary text-center text-white">
-                        <CCardBody>
-                          <h5>Total Unpaid (Table)</h5>
-                          <p className="display-6">
-                            {table?.orders
-                              .reduce((total, order) => {
-                                const unpaidTotal = order.products.reduce(
-                                  (acc, product) => {
-                                    const unpaidQuantity =
-                                      product.quantity -
-                                      (product.payedQuantity || 0);
-                                    const discount =
-                                      product.product.discountPercentage > 0
-                                        ? (product.product.discountPercentage /
-                                            100) *
-                                          product.product.price
-                                        : 0;
-                                    const discountedPrice =
-                                      product.product.price - discount;
-                                    return (
-                                      acc + unpaidQuantity * discountedPrice
-                                    );
-                                  },
-                                  0,
-                                );
-                                return total + unpaidTotal;
-                              }, 0)
-                              .toFixed(2)}{" "}
-                            TND
-                          </p>
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                  </CRow>
-                </CCardBody>
-
-                <CCardBody>
-                  <CRow className="mt-4">
-                    <CCol xs={12} md={4}>
-                      <CCard className="total-card bg-light text-center">
-                        <CCardBody>
-                          <h5>Total Unpaid (Without Tips)</h5>
-                          <p className="display-6 text-danger">
-                            {table?.orders
-                              .reduce((total, order) => {
-                                const unpaidTotal = order.products.reduce(
-                                  (acc, product) => {
-                                    const unpaidQuantity =
-                                      product.quantity -
-                                      (product.payedQuantity || 0);
-                                    const discount =
-                                      product.product.discountPercentage > 0
-                                        ? (product.product.discountPercentage /
-                                            100) *
-                                          product.product.price
-                                        : 0;
-                                    const discountedPrice =
-                                      product.product.price - discount;
-                                    return (
-                                      acc + unpaidQuantity * discountedPrice
-                                    );
-                                  },
-                                  0,
-                                );
-                                return total + unpaidTotal;
-                              }, 0)
-                              .toFixed(2)}{" "}
-                            TND
-                          </p>
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-
-                    <CCol xs={12} md={4}>
-                      <CCard className="total-card bg-warning text-center">
-                        <CCardBody>
-                          <h5>Total Tips</h5>
-                          <p className="display-6">
-                            {table?.orders
-                              .reduce(
-                                (total, order) => total + (order.tips || 0),
-                                0,
-                              )
-                              .toFixed(2)}{" "}
-                            TND (paid:{" "}
-                            {table?.orders
-                              .reduce(
-                                (total, order) =>
-                                  total + (order.payed ? order.tips || 0 : 0),
-                                0,
-                              )
-                              .toFixed(2)}{" "}
-                            TND)
-                          </p>
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-
-                    <CCol xs={12} md={4}>
-                      <CCard className="total-card bg-success text-center">
-                        <CCardBody>
-                          <h5>Total (With Tips)</h5>
-                          <p className="display-6">
-                            {table?.orders
-                              .reduce((total, order) => {
-                                const unpaidTotal = order.products.reduce(
-                                  (acc, product) => {
-                                    const unpaidQuantity =
-                                      product.quantity -
-                                      (product.payedQuantity || 0);
-                                    const discount =
-                                      product.product.discountPercentage > 0
-                                        ? (product.product.discountPercentage /
-                                            100) *
-                                          product.product.price
-                                        : 0;
-                                    const discountedPrice =
-                                      product.product.price - discount;
-                                    return (
-                                      acc + unpaidQuantity * discountedPrice
-                                    );
-                                  },
-                                  0,
-                                );
-                                return total + unpaidTotal + (order.tips || 0);
-                              }, 0)
-                              .toFixed(2)}{" "}
-                            TND
-                          </p>
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                  </CRow>
-                </CCardBody>
-              </>
-            )}
-          </CCardBody>
-        </CCard>
-      </CCol>
-
-      <CModal
-        visible={showModal}
-        onClose={handleCloseModal}
-        className={modalError ? "modal-error" : "modal-success"}
+      {/* Mobile FAB – Place Order */}
+      <button
+        className="td-fab d-md-none"
+        onClick={() => setShowManualModal(true)}
+        aria-label="Place Order"
       >
-        <CModalHeader
-          className={modalError ? "header-error" : "header-success"}
-        >
-          <CModalTitle>{modalError ? "Error" : "Success"}</CModalTitle>
-        </CModalHeader>
-        <CModalBody className={modalError ? "body-error" : "body-success"}>
-          {modalMessage}
-        </CModalBody>
-        <CModalFooter
-          className={modalError ? "footer-error" : "footer-success"}
-        >
-          <CButton
-            color={modalError ? "danger" : "success"}
-            onClick={handleCloseModal}
-          >
-            Close
-          </CButton>
-        </CModalFooter>
-      </CModal>
+        <CIcon icon={cilPlus} size="lg" />
+      </button>
 
+      {/* Product-level payment modal */}
       <ProductSelectionModal
         visible={showDetailsModal}
         onClose={handleCloseDetailsModal}
-        products={table?.orders[selectedOrderIndex]?.products || []} // Pass in the products of the selected order
+        products={table?.orders[selectedOrderIndex]?.products || []}
         orderId={table?.orders[selectedOrderIndex]?._id}
         refetchData={handleRefetchData}
         paymentMethods={methods}
-        onShowToast={showAlert}
+        onShowToast={showToast}
         isTakeaway={false}
+        tableNumber={table?.number}
       />
 
-      {
-        //place order manually modal
-      }
+      {/* Manual order modal */}
       <ManualOrderModal
-        visible={showMaualModal}
+        visible={showManualModal}
         onClose={setShowManualModal}
         tableId={tableId}
         onOrderPlaced={handlePlaceOrder}
       />
-    </CRow>
+    </div>
   );
 };
 
