@@ -1,5 +1,7 @@
 .clickable-card {
-  transition: box-shadow 0.2s, transform 0.2s;
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
 }
 
 .clickable-card:hover {
@@ -8,60 +10,64 @@
 }
 
 .plan-management-modal .modal-content {
-    border: none;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-  }
-  
-  .plan-card {
-    transition: transform 0.2s;
-    border: 1px solid rgba(0,0,0,0.05);
-  }
-  
-  .plan-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  }
-  
-  .bg-gradient-primary {
-    background: linear-gradient(135deg, #321fdb 0%, #1f1498 100%);
-  }
-  /* Add to your stylesheet */
+  border: none;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+}
+
+.plan-card {
+  transition: transform 0.2s;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.bg-gradient-primary {
+  background: linear-gradient(135deg, #321fdb 0%, #1f1498 100%);
+}
+/* Add to your stylesheet */
 .hover-shadow:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+.transition-all {
+  transition: all 0.3s ease;
+}
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-  .transition-all {
-    transition: all 0.3s ease;
+  to {
+    opacity: 1;
   }
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  .animate-slide-up {
-    animation: slideUp 0.4s ease-out;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slideUp {
-    from { 
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to { 
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-  /* Add to your CSS file */
+}
+/* Add to your CSS file */
 .table-card-image {
-    transition: all 0.3s ease;
-  }
-  
-  .table-card:hover .table-card-image {
-    filter: brightness(0.9);
-  }
-  /* Custom responsive adjustments */
+  transition: all 0.3s ease;
+}
+
+.table-card:hover .table-card-image {
+  filter: brightness(0.9);
+}
+/* Custom responsive adjustments */
 @media (max-width: 768px) {
   .table-header-controls {
     width: 100%;
@@ -182,7 +188,9 @@ plan modal CSS
   border-radius: 0.5rem;
   overflow: hidden;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   margin-bottom: 1rem;
 }
 
@@ -191,7 +199,7 @@ plan modal CSS
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.card-header {
+.plan-card .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -268,16 +276,16 @@ plan modal CSS
   .modal-body-content {
     padding: 1rem;
   }
-  
+
   .create-plan-section,
   .existing-plans-section {
     padding: 1rem;
   }
-  
+
   .plans-grid {
     gap: 1rem;
   }
-  
+
   .plan-card {
     margin-bottom: 1rem;
   }
@@ -287,15 +295,15 @@ plan modal CSS
   transition: all 0.3s ease;
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .plan-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.card-header {
+.plan-card .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -342,4 +350,553 @@ plan modal CSS
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* =========================================================================
+   Modal redesign (Scope B): Create Table, Move Orders, Manage Plans, Edit Plan
+   All classes are namespaced with `tm-` (tables modal) to avoid collisions.
+   ========================================================================= */
+
+/* ---- Shared modal chrome ---- */
+.tm-modal .modal-content {
+  border-radius: 14px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  overflow: hidden;
+}
+
+.tm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  background: #fff;
+}
+
+.tm-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.tm-header-sub {
+  font-size: 0.8rem;
+  color: var(--cui-secondary-color, #6c757d);
+  margin-top: 2px;
+}
+
+.tm-close {
+  border: none;
+  background: transparent;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--cui-secondary-color, #6c757d);
+  padding: 0 4px;
+  cursor: pointer;
+}
+
+.tm-close:hover {
+  color: #1a1a1a;
+}
+
+.tm-body {
+  padding: 16px 20px;
+  background: #fff;
+}
+
+.tm-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--cui-border-color, #d8dbe0);
+  background: #fff;
+}
+
+.tm-footer-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- Form fields ---- */
+.tm-field {
+  margin-bottom: 14px;
+}
+
+.tm-field label {
+  display: block;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cui-secondary-color, #6c757d);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.tm-hint {
+  font-size: 0.78rem;
+  color: var(--cui-secondary-color, #6c757d);
+  margin-top: 4px;
+}
+
+/* ---- Move Orders: list of tables ---- */
+.tm-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+  background: #fff;
+  margin-top: 12px;
+}
+
+.tm-list::-webkit-scrollbar {
+  width: 6px;
+}
+.tm-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tm-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+.tm-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.tm-row:last-child {
+  border-bottom: none;
+}
+.tm-row:hover {
+  background: #fafbfc;
+}
+
+.tm-row.is-selected {
+  background: rgba(13, 110, 253, 0.06);
+  box-shadow: inset 3px 0 0 0 var(--cui-primary, #0d6efd);
+}
+
+.tm-row.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tm-row-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  margin: 0 0 2px 0;
+}
+
+.tm-row-meta {
+  font-size: 0.78rem;
+  color: var(--cui-secondary-color, #6c757d);
+}
+
+.tm-row-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: #e2e3e5;
+  color: #41464b;
+}
+
+.tm-row-tag.is-current {
+  background: #cfe2ff;
+  color: #084298;
+}
+
+/* ---- Manage Plans: two-column layout ---- */
+.tm-plans-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.tm-plans-section-title {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cui-secondary-color, #6c757d);
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.tm-plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.tm-plans-list::-webkit-scrollbar {
+  width: 6px;
+}
+.tm-plans-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tm-plans-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+.tm-plan-card {
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.tm-plan-card-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  margin: 0 0 2px 0;
+}
+
+.tm-plan-card-desc {
+  font-size: 0.8rem;
+  color: var(--cui-secondary-color, #6c757d);
+  margin: 0;
+}
+
+.tm-plan-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tm-plans-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--cui-secondary-color, #6c757d);
+  font-size: 0.9rem;
+  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 767.98px) {
+  .tl-header-top {
+    padding: 14px 16px 10px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tl-top-right {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .tl-segments {
+    flex: 1 1 auto;
+  }
+
+  .tl-header-controls {
+    padding: 10px 16px 14px 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .tl-controls-left {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .tl-search {
+    max-width: 100%;
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .tl-filter {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+
+  .tl-filter select {
+    max-width: 100%;
+    flex: 1;
+  }
+
+  .tl-controls-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .tl-action-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* If a third action button exists (Plans for superClients), it spans both columns */
+  .tl-controls-right > *:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Prevent overflow on any viewport */
+.tl-header,
+.tl-header-top,
+.tl-header-controls,
+.tl-controls-left,
+.tl-controls-right {
+  min-width: 0;
+  box-sizing: border-box;
+}
+/* =========================================================================
+   Tables / Takeaway header (tl- namespace)
+   ========================================================================= */
+
+.tl-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px 12px 20px;
+  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.tl-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 2px 0;
+}
+
+.tl-subtitle {
+  font-size: 0.82rem;
+  color: var(--cui-secondary-color, #6c757d);
+}
+
+.tl-subtitle strong {
+  color: #1a1a1a;
+}
+
+.tl-top-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+/* Segmented control */
+.tl-segments {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 999px;
+  background: #f8f9fa;
+}
+
+.tl-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--cui-secondary-color, #6c757d);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tl-segment.is-active {
+  background: var(--cui-primary, #0d6efd);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
+}
+
+.tl-paid-switch {
+  margin-bottom: 0;
+}
+
+/* Controls row */
+.tl-header-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px 14px 20px;
+  background: #fff;
+  flex-wrap: wrap;
+}
+
+.tl-controls-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tl-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Search */
+.tl-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+  padding: 7px 12px;
+  background: #fff;
+  flex: 1 1 260px;
+  max-width: 320px;
+}
+
+.tl-search input {
+  border: none;
+  outline: none;
+  flex: 1;
+  font-size: 0.9rem;
+  background: transparent;
+}
+
+.tl-search-icon {
+  color: var(--cui-secondary-color, #6c757d);
+  flex-shrink: 0;
+}
+
+/* Filter */
+.tl-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+  padding: 0 12px;
+  background: #fff;
+  height: 38px;
+}
+
+.tl-filter-icon {
+  color: var(--cui-secondary-color, #6c757d);
+  flex-shrink: 0;
+}
+
+.tl-filter select {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  padding: 6px 0;
+  max-width: 180px;
+}
+
+/* Action buttons */
+.tl-action-btn {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+/* Responsive */
+@media (max-width: 767.98px) {
+  .tl-header-top {
+    padding: 14px 16px 10px 16px;
+  }
+
+  .tl-top-right {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .tl-header-controls {
+    padding: 10px 16px 14px 16px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tl-controls-left {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .tl-search {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+
+  .tl-filter {
+    flex: 1 1 auto;
+  }
+
+  .tl-filter select {
+    max-width: 100%;
+  }
+
+  .tl-controls-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .tl-action-btn {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+}
+/* =========================================================================
+   Header wrapper — replaces CCardHeader for the tl-* header so CoreUI's
+   .card-header defaults (flex, bg, padding) don't bleed into our layout.
+   ========================================================================= */
+.tl-header {
+  display: block;
+  background: #fff;
+  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  border-top-left-radius: var(--cui-card-border-radius, 0.375rem);
+  border-top-right-radius: var(--cui-card-border-radius, 0.375rem);
+}
+
+/* Remove the redundant border on the first row since the wrapper handles it */
+.tl-header-top {
+  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
 }

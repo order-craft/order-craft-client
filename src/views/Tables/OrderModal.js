@@ -1,252 +1,374 @@
 // ManualOrderModal.jsx
-import { useState, useEffect } from 'react'
-import {
-    CButton,
-    CModal,
-    CModalBody,
-    CModalFooter,
-    CModalHeader,
-    CModalTitle,
-    CFormInput,
-    CFormCheck,
-    CInputGroup,
-    CInputGroupText,
-    CPagination,
-    CPaginationItem,
-    CSpinner,
-    CAlert,
-    CFormSelect,
-} from '@coreui/react'
+import { useState, useEffect, useMemo } from 'react'
+import { CAlert, CButton, CModal, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilCart, cilSearch, cilCheck, cilX, cilWarning } from '@coreui/icons'
+import {
+  cilCart,
+  cilSearch,
+  cilCheck,
+  cilX,
+  cilWarning,
+  cilPlus,
+  cilMinus,
+  cilChevronLeft,
+  cilChevronRight,
+} from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
+import './ManualOrderModal.css'
 
-const ManualOrderModal = ({ visible, onClose, tableId, onOrderPlaced, enableOrderType = false }) => {
-    const [modalProducts, setModalProducts] = useState([])
-    const [productSearchQuery, setProductSearchQuery] = useState('')
-    const [selectedProducts, setSelectedProducts] = useState([])
-    const [orderType, setOrderType] = useState('to-go')
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage] = useState(5)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
+const ITEMS_PER_PAGE = 8
 
-    const token = GetToken()
-    const t = useSelector((state) => state.language)
-    const Language = translations[t]
+const ManualOrderModal = ({
+  visible,
+  onClose,
+  tableId,
+  onOrderPlaced,
+  enableOrderType = false,
+}) => {
+  const [modalProducts, setModalProducts] = useState([])
+  const [productSearchQuery, setProductSearchQuery] = useState('')
+  const [selectedProducts, setSelectedProducts] = useState([])
+  const [orderType, setOrderType] = useState('to-go')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-    const resetForm = () => {
-        setProductSearchQuery('');
-        setSelectedProducts([]);
-        setOrderType('to-go');
-        setCurrentPage(1);
+  const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+
+  const resetForm = () => {
+    setProductSearchQuery('')
+    setSelectedProducts([])
+    setOrderType('to-go')
+    setCurrentPage(1)
+    setError(null)
+  }
+
+  useEffect(() => {
+    if (visible) fetchProducts()
+  }, [visible])
+
+  const fetchProducts = async () => {
+    setError(null)
+    try {
+      const { data } = await axios.get(`${BaseUrl}/products`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setModalProducts(data)
+    } catch (err) {
+      console.error('Error fetching products', err)
+      setError(Language.errorFetchingProducts || 'Error fetching products')
     }
+  }
 
-    useEffect(() => {
-        if (visible) fetchProducts()
-    }, [visible])
+  const filteredProducts = useMemo(
+    () =>
+      modalProducts.filter((p) => p.name.toLowerCase().includes(productSearchQuery.toLowerCase())),
+    [modalProducts, productSearchQuery],
+  )
 
-    const fetchProducts = async () => {
-        setError(null)
-        try {
-            const { data } = await axios.get(`${BaseUrl}/products`, { headers: { Authorization: `Bearer ${token}` } })
-            setModalProducts(data)
-        } catch (err) {
-            console.error('Error fetching products', err)
-            setError(Language.errorFetchingProducts || 'Error fetching products')
-        }
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / ITEMS_PER_PAGE))
+  const indexOfLastProduct = currentPage * ITEMS_PER_PAGE
+  const indexOfFirstProduct = indexOfLastProduct - ITEMS_PER_PAGE
+  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct)
+
+  const paginate = (pageNumber) => setCurrentPage(Math.min(Math.max(pageNumber, 1), totalPages))
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1)
+  }, [totalPages, currentPage])
+
+  /* ----- selection helpers ----- */
+  const getSelected = (productId) => selectedProducts.find((p) => p.productId === productId)
+
+  const handleRowClick = (productId) => {
+    // Tap on empty row = select qty 1. Tap on selected row = no-op.
+    if (getSelected(productId)) return
+    setSelectedProducts((prev) => [...prev, { productId, quantity: 1 }])
+  }
+
+  const handleProductSelect = (productId) => {
+    setSelectedProducts((prev) => {
+      const exists = prev.find((p) => p.productId === productId)
+      if (exists) return prev.filter((p) => p.productId !== productId)
+      return [...prev, { productId, quantity: 1 }]
+    })
+  }
+
+  const changeQuantity = (productId, delta) => {
+    setSelectedProducts((prev) => {
+      const existing = prev.find((p) => p.productId === productId)
+      if (!existing) {
+        // Auto-select with qty 1 when incrementing an unselected row
+        if (delta > 0) return [...prev, { productId, quantity: 1 }]
+        return prev
+      }
+      const nextQty = existing.quantity + delta
+      if (nextQty <= 0) {
+        return prev.filter((p) => p.productId !== productId)
+      }
+      return prev.map((p) => (p.productId === productId ? { ...p, quantity: nextQty } : p))
+    })
+  }
+
+  const selectedCount = selectedProducts.length
+  const totalUnits = selectedProducts.reduce((a, b) => a + b.quantity, 0)
+
+  const selectedTotal = useMemo(() => {
+    return selectedProducts.reduce((acc, sel) => {
+      const product = modalProducts.find((p) => p._id === sel.productId)
+      if (!product) return acc
+      const discount = product.discountPercentage || 0
+      const unit = discount > 0 ? product.price * (1 - discount / 100) : product.price
+      return acc + unit * sel.quantity
+    }, 0)
+  }, [selectedProducts, modalProducts])
+
+  const handlePlaceOrder = async () => {
+    setError(null)
+    if (selectedProducts.length === 0) {
+      setError(Language.pleaseSelectItems || 'Please select at least one item')
+      return
     }
-
-    const filteredProducts = modalProducts.filter((p) => p.name.toLowerCase().includes(productSearchQuery.toLowerCase()))
-    const indexOfLastProduct = currentPage * itemsPerPage
-    const indexOfFirstProduct = indexOfLastProduct - itemsPerPage
-    const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct)
-    const totalPages = Math.ceil(filteredProducts.length / itemsPerPage)
-
-    const paginate = (pageNumber) => setCurrentPage(pageNumber)
-
-    const handleProductSelect = (id) => {
-        setSelectedProducts((prev) => {
-            const exists = prev.find((p) => p.productId === id)
-            if (exists) return prev.filter((p) => p.productId !== id)
-            return [...prev, { productId: id, quantity: 1 }]
-        })
+    setLoading(true)
+    try {
+      const products = selectedProducts.map((p) => ({
+        product: p.productId,
+        quantity: p.quantity,
+      }))
+      const payload = { products, orderType: 'dine-in' }
+      if (enableOrderType) {
+        payload.orderType = orderType
+      } else if (tableId) {
+        payload.tableId = tableId
+      }
+      await axios.post(`${BaseUrl}/order/manual`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      onOrderPlaced(enableOrderType ? orderType : undefined)
+      resetForm()
+      onClose()
+    } catch (err) {
+      console.error('Error placing order', err)
+      const msg = err.response?.data?.error || Language.errorPlacingOrder || 'Error placing order'
+      setError(msg)
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const handleProductChange = (id, quantity) => {
-        setSelectedProducts((prev) => prev.map((p) => (p.productId === id ? { ...p, quantity } : p)))
-    }
+  const handleClose = () => {
+    resetForm()
+    onClose()
+  }
 
-    const handlePlaceOrder = async () => {
-        setError(null)
-        setLoading(true)
-        try {
-            const products = selectedProducts.map((p) => ({ product: p.productId, quantity: p.quantity }))
-            const payload = { products, orderType: 'dine-in' }
-            if (enableOrderType) {
-                payload.orderType = orderType
-            } else if (tableId) {
-                payload.tableId = tableId
-            }
-            // console.log(payload)
-            await axios.post(`${BaseUrl}/order/manual`, payload, { headers: { Authorization: `Bearer ${token}` } })
-            // pass orderType back if enabled
-            onOrderPlaced(enableOrderType ? orderType : undefined)
-            resetForm()
-            onClose()
-        } catch (err) {
-            console.error('Error placing order', err)
-            const msg = err.response?.data?.error || Language.errorPlacingOrder || 'Error placing order'
-            setError(msg)
-        } finally {
-            setLoading(false)
-        }
-    }
+  return (
+    <CModal
+      visible={visible}
+      onClose={handleClose}
+      size="lg"
+      backdrop="static"
+      className="mom-modal"
+    >
+      {/* ---- Header ---- */}
+      <div className="mom-header">
+        <div>
+          <h5 className="mom-header-title">
+            <CIcon icon={cilCart} />
+            {Language.selectProducts || 'Select Products'}
+          </h5>
+          <div className="mom-header-summary">
+            <strong>{totalUnits}</strong> {totalUnits === 1 ? 'item' : 'items'} ·{' '}
+            <strong>{selectedTotal.toFixed(2)} TND</strong>
+          </div>
+        </div>
+        <button className="mom-close" onClick={handleClose} aria-label="Close" type="button">
+          &times;
+        </button>
+      </div>
 
-    return (
-        <CModal visible={visible} onClose={onClose} size="lg" backdrop="static" className="responsive-touch-modal">
-            <CModalHeader className="bg-gradient-primary text-white py-3">
-                <CModalTitle className="fs-4 fw-bold d-flex align-items-center">
-                    <CIcon icon={cilCart} className="me-2" />
-                    <span className="d-none d-sm-inline">{Language.selectProducts}</span>
-                    <span className="d-inline d-sm-none">Products</span>
-                </CModalTitle>
-                <CButton color="transparent" onClick={onClose} className="text-white fs-4 p-0" aria-label="Close">
-                    &times;
-                </CButton>
-            </CModalHeader>
+      {/* ---- Body ---- */}
+      <div className="mom-body">
+        {error && (
+          <CAlert color="danger" className="mb-3">
+            {error}
+          </CAlert>
+        )}
 
-            <CModalBody className="p-2 p-md-4">
-                {error && <CAlert color="danger">{error}</CAlert>}
-                {enableOrderType && (
-                    <CInputGroup className="mb-3">
-                        <CInputGroupText>{Language.orderType}</CInputGroupText>
-                        <CFormSelect value={orderType} onChange={(e) => setOrderType(e.target.value)}>
-                            <option value="to-go">{Language.togo}</option>
-                            <option value="delivery">{Language.delivery}</option>
-                        </CFormSelect>
-                    </CInputGroup>
-                )}
-                {/* Responsive Search */}
-                <CInputGroup className="mb-3 mb-md-4 shadow-sm">
-                    <CInputGroupText className="bg-white d-none d-md-flex">
-                        <CIcon icon={cilSearch} />
-                    </CInputGroupText>
-                    <CFormInput
-                        placeholder={`${Language.search} ${Language.products}`}
-                        value={productSearchQuery}
-                        onChange={(e) => setProductSearchQuery(e.target.value)}
-                        className="py-2 py-md-3"
-                        aria-label="Search Products"
-                    />
-                    <CButton color="primary" className="d-md-none">
-                        <CIcon icon={cilSearch} />
-                    </CButton>
-                </CInputGroup>
+        {/* Order-type segmented control */}
+        {enableOrderType && (
+          <div className="mom-segments" role="tablist">
+            <button
+              type="button"
+              className={`mom-segment ${orderType === 'to-go' ? 'is-active' : ''}`}
+              onClick={() => setOrderType('to-go')}
+            >
+              {Language.togo || 'To-go'}
+            </button>
+            <button
+              type="button"
+              className={`mom-segment ${orderType === 'delivery' ? 'is-active' : ''}`}
+              onClick={() => setOrderType('delivery')}
+            >
+              {Language.delivery || 'Delivery'}
+            </button>
+          </div>
+        )}
 
-                {/* Responsive Product List */}
-                <div className="product-list" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
-                    {currentProducts.length ? (
-                        currentProducts.map((product) => (
-                            <div
-                                key={product._id}
-                                className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center p-2 p-md-3 mb-2 rounded shadow-sm bg-light-hover"
-                            >
-                                <div className="d-flex align-items-center gap-2 gap-md-3 w-100 mb-2 mb-md-0">
-                                    <CFormCheck
-                                        checked={!!selectedProducts.find((p) => p.productId === product._id)}
-                                        onChange={() => handleProductSelect(product._id)}
-                                        aria-label={`Select ${product.name}`}
-                                        className="form-check-lg flex-shrink-0"
-                                        style={{ transform: 'scale(1.3)', marginRight: '10px' }}
-                                    />
-                                    <div className="flex-grow-1 text-truncate">
-                                        <div className="fw-bold fs-6 fs-md-5 text-primary text-truncate">{product.name}</div>
-                                        {product.description && <div className="text-muted small text-truncate">{product.description}</div>}
-                                    </div>
-                                </div>
+        {/* Search */}
+        <div className="mom-search">
+          <CIcon icon={cilSearch} className="mom-search-icon" />
+          <input
+            type="text"
+            placeholder={`${Language.search || 'Search'} ${Language.products || 'products'}`}
+            value={productSearchQuery}
+            onChange={(e) => {
+              setProductSearchQuery(e.target.value)
+              setCurrentPage(1)
+            }}
+            aria-label="Search products"
+          />
+        </div>
 
-                                {/* Responsive Quantity Controls */}
-                                <div className="d-flex align-items-center ms-auto">
-                                    <CButton
-                                        color="danger"
-                                        onClick={() => handleProductChange(product._id, Math.max(1, (selectedProducts.find((p) => p.productId === product._id)?.quantity || 1) - 1))}
-                                        className="quantity-btn fs-5 fs-md-4 px-2 px-md-3 py-0"
-                                        size="sm"
-                                    >
-                                        -
-                                    </CButton>
+        {/* Product list */}
+        <div className="mom-list">
+          {currentProducts.length === 0 ? (
+            <div className="mom-empty">
+              <CIcon icon={cilWarning} size="xl" />
+              <div>{Language.noProductsFound || 'No products found'}</div>
+            </div>
+          ) : (
+            currentProducts.map((product) => {
+              const selected = getSelected(product._id)
+              const qty = selected?.quantity || 0
+              const discount = product.discountPercentage || 0
+              const unitPrice = discount > 0 ? product.price * (1 - discount / 100) : product.price
 
-                                    <CFormInput
-                                        type="number"
-                                        min="1"
-                                        value={selectedProducts.find((p) => p.productId === product._id)?.quantity || ''}
-                                        onChange={(e) => handleProductChange(product._id, +e.target.value)}
-                                        className="text-center mx-1 mx-md-2 fs-6 fs-md-5"
-                                        style={{ width: '60px', height: '40px', minWidth: '60px' }}
-                                        aria-label={`Quantity for ${product.name}`}
-                                    />
-
-                                    <CButton
-                                        color="success"
-                                        onClick={() => handleProductChange(product._id, (selectedProducts.find((p) => p.productId === product._id)?.quantity || 0) + 1)}
-                                        className="quantity-btn fs-5 fs-md-4 px-2 px-md-3 py-0"
-                                        size="sm"
-                                    >
-                                        +
-                                    </CButton>
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="text-center py-4 py-md-5">
-                            <CIcon icon={cilWarning} className="text-muted fs-2 fs-md-1" />
-                            <p className="text-muted fs-5 fs-md-4 mt-2 mt-md-3">{Language.noProductsFound}</p>
-                        </div>
+              return (
+                <div
+                  key={product._id}
+                  className={`mom-row ${selected ? 'is-selected' : ''}`}
+                  onClick={() => handleRowClick(product._id)}
+                >
+                  <div className="mom-row-main">
+                    <p className="mom-row-name">{product.name}</p>
+                    {product.description && (
+                      <div className="mom-row-desc">{product.description}</div>
                     )}
-                </div>
-
-                {/* Responsive Pagination */}
-                {totalPages > 1 && (
-                    <div className="d-flex justify-content-center mt-3 mt-md-4">
-                        <CPagination aria-label="Product Pagination">
-                            <CPaginationItem disabled={currentPage === 1} onClick={() => paginate(currentPage - 1)} className="px-3 px-md-4 py-1 py-md-2 fs-6 fs-md-5">
-                                <span className="d-none d-md-inline">&laquo; Prev</span><span className="d-inline d-md-none">&laquo;</span>
-                            </CPaginationItem>
-                            {Array.from({ length: Math.min(3, totalPages) }).map((_, index) => {
-                                let pageNum
-                                if (totalPages <= 3) pageNum = index + 1
-                                else if (currentPage <= 2) pageNum = index + 1
-                                else if (currentPage >= totalPages - 1) pageNum = totalPages - 2 + index
-                                else pageNum = currentPage - 1 + index
-                                return (
-                                    <CPaginationItem key={pageNum} active={pageNum === currentPage} onClick={() => paginate(pageNum)} className="px-3 px-md-4 py-1 py-md-2 fs-6 fs-md-5">
-                                        {pageNum}
-                                    </CPaginationItem>
-                                )
-                            })}
-                            <CPaginationItem disabled={currentPage === totalPages} onClick={() => paginate(currentPage + 1)} className="px-3 px-md-4 py-1 py-md-2 fs-6 fs-md-5">
-                                <span className="d-none d-md-inline">Next &raquo;</span><span className="d-inline d-md-none">&raquo;</span>
-                            </CPaginationItem>
-                        </CPagination>
+                    <div className="mom-row-price">
+                      {discount > 0 ? (
+                        <>
+                          <span className="mom-strike">{product.price.toFixed(2)} TND</span>
+                          <span className="mom-final">{unitPrice.toFixed(2)} TND</span>
+                          <span className="mom-badge">-{discount}%</span>
+                        </>
+                      ) : (
+                        <span>{unitPrice.toFixed(2)} TND</span>
+                      )}
                     </div>
-                )}
-            </CModalBody>
+                  </div>
 
-            <CModalFooter className="bg-light d-flex flex-column flex-md-row justify-content-between py-2 py-md-3 gap-2">
-                <CButton disabled={loading || !selectedProducts.length} color="primary" onClick={handlePlaceOrder} className="fs-6 fs-md-5 py-2 py-md-3 px-3 d-flex align-items-center justify-content-center flex-grow-1 w-100 w-md-auto">
-                    {loading ? (<><CSpinner size="sm" className="me-2" />{Language.loading}</>) : (<><CIcon icon={cilCheck} className="me-1 me-md-2" />{Language.place} {Language.order}</>)}
-                </CButton>
-                <CButton color="secondary" onClick={onClose} className="fs-6 fs-md-5 py-2 py-md-3 px-3 w-100 w-md-auto">
-                    <CIcon icon={cilX} className="me-1 me-md-2" />{Language.close}
-                </CButton>
-            </CModalFooter>
-        </CModal>
-    )
+                  <div className="mom-row-actions" onClick={(e) => e.stopPropagation()}>
+                    {selected ? (
+                      <div className="mom-stepper">
+                        <button
+                          type="button"
+                          onClick={() => changeQuantity(product._id, -1)}
+                          aria-label="Decrease"
+                        >
+                          <CIcon icon={cilMinus} size="sm" />
+                        </button>
+                        <span className="mom-stepper-value">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => changeQuantity(product._id, +1)}
+                          aria-label="Increase"
+                        >
+                          <CIcon icon={cilPlus} size="sm" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="mom-add-btn"
+                        onClick={() => handleProductSelect(product._id)}
+                      >
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mom-pagination">
+            <button
+              type="button"
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              aria-label="Previous page"
+            >
+              <CIcon icon={cilChevronLeft} size="sm" />
+            </button>
+            <span className="mom-page-info">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              aria-label="Next page"
+            >
+              <CIcon icon={cilChevronRight} size="sm" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ---- Footer ---- */}
+      <div className="mom-footer">
+        <div className="mom-footer-summary">
+          <span className="mom-footer-summary-label">
+            {Language.total || 'Total'} ({totalUnits} {totalUnits === 1 ? 'item' : 'items'})
+          </span>
+          <span className="mom-footer-summary-value">{selectedTotal.toFixed(2)} TND</span>
+        </div>
+
+        <div className="mom-footer-actions">
+          <CButton color="secondary" variant="outline" onClick={handleClose} disabled={loading}>
+            <CIcon icon={cilX} className="me-2" />
+            {Language.close || 'Close'}
+          </CButton>
+          <CButton
+            color="primary"
+            onClick={handlePlaceOrder}
+            disabled={loading || selectedProducts.length === 0}
+          >
+            {loading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.loading || 'Loading'}
+              </>
+            ) : (
+              <>
+                <CIcon icon={cilCheck} className="me-2" />
+                {Language.place} {Language.order}
+              </>
+            )}
+          </CButton>
+        </div>
+      </div>
+    </CModal>
+  )
 }
 
 export default ManualOrderModal
