@@ -1,100 +1,180 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { CButton, CModal, CFormInput, CFormSelect, CFormFeedback, CProgress } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
 import {
-  CTabPane,
-  CCardBody,
-  CRow,
-  CCol,
-  CCard,
-  CCardHeader,
-  CFormSelect,
-  CFormInput,
-  CButton,
-  CListGroup,
-  CListGroupItem,
-  CBadge,
-  CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
-  CSpinner,
-  CProgress,
-  CTooltip,
-  CInputGroup,
-  CInputGroupText,
-} from '@coreui/react'
+  cilPlus,
+  cilTrash,
+  cilPencil,
+  cilSearch,
+  cilHome,
+  cilCheck,
+  cilX,
+  cilWarning,
+  cilCheckCircle,
+  cilReload,
+} from '@coreui/icons'
 import { fetchRawMaterials } from '../../../helpers/services'
-import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
-import CIcon from '@coreui/icons-react'
-import { cilPlus, cilTrash, cilPencil, cilWarning, cilCheckCircle, cilHome } from '@coreui/icons'
 
-const InventoryTab = ({ activeTab, apiCall, showAlert }) => {
+const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
+
   const [inventory, setInventory] = useState([])
-  const [lowStock, setLowStock] = useState([])
   const [rawMaterials, setRawMaterials] = useState([])
-  const [invForm, setInvForm] = useState({ rawMaterialId: '', quantity: '' })
+  const [searchTerm, setSearchTerm] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  // Receive modal
+  const [showReceiveModal, setShowReceiveModal] = useState(false)
+  const [receiveForm, setReceiveForm] = useState({
+    rawMaterialId: '',
+    quantity: '',
+  })
+  const [receiveError, setReceiveError] = useState('')
+
+  // Edit modal
   const [showEditModal, setShowEditModal] = useState(false)
   const [editForm, setEditForm] = useState({ id: null, quantity: '' })
-  const [loading, setLoading] = useState(false)
-  const token = GetToken()
+  const [editError, setEditError] = useState('')
 
-  const loadInventory = async () => {
+  /* ---------- data ---------- */
+  const loadInventory = useCallback(async () => {
     try {
       setLoading(true)
       const data = await apiCall('/inventory')
       setInventory(data)
-
-      const low = data.filter((item) => item.currentQuantity <= item.rawMaterial.reorderLevel)
-      setLowStock(
-        low.map((item) => ({
-          ...item,
-          deficit: item.rawMaterial.reorderLevel - item.currentQuantity,
-          percentage: Math.min(100, (item.currentQuantity / item.rawMaterial.reorderLevel) * 100),
-        })),
-      )
+      reportCount?.(data.length)
     } catch (err) {
-      console.error(err)
       showAlert(Language.inventoryLoadError || 'Failed to load inventory', 'danger')
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiCall, showAlert, Language, reportCount])
 
   const loadRawMaterials = useCallback(async () => {
     try {
       const data = await fetchRawMaterials(apiCall)
       setRawMaterials(data)
     } catch (err) {
-      console.error(err)
       showAlert(Language.materialsLoadError || 'Failed to load materials', 'danger')
     }
-  }, [apiCall])
+  }, [apiCall, showAlert, Language])
 
-  const receiveInventory = async () => {
-    const { rawMaterialId, quantity } = invForm
-    if (!rawMaterialId || !quantity) {
-      showAlert(Language.fillAllFields || 'Select material and enter quantity', 'danger')
+  useEffect(() => {
+    if (activeTab === 'inventory') {
+      loadInventory()
+      loadRawMaterials()
+    }
+  }, [activeTab, loadInventory, loadRawMaterials])
+
+  /* ---------- derived ---------- */
+  const lowStockRaw = inventory
+    .filter((item) => item.rawMaterial && item.currentQuantity <= item.rawMaterial.reorderLevel)
+    .map((item) => ({
+      ...item,
+      deficit: item.rawMaterial.reorderLevel - item.currentQuantity,
+      percentage:
+        item.rawMaterial.reorderLevel > 0
+          ? Math.min(100, (item.currentQuantity / item.rawMaterial.reorderLevel) * 100)
+          : 0,
+    }))
+    .sort((a, b) => b.deficit - a.deficit) // most urgent first
+
+  const totalStockValue = inventory.reduce((sum, item) => {
+    const unitCost = item.rawMaterial?.costPerUnit || 0
+    return sum + (item.currentQuantity || 0) * unitCost
+  }, 0)
+
+  const filtered = inventory.filter((item) =>
+    (item.rawMaterial?.name || '').toLowerCase().includes(searchTerm.toLowerCase()),
+  )
+
+  const getStockColor = (item) => {
+    const rl = item.rawMaterial?.reorderLevel || 0
+    if (rl === 0) return 'success'
+    const pct = (item.currentQuantity / rl) * 100
+    if (pct <= 30) return 'danger'
+    if (pct <= 60) return 'warning'
+    return 'success'
+  }
+
+  /* ---------- receive ---------- */
+  const openReceive = (prefilledId = '') => {
+    setReceiveForm({ rawMaterialId: prefilledId, quantity: '' })
+    setReceiveError('')
+    setShowReceiveModal(true)
+  }
+
+  const closeReceive = () => {
+    setShowReceiveModal(false)
+    setReceiveForm({ rawMaterialId: '', quantity: '' })
+    setReceiveError('')
+  }
+
+  const submitReceive = async () => {
+    const { rawMaterialId, quantity } = receiveForm
+    if (!rawMaterialId) {
+      setReceiveError(Language.selectMaterial || 'Please select a material')
       return
     }
+    const qty = parseFloat(quantity)
+    if (isNaN(qty) || qty <= 0) {
+      setReceiveError(Language.quantityMustBePositive || 'Quantity must be greater than 0')
+      return
+    }
+
     try {
       await apiCall('/inventory/receive', 'POST', {
         rawMaterialId,
-        quantity: parseFloat(quantity),
+        quantity: qty,
       })
       showAlert(Language.stockAdded || 'Stock added successfully')
-      setInvForm({ rawMaterialId: '', quantity: '' })
+      closeReceive()
       loadInventory()
     } catch (err) {
-      console.error(err)
-      showAlert(Language.stockAddError || 'Error receiving inventory', 'danger')
+      setReceiveError(
+        err.response?.data?.error || Language.stockAddError || 'Error receiving inventory',
+      )
     }
   }
 
-  const deleteInventory = async (id) => {
+  /* ---------- edit ---------- */
+  const openEdit = (item) => {
+    setEditForm({ id: item._id, quantity: String(item.currentQuantity) })
+    setEditError('')
+    setShowEditModal(true)
+  }
+
+  const closeEdit = () => {
+    setShowEditModal(false)
+    setEditForm({ id: null, quantity: '' })
+    setEditError('')
+  }
+
+  const submitEdit = async () => {
+    const qty = parseFloat(editForm.quantity)
+    if (isNaN(qty) || qty < 0) {
+      setEditError(Language.invalidQuantity || 'Enter a valid quantity')
+      return
+    }
+    try {
+      await apiCall(`/inventory/${editForm.id}`, 'PUT', {
+        currentQuantity: qty,
+      })
+      showAlert(Language.inventoryUpdated || 'Inventory updated')
+      closeEdit()
+      loadInventory()
+    } catch (err) {
+      setEditError(
+        err.response?.data?.error || Language.inventoryUpdateError || 'Error updating inventory',
+      )
+    }
+  }
+
+  /* ---------- delete ---------- */
+  const handleDelete = async (id) => {
     if (!window.confirm(Language.confirmDelete || 'Are you sure you want to delete this record?'))
       return
     try {
@@ -102,273 +182,333 @@ const InventoryTab = ({ activeTab, apiCall, showAlert }) => {
       showAlert(Language.recordDeleted || 'Record deleted')
       loadInventory()
     } catch (err) {
-      console.error(err)
       showAlert(Language.deleteError || 'Error deleting record', 'danger')
     }
   }
 
-  const openEditModal = (item) => {
-    setEditForm({ id: item._id, quantity: item.currentQuantity.toString() })
-    setShowEditModal(true)
-  }
-  const submitEdit = async () => {
-    const { id, quantity } = editForm
-    if (!quantity) {
-      showAlert('Enter quantity', 'danger')
-      return
-    }
-    try {
-      await apiCall(
-        `/inventory/${id}`,
-        'PUT',
-        { currentQuantity: parseFloat(quantity) },
-        { Authorization: `Bearer ${token}` },
-      )
-      showAlert('Inventory updated')
-      setShowEditModal(false)
-      loadInventory()
-    } catch (err) {
-      console.error(err)
-      showAlert('Error updating inventory', 'danger')
-    }
-  }
-
-  useEffect(() => {
-    if (activeTab === 'inventory') {
-      loadInventory()
-      loadRawMaterials()
-    }
-  }, [activeTab])
-
-  const getStockStatus = (item) => {
-    const percentage = (item.currentQuantity / item.rawMaterial.reorderLevel) * 100
-    if (percentage <= 30) return 'danger'
-    if (percentage <= 60) return 'warning'
-    return 'success'
-  }
+  /* ---------- render ---------- */
+  if (activeTab !== 'inventory') return null
 
   return (
-    <CTabPane visible={activeTab === 'inventory'}>
-      <CCardBody>
-        <CRow className="mb-4">
-          <CCol md={6}>
-            <CCard className="text-black bg-gradient-primary">
-              <CCardBody className="pb-0 d-flex justify-content-between align-items-start">
-                <div>
-                  <h4>{inventory.length}</h4>
-                  <p className="mb-0">{Language.totalItems || 'Total Items'}</p>
-                </div>
-                <CIcon icon={cilCheckCircle} height={40} />
-              </CCardBody>
-            </CCard>
-          </CCol>
-          <CCol md={6}>
-            <CCard
-              className={`text-black ${lowStock.length > 0 ? 'bg-gradient-danger' : 'bg-gradient-success'}`}
-            >
-              <CCardBody className="pb-0 d-flex justify-content-between align-items-start">
-                <div>
-                  <h4>{lowStock.length}</h4>
-                  <p className="mb-0">{Language.lowStockItems}</p>
-                </div>
-                <CIcon icon={lowStock.length > 0 ? cilWarning : cilCheckCircle} height={40} />
-              </CCardBody>
-            </CCard>
-          </CCol>
-        </CRow>
+    <>
+      {/* ---- Section top strip ---- */}
+      <div className="si-section-top">
+        <div className="si-section-top-left">
+          <h5 className="si-section-title">{Language.inventory || 'Inventory'}</h5>
+          <div className="si-section-meta">
+            <strong>{inventory.length}</strong> {inventory.length === 1 ? 'item' : 'items'} tracked
+            {' · '}
+            <strong>{lowStockRaw.length}</strong> low stock
+          </div>
+        </div>
 
-        <CCard className="mb-4">
-          <CCardHeader>
-            <h5 className="mb-0">
-              <CIcon icon={cilPlus} className="me-2" />
-              {Language.receiveInventory}
-            </h5>
-          </CCardHeader>
-          <CCardBody>
-            <CRow className="g-3 align-items-end">
-              <CCol md={5}>
-                <CInputGroup>
-                  <CInputGroupText>
-                    <CIcon icon={cilHome} />
-                  </CInputGroupText>
-                  <CFormSelect
-                    value={invForm.rawMaterialId}
-                    onChange={(e) => setInvForm({ ...invForm, rawMaterialId: e.target.value })}
-                  >
-                    <option value="">{Language.selectMaterial}</option>
-                    {rawMaterials.map((mat) => (
-                      <option key={mat._id} value={mat._id}>
-                        {mat.name} ({mat.unit})
-                      </option>
-                    ))}
-                  </CFormSelect>
-                </CInputGroup>
-              </CCol>
-              <CCol md={4}>
-                <CInputGroup>
-                  <CInputGroupText>{Language.quantity}</CInputGroupText>
-                  <CFormInput
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={invForm.quantity}
-                    onChange={(e) => setInvForm({ ...invForm, quantity: e.target.value })}
-                  />
-                </CInputGroup>
-              </CCol>
-              <CCol md={3}>
-                <CButton color="success" onClick={receiveInventory} disabled={loading}>
-                  {loading ? <CSpinner size="sm" /> : Language.addStock}
-                </CButton>
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
+        <div className="si-section-top-right">
+          <div className="si-search">
+            <CIcon icon={cilSearch} className="si-search-icon" />
+            <input
+              type="text"
+              placeholder={Language.searchInventory || 'Search inventory...'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <CButton color="primary" onClick={() => openReceive()}>
+            <CIcon icon={cilPlus} className="me-2" />
+            {Language.receiveInventory || 'Receive stock'}
+          </CButton>
+        </div>
+      </div>
 
-        <CRow>
-          <CCol lg={6}>
-            <CCard className="mb-4">
-              <CCardHeader>
-                <h5 className="mb-0">{Language.currentInventory}</h5>
-              </CCardHeader>
-              <CListGroup flush>
-                {inventory.map((item) => (
-                  <CListGroupItem
-                    key={item._id}
-                    className="d-flex justify-content-between align-items-center"
-                  >
-                    <div className="w-100">
-                      <div className="d-flex justify-content-between mb-2">
-                        <strong>{item.rawMaterial?.name}</strong>
-                        <span>
-                          {item.currentQuantity} {item.rawMaterial?.unit}
-                        </span>
-                      </div>
-                      <CProgress
-                        thin
-                        color={getStockStatus(item)}
-                        value={(item.currentQuantity / item.rawMaterial.reorderLevel) * 100}
-                        className="mb-2"
-                      />
-                      <div className="d-flex justify-content-between small text-muted">
-                        <span>
-                          {Language.reorderLevel}: {item.rawMaterial?.reorderLevel}{' '}
-                          {item.rawMaterial?.unit}
-                        </span>
-                        <span>
-                          {Language.cost}: {item.rawMaterial?.costPerUnit} TND/
-                          {item.rawMaterial?.unit}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="d-flex ms-3">
-                      <CTooltip content={Language.edit}>
-                        <CButton
-                          color="warning"
-                          variant="outline"
-                          size="sm"
-                          className="me-2"
-                          onClick={() => openEditModal(item)}
-                        >
-                          <CIcon icon={cilPencil} />
-                        </CButton>
-                      </CTooltip>
-                      <CTooltip content={Language.delete}>
-                        <CButton
-                          color="danger"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteInventory(item._id)}
-                        >
-                          <CIcon icon={cilTrash} />
-                        </CButton>
-                      </CTooltip>
-                    </div>
-                  </CListGroupItem>
-                ))}
-              </CListGroup>
-            </CCard>
-          </CCol>
+      {/* ---- Stat strip ---- */}
+      <div className="si-stats">
+        <div className="si-stat">
+          <div className="si-stat-label">{Language.totalItems || 'Items tracked'}</div>
+          <div className="si-stat-value">{inventory.length}</div>
+        </div>
+        <div className="si-stat">
+          <div className="si-stat-label">{Language.lowStockItems || 'Low stock'}</div>
+          <div className={`si-stat-value ${lowStockRaw.length > 0 ? 'is-danger' : 'is-success'}`}>
+            {lowStockRaw.length}
+          </div>
+        </div>
+        <div className="si-stat">
+          <div className="si-stat-label">{Language.stockValue || 'Stock value'}</div>
+          <div className="si-stat-value">
+            {totalStockValue.toFixed(2)} <small className="si-stat-unit">TND</small>
+          </div>
+        </div>
+      </div>
 
-          <CCol lg={6}>
-            <CCard>
-              <CCardHeader
-                className={`bg-${lowStock.length > 0 ? 'danger' : 'success'} text-white`}
-              >
-                <h5 className="mb-0">{Language.lowStockAlerts}</h5>
-              </CCardHeader>
-              <CListGroup flush>
-                {lowStock.length === 0 ? (
-                  <CListGroupItem className="text-center py-4">
-                    <CIcon icon={cilCheckCircle} className="text-success me-2" size="xl" />
-                    <h5 className="text-success mb-0">{Language.allItemsWellStocked}</h5>
-                  </CListGroupItem>
-                ) : (
-                  lowStock.map((item) => (
-                    <CListGroupItem key={item._id} className="border-start border-danger border-4">
-                      <div className="d-flex justify-content-between align-items-center">
-                        <div>
+      {/* ---- Two columns ---- */}
+      <div className="si-inv-layout">
+        {/* Current inventory */}
+        <div>
+          <div className="si-inv-col-title">{Language.currentInventory || 'Current inventory'}</div>
+
+          {inventory.length === 0 && !loading ? (
+            <div className="si-empty">
+              <CIcon icon={cilHome} size="xl" />
+              <div className="si-empty-title">
+                {Language.noInventoryYet || 'No stock tracked yet'}
+              </div>
+              <div className="si-empty-body">
+                {Language.noInventoryHint ||
+                  'Receive stock to start tracking quantities and values.'}
+              </div>
+              <CButton color="primary" className="si-empty-cta" onClick={() => openReceive()}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.receiveInventory || 'Receive stock'}
+              </CButton>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="si-empty">
+              <CIcon icon={cilSearch} size="xl" />
+              <div className="si-empty-title">{Language.noInventoryMatch || 'No items match'}</div>
+              <div className="si-empty-body">
+                {Language.noInventoryMatchHint || 'Try a different search.'}
+              </div>
+            </div>
+          ) : (
+            <div className="si-list">
+              {filtered.map((item) => {
+                const rl = item.rawMaterial?.reorderLevel || 0
+                const pct = rl > 0 ? Math.min(100, (item.currentQuantity / rl) * 100) : 100
+                return (
+                  <div className="si-row" key={item._id}>
+                    <div>
+                      <p className="si-row-title">{item.rawMaterial?.name || 'Unnamed material'}</p>
+                      <div className="si-row-meta">
+                        <span>
+                          On hand:{' '}
                           <strong>
-                            <CIcon icon={cilWarning} className="text-danger me-2" />
-                            {item.rawMaterial.name}
+                            {item.currentQuantity} {item.rawMaterial?.unit || ''}
                           </strong>
-                          <div className="mt-1">
-                            <CBadge color="danger" className="me-2">
-                              {Language.current}: {item.currentQuantity} {item.rawMaterial.unit}
-                            </CBadge>
-                            <CBadge color="danger">
-                              {Language.deficit}: {item.deficit} {item.rawMaterial.unit}
-                            </CBadge>
-                          </div>
-                        </div>
-                        <CProgress
-                          thin
-                          color="danger"
-                          value={item.percentage}
-                          style={{ width: '100px' }}
-                        />
+                        </span>
+                        <span>
+                          Reorder at{' '}
+                          <strong>
+                            {rl} {item.rawMaterial?.unit || ''}
+                          </strong>
+                        </span>
+                        <span>
+                          Cost{' '}
+                          <strong>
+                            {Number(item.rawMaterial?.costPerUnit || 0).toFixed(2)} TND /{' '}
+                            {item.rawMaterial?.unit || ''}
+                          </strong>
+                        </span>
                       </div>
-                    </CListGroupItem>
-                  ))
-                )}
-              </CListGroup>
-            </CCard>
-          </CCol>
-        </CRow>
-      </CCardBody>
+                      <div className="si-inv-progress">
+                        <CProgress thin color={getStockColor(item)} value={pct} height={6} />
+                      </div>
+                    </div>
 
-      <CModal visible={showEditModal} onClose={() => setShowEditModal(false)}>
-        <CModalHeader closeButton>
-          <CModalTitle>{Language.editInventory}</CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <CInputGroup className="mb-3">
-            <CInputGroupText>{Language.quantity}</CInputGroupText>
+                    <div className="si-row-actions">
+                      <CButton
+                        color="secondary"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(item)}
+                        aria-label="Edit"
+                      >
+                        <CIcon icon={cilPencil} />
+                      </CButton>
+                      <CButton
+                        color="danger"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(item._id)}
+                        aria-label="Delete"
+                      >
+                        <CIcon icon={cilTrash} />
+                      </CButton>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Low stock alerts */}
+        <div>
+          <div className="si-inv-col-title">{Language.lowStockAlerts || 'Low stock alerts'}</div>
+
+          {lowStockRaw.length === 0 ? (
+            <div className="si-empty si-empty-success">
+              <CIcon icon={cilCheckCircle} size="xl" />
+              <div className="si-empty-title">
+                {Language.allItemsWellStocked || 'All items well stocked'}
+              </div>
+              <div className="si-empty-body">
+                {Language.allItemsWellStockedHint || 'Nothing below its reorder level right now.'}
+              </div>
+            </div>
+          ) : (
+            <div className="si-list">
+              {lowStockRaw.map((item) => (
+                <div className="si-row si-row-alert" key={item._id}>
+                  <div>
+                    <p className="si-row-title">
+                      <CIcon icon={cilWarning} className="me-2" style={{ color: '#dc3545' }} />
+                      {item.rawMaterial?.name}
+                    </p>
+                    <div className="si-row-meta">
+                      <span>
+                        Current:{' '}
+                        <strong>
+                          {item.currentQuantity} {item.rawMaterial?.unit || ''}
+                        </strong>
+                      </span>
+                      <span className="si-row-tag is-danger">
+                        Deficit {item.deficit} {item.rawMaterial?.unit || ''}
+                      </span>
+                    </div>
+                    <div className="si-inv-progress">
+                      <CProgress thin color="danger" value={item.percentage} height={6} />
+                    </div>
+                  </div>
+
+                  <div className="si-row-actions">
+                    <CButton
+                      color="primary"
+                      size="sm"
+                      onClick={() => openReceive(item.rawMaterial._id)}
+                    >
+                      <CIcon icon={cilReload} className="me-1" />
+                      {Language.receive || 'Receive'}
+                    </CButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ---- Receive modal ---- */}
+      <CModal
+        visible={showReceiveModal}
+        onClose={closeReceive}
+        backdrop="static"
+        className="si-modal"
+      >
+        <div className="si-modal-header">
+          <h5 className="si-modal-title">
+            <CIcon icon={cilPlus} />
+            {Language.receiveInventory || 'Receive stock'}
+          </h5>
+          <button
+            className="si-modal-close"
+            onClick={closeReceive}
+            aria-label="Close"
+            type="button"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="si-modal-body">
+          <div className="si-field">
+            <label htmlFor="inv-material">{Language.material || 'Material'}</label>
+            <CFormSelect
+              id="inv-material"
+              value={receiveForm.rawMaterialId}
+              onChange={(e) =>
+                setReceiveForm({
+                  ...receiveForm,
+                  rawMaterialId: e.target.value,
+                })
+              }
+            >
+              <option value="">{Language.selectMaterial || 'Select a material'}</option>
+              {rawMaterials.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.name} ({m.unit})
+                </option>
+              ))}
+            </CFormSelect>
+          </div>
+
+          <div className="si-field">
+            <label htmlFor="inv-qty">{Language.quantity || 'Quantity'}</label>
             <CFormInput
+              id="inv-qty"
+              type="number"
+              step="0.01"
+              min="0"
+              value={receiveForm.quantity}
+              onChange={(e) =>
+                setReceiveForm({
+                  ...receiveForm,
+                  quantity: e.target.value,
+                })
+              }
+              placeholder="0.00"
+            />
+            {receiveError && (
+              <CFormFeedback invalid className="d-block">
+                {receiveError}
+              </CFormFeedback>
+            )}
+          </div>
+        </div>
+
+        <div className="si-modal-footer">
+          <CButton color="secondary" variant="outline" onClick={closeReceive}>
+            <CIcon icon={cilX} className="me-2" />
+            {Language.cancel || 'Cancel'}
+          </CButton>
+          <CButton color="primary" onClick={submitReceive}>
+            <CIcon icon={cilCheck} className="me-2" />
+            {Language.addStock || 'Add stock'}
+          </CButton>
+        </div>
+      </CModal>
+
+      {/* ---- Edit modal ---- */}
+      <CModal visible={showEditModal} onClose={closeEdit} backdrop="static" className="si-modal">
+        <div className="si-modal-header">
+          <h5 className="si-modal-title">
+            <CIcon icon={cilPencil} />
+            {Language.editInventory || 'Edit inventory'}
+          </h5>
+          <button className="si-modal-close" onClick={closeEdit} aria-label="Close" type="button">
+            &times;
+          </button>
+        </div>
+
+        <div className="si-modal-body">
+          <div className="si-field">
+            <label htmlFor="inv-edit-qty">{Language.currentQuantity || 'Current quantity'}</label>
+            <CFormInput
+              id="inv-edit-qty"
               type="number"
               step="0.01"
               min="0"
               value={editForm.quantity}
               onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
             />
-          </CInputGroup>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setShowEditModal(false)}>
-            {Language.cancel}
+            {editError && (
+              <CFormFeedback invalid className="d-block">
+                {editError}
+              </CFormFeedback>
+            )}
+          </div>
+        </div>
+
+        <div className="si-modal-footer">
+          <CButton color="secondary" variant="outline" onClick={closeEdit}>
+            <CIcon icon={cilX} className="me-2" />
+            {Language.cancel || 'Cancel'}
           </CButton>
-          <CButton
-            color="primary"
-            onClick={async () => {
-              await submitEdit()
-              setShowEditModal(false)
-            }}
-          >
-            {Language.save}
+          <CButton color="primary" onClick={submitEdit}>
+            <CIcon icon={cilCheck} className="me-2" />
+            {Language.save || 'Save'}
           </CButton>
-        </CModalFooter>
+        </div>
       </CModal>
-    </CTabPane>
+    </>
   )
 }
 

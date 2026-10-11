@@ -1,21 +1,16 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import {
   CContainer,
-  CNav,
-  CNavItem,
-  CNavLink,
-  CTabContent,
-  CSpinner,
+  CCard,
+  CCardBody,
   CToaster,
   CToast,
   CToastHeader,
   CToastBody,
-  CBadge,
-  CRow,
-  CCol,
-  CCard,
-  CCardBody,
+  CSpinner,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilHome, cilList, cilRestaurant, cilInfo } from '@coreui/icons'
 import RecipesTab from './RecipesTab'
 import RawMaterialsTab from './RawMaterialsTab'
 import InventoryTab from './InventoryTab'
@@ -23,9 +18,8 @@ import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
-import CIcon from '@coreui/icons-react'
-import { cilHome, cilList, cilRestaurant, cilInfo } from '@coreui/icons'
 import axios from 'axios'
+import './StockInventory.css'
 
 const StockInventory = () => {
   const t = useSelector((state) => state.language)
@@ -35,51 +29,60 @@ const StockInventory = () => {
   const [toasts, setToasts] = useState([])
   const token = GetToken()
 
-  const apiCall = async (endpoint, method = 'GET', data = null, headers = {}) => {
-    try {
-      setLoading(true)
-      const config = {
-        method,
-        url: `${BaseUrl}${endpoint}`,
-        headers: { Authorization: `Bearer ${token}`, ...headers },
-      }
-      if (data) config.data = data
-      const response = await axios(config)
-      return response.data
-    } catch (error) {
-      showAlert(error.response?.data?.error || error.message, 'danger')
-      throw error
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Live tab counts, reported by each child tab
+  const [counts, setCounts] = useState({
+    'raw-materials': null,
+    inventory: null,
+    recipes: null,
+  })
+  // Stable — setState functional form means no deps are needed
+  const reportCount = useCallback((key, n) => {
+    setCounts((prev) => (prev[key] === n ? prev : { ...prev, [key]: n }))
+  }, [])
 
-  const showAlert = (msg, color = 'success') => {
-    const id = Date.now()
+  // Stable — token is a plain string
+  const showAlert = useCallback((msg, color = 'success') => {
+    const id = Date.now() + Math.random()
     setToasts((prev) => [...prev, { id, msg, color }])
-  }
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id))
+    }, 5000)
+  }, [])
 
+  // Stable — depends only on token and showAlert, both stable
+  const apiCall = useCallback(
+    async (endpoint, method = 'GET', data = null, headers = {}) => {
+      try {
+        setLoading(true)
+        const config = {
+          method,
+          url: `${BaseUrl}${endpoint}`,
+          headers: { Authorization: `Bearer ${token}`, ...headers },
+        }
+        if (data) config.data = data
+        const response = await axios(config)
+        return response.data
+      } catch (error) {
+        showAlert(error.response?.data?.error || error.message, 'danger')
+        throw error
+      } finally {
+        setLoading(false)
+      }
+    },
+    [token, showAlert],
+  )
+  const reportRawCount = useCallback((n) => reportCount('raw-materials', n), [reportCount])
+  const reportInventoryCount = useCallback((n) => reportCount('inventory', n), [reportCount])
+  const reportRecipeCount = useCallback((n) => reportCount('recipes', n), [reportCount])
   const removeToast = (id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
+    setToasts((prev) => prev.filter((x) => x.id !== id))
   }
 
-  const tabData = {
-    'raw-materials': {
-      title: Language.rawMaterials,
-      icon: cilHome,
-      badgeColor: 'primary',
-    },
-    inventory: {
-      title: Language.inventory,
-      icon: cilList,
-      badgeColor: 'info',
-    },
-    recipes: {
-      title: Language.recipes,
-      icon: cilRestaurant,
-      badgeColor: 'success',
-    },
-  }
+  const tabs = [
+    { key: 'raw-materials', title: Language.rawMaterials || 'Raw Materials', icon: cilHome },
+    { key: 'inventory', title: Language.inventory || 'Inventory', icon: cilList },
+    { key: 'recipes', title: Language.recipes || 'Recipes', icon: cilRestaurant },
+  ]
 
   return (
     <CContainer fluid className="py-4">
@@ -95,7 +98,7 @@ const StockInventory = () => {
           >
             <CToastHeader closeButton>
               <CIcon icon={cilInfo} className="me-2" />
-              Notification
+              {color === 'danger' ? 'Error' : 'Notification'}
             </CToastHeader>
             <CToastBody>{msg}</CToastBody>
           </CToast>
@@ -103,43 +106,67 @@ const StockInventory = () => {
       </CToaster>
 
       <CCard className="mb-4">
-        <CCardBody>
-          <CRow className="mb-4">
-            <CCol>
-              <h3 className="mb-0">
-                <CIcon icon={cilHome} className="me-2" />
-                {Language.stockInventory}
-              </h3>
-            </CCol>
-          </CRow>
+        <div className="si-header">
+          <div className="si-header-top">
+            <div>
+              <h5 className="si-title">
+                <CIcon icon={cilHome} />
+                {Language.stockInventory || 'Stock Inventory'}
+              </h5>
+              <div className="si-subtitle">
+                Manage your raw materials, track stock, and build recipes.
+              </div>
+            </div>
+          </div>
 
-          <CNav variant="pills" className="mb-4">
-            {Object.entries(tabData).map(([key, data]) => (
-              <CNavItem key={key}>
-                <CNavLink
-                  active={activeTab === key}
-                  onClick={() => setActiveTab(key)}
-                  className="d-flex align-items-center"
-                >
-                  <CIcon icon={data.icon} className="me-2" />
-                  {data.title}
-                </CNavLink>
-              </CNavItem>
+          <div className="si-tabs" role="tablist">
+            {tabs.map(({ key, title, icon }) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                className={`si-tab ${activeTab === key ? 'is-active' : ''}`}
+                onClick={() => setActiveTab(key)}
+              >
+                <CIcon icon={icon} />
+                {title}
+                {counts[key] != null && <span className="si-tab-count">{counts[key]}</span>}
+              </button>
             ))}
-          </CNav>
+          </div>
+        </div>
 
+        <CCardBody>
           {loading && (
-            <div className="text-center p-5">
+            <div className="text-center p-4">
               <CSpinner color="primary" size="sm" />
-              <p className="mt-3">{Language.loading}</p>
             </div>
           )}
 
-          <CTabContent>
-            <RawMaterialsTab activeTab={activeTab} apiCall={apiCall} showAlert={showAlert} />
-            <InventoryTab activeTab={activeTab} apiCall={apiCall} showAlert={showAlert} />
-            <RecipesTab activeTab={activeTab} apiCall={apiCall} showAlert={showAlert} />
-          </CTabContent>
+          {activeTab === 'raw-materials' && (
+            <RawMaterialsTab
+              activeTab={activeTab}
+              apiCall={apiCall}
+              showAlert={showAlert}
+              reportCount={reportRawCount}
+            />
+          )}
+          {activeTab === 'inventory' && (
+            <InventoryTab
+              activeTab={activeTab}
+              apiCall={apiCall}
+              showAlert={showAlert}
+              reportCount={reportInventoryCount}
+            />
+          )}
+          {activeTab === 'recipes' && (
+            <RecipesTab
+              activeTab={activeTab}
+              apiCall={apiCall}
+              showAlert={showAlert}
+              reportCount={reportRecipeCount}
+            />
+          )}
         </CCardBody>
       </CCard>
     </CContainer>

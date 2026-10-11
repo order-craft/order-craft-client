@@ -1,89 +1,122 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { CButton, CModal, CFormInput, CFormFeedback } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
 import {
-  CTabPane,
-  CCardBody,
-  CCard,
-  CCardHeader,
-  CRow,
-  CCol,
-  CFormInput,
-  CButton,
-  CListGroup,
-  CListGroupItem,
-  CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
-  CBadge,
-  CInputGroup,
-  CInputGroupText,
-  CTooltip,
-  CSpinner,
-} from '@coreui/react'
+  cilPlus,
+  cilTrash,
+  cilPencil,
+  cilSearch,
+  cilHome,
+  cilCheck,
+  cilX,
+  cilWarning,
+} from '@coreui/icons'
 import { fetchRawMaterials } from '../../../helpers/services'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
-import CIcon from '@coreui/icons-react'
-import { cilPlus, cilTrash, cilPencil, cilSearch, cilHome } from '@coreui/icons'
 
-const RawMaterialsTab = ({ activeTab, apiCall, showAlert }) => {
+const emptyForm = { name: '', unit: '', costPerUnit: '', reorderLevel: '' }
+
+const RawMaterialsTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
+
   const [rawMaterials, setRawMaterials] = useState([])
-  const [rmForm, setRmForm] = useState({
-    name: '',
-    unit: '',
-    costPerUnit: '',
-    reorderLevel: '',
-  })
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [editForm, setEditForm] = useState({
-    id: null,
-    name: '',
-    unit: '',
-    costPerUnit: '',
-    reorderLevel: '',
-  })
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | null
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(emptyForm)
+  const [errors, setErrors] = useState({})
+
+  /* ---------- data ---------- */
   const loadRawMaterials = useCallback(async () => {
     try {
       setLoading(true)
       const data = await fetchRawMaterials(apiCall)
       setRawMaterials(data)
+      reportCount?.(data.length)
     } catch (err) {
-      console.error(err)
       showAlert(Language.materialsLoadError || 'Failed to load materials', 'danger')
     } finally {
       setLoading(false)
     }
-  }, [apiCall, showAlert])
+  }, [apiCall, showAlert, Language, reportCount])
 
-  const addRawMaterial = async () => {
-    const { name, unit, costPerUnit, reorderLevel } = rmForm
-    if (!name || !unit || !costPerUnit || !reorderLevel) {
-      showAlert(Language.fillAllFields || 'Please fill all fields', 'danger')
-      return
+  useEffect(() => {
+    if (activeTab === 'raw-materials') loadRawMaterials()
+  }, [activeTab, loadRawMaterials])
+
+  /* ---------- modal ---------- */
+  const openAdd = () => {
+    setForm(emptyForm)
+    setEditing(null)
+    setErrors({})
+    setModalMode('add')
+  }
+
+  const openEdit = (material) => {
+    setForm({
+      name: material.name || '',
+      unit: material.unit || '',
+      costPerUnit: String(material.costPerUnit ?? ''),
+      reorderLevel: String(material.reorderLevel ?? ''),
+    })
+    setEditing(material)
+    setErrors({})
+    setModalMode('edit')
+  }
+
+  const closeModal = () => {
+    setModalMode(null)
+    setEditing(null)
+    setForm(emptyForm)
+    setErrors({})
+  }
+
+  const validate = () => {
+    const e = {}
+    if (!form.name.trim()) e.name = 'Name is required'
+    if (!form.unit.trim()) e.unit = 'Unit is required'
+    const cost = parseFloat(form.costPerUnit)
+    if (isNaN(cost) || cost < 0) e.costPerUnit = 'Cost must be a positive number'
+    const reorder = parseFloat(form.reorderLevel)
+    if (isNaN(reorder) || reorder < 0) e.reorderLevel = 'Reorder level must be a positive number'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const handleSubmit = async () => {
+    if (!validate()) return
+
+    const payload = {
+      name: form.name.trim(),
+      unit: form.unit.trim(),
+      costPerUnit: parseFloat(form.costPerUnit),
+      reorderLevel: parseFloat(form.reorderLevel),
     }
+
     try {
-      await apiCall('/raw-materials', 'POST', {
-        name,
-        unit,
-        costPerUnit: parseFloat(costPerUnit),
-        reorderLevel: parseFloat(reorderLevel),
-      })
-      showAlert(Language.materialAdded || 'Material added successfully')
-      setRmForm({ name: '', unit: '', costPerUnit: '', reorderLevel: '' })
+      if (modalMode === 'edit' && editing) {
+        await apiCall(`/raw-materials/${editing._id}`, 'PUT', payload)
+        showAlert(Language.materialUpdated || 'Material updated successfully')
+      } else {
+        await apiCall('/raw-materials', 'POST', payload)
+        showAlert(Language.materialAdded || 'Material added successfully')
+      }
+      closeModal()
       loadRawMaterials()
     } catch (err) {
-      console.error(err)
-      showAlert(Language.materialAddError || 'Error adding material', 'danger')
+      // apiCall already toasts on error, but keep a fallback
+      showAlert(
+        err.response?.data?.error || Language.materialSaveError || 'Error saving material',
+        'danger',
+      )
     }
   }
 
-  const deleteRawMaterial = async (id) => {
+  const handleDelete = async (id) => {
     if (!window.confirm(Language.confirmDelete || 'Are you sure you want to delete this material?'))
       return
     try {
@@ -91,258 +124,233 @@ const RawMaterialsTab = ({ activeTab, apiCall, showAlert }) => {
       showAlert(Language.materialDeleted || 'Material deleted')
       loadRawMaterials()
     } catch (err) {
-      console.error(err)
-      showAlert(Language.materialDeleteError || 'Error deleting material', 'danger')
+      showAlert(
+        err.response?.data?.error || Language.materialDeleteError || 'Error deleting material',
+        'danger',
+      )
     }
   }
 
-  const openEditModal = (material) => {
-    setEditForm({
-      id: material._id,
-      name: material.name,
-      unit: material.unit,
-      costPerUnit: material.costPerUnit.toString(),
-      reorderLevel: material.reorderLevel.toString(),
-    })
-    setShowEditModal(true)
-  }
-
-  const submitEdit = async () => {
-    const { id, name, unit, costPerUnit, reorderLevel } = editForm
-    if (!name || !unit || !costPerUnit || !reorderLevel) {
-      showAlert(Language.fillAllFields || 'Please fill all fields', 'danger')
-      return
-    }
-    try {
-      await apiCall(`/raw-materials/${id}`, 'PUT', {
-        name,
-        unit,
-        costPerUnit: parseFloat(costPerUnit),
-        reorderLevel: parseFloat(reorderLevel),
-      })
-      showAlert(Language.materialUpdated || 'Material updated successfully')
-      setShowEditModal(false)
-      loadRawMaterials()
-    } catch (err) {
-      console.error(err)
-      showAlert(Language.materialUpdateError || 'Error updating material', 'danger')
-    }
-  }
-
-  const filteredMaterials = rawMaterials.filter((material) =>
-    material.name.toLowerCase().includes(searchTerm.toLowerCase()),
+  /* ---------- derived ---------- */
+  const filtered = rawMaterials.filter((m) =>
+    m.name.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+  const withCost = rawMaterials.filter(
+    (m) => typeof m.costPerUnit === 'number' && m.costPerUnit > 0,
+  ).length
+  const usedInRecipes = rawMaterials.filter((m) => m.usedInRecipes > 0).length
 
-  useEffect(() => {
-    if (activeTab === 'raw-materials') loadRawMaterials()
-  }, [activeTab])
+  /* ---------- render ---------- */
+  if (activeTab !== 'raw-materials') return null
 
   return (
-    <CTabPane visible={activeTab === 'raw-materials'}>
-      <CCardBody>
-        <CRow className="mb-4">
-          <CCol md={8}>
-            <CInputGroup>
-              <CInputGroupText>
-                <CIcon icon={cilSearch} />
-              </CInputGroupText>
-              <CFormInput
-                placeholder={Language.searchMaterials}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </CInputGroup>
-          </CCol>
-          <CCol md={4} className="d-flex justify-content-end">
-            <CBadge color="primary" className="fs-6 p-2">
-              {filteredMaterials.length} {Language.items}
-            </CBadge>
-          </CCol>
-        </CRow>
-
-        <CCard className="mb-4">
-          <CCardHeader>
-            <h5 className="mb-0">
-              <CIcon icon={cilPlus} className="me-2" />
-              {Language.addRawMaterial}
-            </h5>
-          </CCardHeader>
-          <CCardBody>
-            <CRow className="g-3">
-              <CCol md={3}>
-                <CInputGroup>
-                  <CInputGroupText>{Language.name}</CInputGroupText>
-                  <CFormInput
-                    placeholder={Language.materialName}
-                    value={rmForm.name}
-                    onChange={(e) => setRmForm({ ...rmForm, name: e.target.value })}
-                  />
-                </CInputGroup>
-              </CCol>
-              <CCol md={2}>
-                <CInputGroup>
-                  <CInputGroupText>{Language.unit}</CInputGroupText>
-                  <CFormInput
-                    placeholder={Language.unit}
-                    value={rmForm.unit}
-                    onChange={(e) => setRmForm({ ...rmForm, unit: e.target.value })}
-                  />
-                </CInputGroup>
-              </CCol>
-              <CCol md={2}>
-                <CInputGroup>
-                  <CInputGroupText>{Language.cost}</CInputGroupText>
-                  <CFormInput
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder={Language.costPerUnit}
-                    value={rmForm.costPerUnit}
-                    onChange={(e) => setRmForm({ ...rmForm, costPerUnit: e.target.value })}
-                  />
-                </CInputGroup>
-              </CCol>
-              <CCol md={2}>
-                <CInputGroup>
-                  <CInputGroupText>{Language.reorder}</CInputGroupText>
-                  <CFormInput
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder={Language.reorderLevel}
-                    value={rmForm.reorderLevel}
-                    onChange={(e) => setRmForm({ ...rmForm, reorderLevel: e.target.value })}
-                  />
-                </CInputGroup>
-              </CCol>
-              <CCol md={3} className="d-flex align-items-end">
-                <CButton color="success" onClick={addRawMaterial} disabled={loading}>
-                  {loading ? <CSpinner size="sm" /> : Language.addRawMaterial}
-                </CButton>
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
-
-        {loading && filteredMaterials.length === 0 ? (
-          <div className="text-center py-5">
-            <CSpinner color="primary" size="sm" />
-            <p className="mt-3">{Language.loading}</p>
+    <>
+      <div className="si-section-top">
+        <div className="si-section-top-left">
+          <h5 className="si-section-title">{Language.rawMaterials || 'Raw Materials'}</h5>
+          <div className="si-section-meta">
+            <strong>{rawMaterials.length}</strong>{' '}
+            {rawMaterials.length === 1 ? 'material' : 'materials'}
+            {' · '}
+            <strong>{withCost}</strong> with cost set
+            {' · '}
+            <strong>{usedInRecipes}</strong> used in recipes
           </div>
-        ) : filteredMaterials.length === 0 ? (
-          <CCard>
-            <CCardBody className="text-center py-5">
-              <CIcon icon={cilHome} size="xl" className="text-muted mb-3" />
-              <h5 className="text-muted">{Language.noMaterialsFound}</h5>
-            </CCardBody>
-          </CCard>
-        ) : (
-          <CListGroup>
-            {filteredMaterials.map((material) => (
-              <CListGroupItem
-                key={material._id}
-                className="d-flex justify-content-between align-items-center"
-              >
-                <div>
-                  <strong>{material.name}</strong>
-                  <div className="small text-muted">
-                    {Language.cost}: {material.costPerUnit} TND/{material.unit} |{' '}
-                    {Language.reorderLevel}: {material.reorderLevel} {material.unit}
-                  </div>
-                </div>
-                <div>
-                  <CTooltip content={Language.edit}>
-                    <CButton
-                      color="warning"
-                      variant="outline"
-                      size="sm"
-                      className="me-2"
-                      onClick={() => openEditModal(material)}
-                    >
-                      <CIcon icon={cilPencil} />
-                    </CButton>
-                  </CTooltip>
-                  <CTooltip content={Language.delete}>
-                    <CButton
-                      color="danger"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => deleteRawMaterial(material._id)}
-                    >
-                      <CIcon icon={cilTrash} />
-                    </CButton>
-                  </CTooltip>
-                </div>
-              </CListGroupItem>
-            ))}
-          </CListGroup>
-        )}
-      </CCardBody>
+        </div>
 
-      <CModal visible={showEditModal} onClose={() => setShowEditModal(false)}>
-        <CModalHeader closeButton>
-          <CModalTitle>{Language.editRawMaterial}</CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <CRow className="g-3">
-            <CCol md={12}>
-              <CInputGroup>
-                <CInputGroupText>{Language.name}</CInputGroupText>
-                <CFormInput
-                  placeholder={Language.materialName}
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                />
-              </CInputGroup>
-            </CCol>
-            <CCol md={6}>
-              <CInputGroup>
-                <CInputGroupText>{Language.unit}</CInputGroupText>
-                <CFormInput
-                  placeholder={Language.unit}
-                  value={editForm.unit}
-                  onChange={(e) => setEditForm({ ...editForm, unit: e.target.value })}
-                />
-              </CInputGroup>
-            </CCol>
-            <CCol md={6}>
-              <CInputGroup>
-                <CInputGroupText>{Language.cost}</CInputGroupText>
-                <CFormInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder={Language.costPerUnit}
-                  value={editForm.costPerUnit}
-                  onChange={(e) => setEditForm({ ...editForm, costPerUnit: e.target.value })}
-                />
-              </CInputGroup>
-            </CCol>
-            <CCol md={12}>
-              <CInputGroup>
-                <CInputGroupText>{Language.reorder}</CInputGroupText>
-                <CFormInput
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder={Language.reorderLevel}
-                  value={editForm.reorderLevel}
-                  onChange={(e) => setEditForm({ ...editForm, reorderLevel: e.target.value })}
-                />
-              </CInputGroup>
-            </CCol>
-          </CRow>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setShowEditModal(false)}>
-            {Language.cancel}
+        <div className="si-section-top-right">
+          <div className="si-search">
+            <CIcon icon={cilSearch} className="si-search-icon" />
+            <input
+              type="text"
+              placeholder={Language.searchMaterials || 'Search raw materials...'}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <CButton color="primary" onClick={openAdd}>
+            <CIcon icon={cilPlus} className="me-2" />
+            {Language.addRawMaterial || 'Add material'}
           </CButton>
-          <CButton color="primary" onClick={submitEdit}>
-            {Language.save}
+        </div>
+      </div>
+
+      {rawMaterials.length === 0 && !loading ? (
+        <div className="si-empty">
+          <CIcon icon={cilHome} size="xl" />
+          <div className="si-empty-title">{Language.noRawMaterials || 'No raw materials yet'}</div>
+          <div className="si-empty-body">
+            {Language.noRawMaterialsHint ||
+              'Add the ingredients and packaging you purchase to track stock and cost.'}
+          </div>
+          <CButton color="primary" onClick={openAdd} className="si-empty-cta">
+            <CIcon icon={cilPlus} className="me-2" />
+            {Language.addRawMaterial || 'Add material'}
           </CButton>
-        </CModalFooter>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="si-empty">
+          <CIcon icon={cilSearch} size="xl" />
+          <div className="si-empty-title">{Language.noMaterialsFound || 'No materials match'}</div>
+          <div className="si-empty-body">
+            {Language.noMaterialsFoundHint || 'Try a different search.'}
+          </div>
+        </div>
+      ) : (
+        <div className="si-list">
+          {filtered.map((material) => (
+            <div className="si-row" key={material._id}>
+              <div>
+                <p className="si-row-title">{material.name}</p>
+                <div className="si-row-meta">
+                  <span>
+                    Cost:{' '}
+                    <strong>
+                      {Number(material.costPerUnit).toFixed(2)} TND / {material.unit}
+                    </strong>
+                  </span>
+                  <span>
+                    Reorder at{' '}
+                    <strong>
+                      {material.reorderLevel} {material.unit}
+                    </strong>
+                  </span>
+                  {material.usedInRecipes > 0 ? (
+                    <span className="si-row-tag is-used">
+                      Used in {material.usedInRecipes}{' '}
+                      {material.usedInRecipes === 1 ? 'recipe' : 'recipes'}
+                    </span>
+                  ) : (
+                    <span className="si-row-tag">Not used</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="si-row-actions">
+                <CButton
+                  color="secondary"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openEdit(material)}
+                  aria-label="Edit"
+                >
+                  <CIcon icon={cilPencil} />
+                </CButton>
+                <CButton
+                  color="danger"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDelete(material._id)}
+                  disabled={material.usedInRecipes > 0}
+                  aria-label="Delete"
+                >
+                  <CIcon icon={cilTrash} />
+                </CButton>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ---------- Add / Edit modal ---------- */}
+      <CModal visible={!!modalMode} onClose={closeModal} backdrop="static" className="si-modal">
+        <div className="si-modal-header">
+          <h5 className="si-modal-title">
+            <CIcon icon={modalMode === 'edit' ? cilPencil : cilPlus} />
+            {modalMode === 'edit'
+              ? Language.editRawMaterial || 'Edit raw material'
+              : Language.addRawMaterial || 'Add raw material'}
+          </h5>
+          <button className="si-modal-close" onClick={closeModal} aria-label="Close" type="button">
+            &times;
+          </button>
+        </div>
+
+        <div className="si-modal-body">
+          <div className="si-field">
+            <label htmlFor="rm-name">{Language.name || 'Name'}</label>
+            <CFormInput
+              id="rm-name"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder={Language.materialName || 'e.g. Coffee beans'}
+              invalid={!!errors.name}
+            />
+            {errors.name && (
+              <CFormFeedback invalid className="d-block">
+                {errors.name}
+              </CFormFeedback>
+            )}
+          </div>
+
+          <div className="si-field">
+            <label htmlFor="rm-unit">{Language.unit || 'Unit'}</label>
+            <CFormInput
+              id="rm-unit"
+              value={form.unit}
+              onChange={(e) => setForm({ ...form, unit: e.target.value })}
+              placeholder="kg, g, L, pcs"
+              invalid={!!errors.unit}
+            />
+            {errors.unit && (
+              <CFormFeedback invalid className="d-block">
+                {errors.unit}
+              </CFormFeedback>
+            )}
+          </div>
+
+          <div className="si-row-2">
+            <div className="si-field">
+              <label htmlFor="rm-cost">{Language.costPerUnit || 'Cost per unit (TND)'}</label>
+              <CFormInput
+                id="rm-cost"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.costPerUnit}
+                onChange={(e) => setForm({ ...form, costPerUnit: e.target.value })}
+                invalid={!!errors.costPerUnit}
+              />
+              {errors.costPerUnit && (
+                <CFormFeedback invalid className="d-block">
+                  {errors.costPerUnit}
+                </CFormFeedback>
+              )}
+            </div>
+            <div className="si-field">
+              <label htmlFor="rm-reorder">{Language.reorderLevel || 'Reorder level'}</label>
+              <CFormInput
+                id="rm-reorder"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.reorderLevel}
+                onChange={(e) => setForm({ ...form, reorderLevel: e.target.value })}
+                invalid={!!errors.reorderLevel}
+              />
+              {errors.reorderLevel && (
+                <CFormFeedback invalid className="d-block">
+                  {errors.reorderLevel}
+                </CFormFeedback>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="si-modal-footer">
+          <CButton color="secondary" variant="outline" onClick={closeModal}>
+            <CIcon icon={cilX} className="me-2" />
+            {Language.cancel || 'Cancel'}
+          </CButton>
+          <CButton color="primary" onClick={handleSubmit}>
+            <CIcon icon={cilCheck} className="me-2" />
+            {modalMode === 'edit'
+              ? Language.saveChanges || 'Save changes'
+              : Language.addRawMaterial || 'Add material'}
+          </CButton>
+        </div>
       </CModal>
-    </CTabPane>
+    </>
   )
 }
 

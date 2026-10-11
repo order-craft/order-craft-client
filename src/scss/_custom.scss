@@ -1,1 +1,117 @@
-// Here you can add other styles
+/* =========================================================================
+   AppSidebar — visual polish + section labels
+   ========================================================================= */
+
+.app-sidebar {
+  background-color: #fafbfc;
+}
+
+/* ---- Brand header ---- */
+.app-sidebar-header {
+  padding: 14px 16px !important;
+  background-color: #fafbfc;
+}
+
+.app-sidebar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0 !important;
+}
+
+.app-sidebar-logo {
+  display: block;
+  width: 100%;
+  max-width: 100px;
+  height: auto;
+  object-fit: contain;
+}
+
+/* ---- Section labels ---- */
+.nav-section-label {
+  padding: 16px 20px 6px 20px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a93a0;
+  user-select: none;
+}
+
+/* First section shouldn't add extra top padding */
+.sidebar-nav > :first-child .nav-section-label,
+.sidebar-nav > .nav-section-label:first-child {
+  padding-top: 10px;
+}
+
+/* ---- Nav links: softer hover, left accent on active ---- */
+.sidebar .nav-link {
+  position: relative;
+  border-radius: 6px;
+  margin: 2px 8px;
+  padding: 8px 12px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sidebar .nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.sidebar .nav-link.active {
+  background-color: rgba(13, 110, 253, 0.08);
+  color: #0d6efd !important;
+}
+
+.sidebar .nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background-color: #0d6efd;
+}
+
+/* Nested items under a group */
+.sidebar .nav-group-items .nav-link {
+  padding-left: 32px;
+  font-size: 0.875rem;
+}
+
+/* ---- Footer ---- */
+.app-sidebar .sidebar-footer {
+  background-color: #fafbfc;
+}
+
+/* ---- Mobile: sidebar shows as overlay ---- */
+@media (max-width: 991.98px) {
+  .app-sidebar {
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .nav-section-label {
+    padding: 12px 16px 6px 16px;
+    font-size: 0.65rem;
+  }
+
+  .sidebar .nav-link {
+    margin: 2px 6px;
+    padding: 10px 14px;
+  }
+}
+
+/* ---- Collapsed (unfoldable) state — icons only ---- */
+.sidebar.sidebar-narrow .nav-section-label {
+  padding: 8px 0;
+  text-align: center;
+  font-size: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  margin: 6px 12px 0 12px;
+}
+
+.sidebar.sidebar-narrow .nav-section-label:first-child {
+  border-top: none;
+  margin-top: 0;
+}

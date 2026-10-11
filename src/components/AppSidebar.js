@@ -15,7 +15,6 @@ import { AppSidebarNav } from './AppSidebarNav'
 
 import logo from 'src/assets/images/logo-.png'
 
-// sidebar nav config
 import NavItems from '../_nav'
 import translations from '../app/Language'
 
@@ -27,9 +26,10 @@ const AppSidebar = () => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
   const navigation = NavItems()
+
   return (
     <CSidebar
-      className="border-end"
+      className="border-end app-sidebar"
       colorScheme={colorMode === 'dark' ? 'dark' : 'light'}
       position="fixed"
       unfoldable={unfoldable}
@@ -38,9 +38,9 @@ const AppSidebar = () => {
         dispatch({ type: 'set', sidebarShow: visible })
       }}
     >
-      <CSidebarHeader className="border-bottom">
-        <CSidebarBrand to="/">
-          <img src={logo} width="100%" />
+      <CSidebarHeader className="border-bottom app-sidebar-header">
+        <CSidebarBrand to="/" className="app-sidebar-brand">
+          {!unfoldable && <img src={logo} alt="Order Craft" className="app-sidebar-logo" />}
         </CSidebarBrand>
         <CCloseButton
           className="d-lg-none"

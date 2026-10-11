@@ -20,132 +20,162 @@ import {
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilTrash, cilInfo, cilPlus, cilRestaurant } from '@coreui/icons'
+import { cilPencil, cilTrash, cilInfo, cilRestaurant } from '@coreui/icons'
 
-const RecipeListComponent = ({ recipes, onEdit, onDelete, loading }) => {
+const RecipeListComponent = ({ recipes, rawMaterials = [], onEdit, onDelete, loading }) => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
   const [expandedRecipes, setExpandedRecipes] = useState(new Set())
 
   const toggleExpand = (recipeId) => {
     setExpandedRecipes((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(recipeId)) {
-        newSet.delete(recipeId)
-      } else {
-        newSet.add(recipeId)
-      }
-      return newSet
+      const next = new Set(prev)
+      if (next.has(recipeId)) next.delete(recipeId)
+      else next.add(recipeId)
+      return next
     })
   }
 
   const isExpanded = (recipeId) => expandedRecipes.has(recipeId)
 
+  const unitCostOf = (recipe) => {
+    let total = 0
+    let anyPriceMissing = false
+    for (const entry of recipe.rawMaterials || []) {
+      // Prefer the populated object; fall back to the raw list from the parent
+      const populated = entry.rawMaterial
+      const fallback = rawMaterials.find((m) => m._id === (populated?._id || populated))
+      const cost = populated?.costPerUnit ?? fallback?.costPerUnit
+      if (typeof cost !== 'number') {
+        anyPriceMissing = true
+        continue
+      }
+      total += cost * (entry.quantityPerUnit || 0)
+    }
+    return { total, anyPriceMissing }
+  }
+
   if (loading) {
     return (
       <div className="text-center py-5">
         <CSpinner color="primary" size="sm" />
-        <p className="mt-3">{Language.loadingRecipes}</p>
+        <p className="mt-3">{Language.loadingRecipes || 'Loading recipes...'}</p>
       </div>
     )
   }
 
-  if (recipes.length === 0) {
-    return (
-      <CCard className="text-center">
-        <CCardBody className="py-5">
-          <CIcon icon={cilRestaurant} size="xl" className="text-muted mb-3" />
-          <h5 className="text-muted">{Language.noRecipesFound}</h5>
-          <p className="text-muted">{Language.createYourFirstRecipe}</p>
-        </CCardBody>
-      </CCard>
-    )
-  }
+  if (recipes.length === 0) return null
 
   return (
     <CRow className="g-3">
-      {recipes.map((recipe) => (
-        <CCol key={recipe._id} xs={12} lg={6} xl={4}>
-          <CCard className="h-100 shadow-sm">
-            <CCardHeader className="d-flex justify-content-between align-items-center">
-              <div className="d-flex align-items-center">
-                <h6 className="mb-0 fw-bold text-truncate" style={{ maxWidth: '200px' }}>
-                  {recipe.product?.name}
-                </h6>
-                <CBadge color="info" className="ms-2">
-                  {recipe.rawMaterials.length} {Language.ingredients}
-                </CBadge>
-              </div>
-              <div className="d-flex gap-2">
-                <CTooltip content={Language.edit}>
-                  <CButton color="warning" variant="ghost" size="sm" onClick={() => onEdit(recipe)}>
-                    <CIcon icon={cilPencil} />
-                  </CButton>
-                </CTooltip>
-                <CTooltip content={Language.delete}>
+      {recipes.map((recipe) => {
+        const expanded = isExpanded(recipe._id)
+        const { total: unitCost, anyPriceMissing } = unitCostOf(recipe)
+        const ingredientsCount = recipe.rawMaterials?.length || 0
+
+        return (
+          <CCol key={recipe._id} xs={12} lg={6} xl={4}>
+            <CCard className="si-rec-card">
+              <CCardHeader className="si-rec-card-header">
+                <div className="si-rec-card-title-wrap">
+                  <div className="si-rec-card-title">
+                    {recipe.product?.name || 'Unknown product'}
+                  </div>
+                  <div className="si-rec-card-sub">
+                    {ingredientsCount} {ingredientsCount === 1 ? 'ingredient' : 'ingredients'}
+                    {unitCost > 0 && (
+                      <>
+                        {' · '}
+                        <span className="si-rec-cost">{unitCost.toFixed(2)} TND / unit</span>
+                      </>
+                    )}
+                    {anyPriceMissing && (
+                      <span className="si-rec-cost-missing"> (some prices missing)</span>
+                    )}
+                  </div>
+                </div>
+                <div className="si-rec-card-actions">
+                  <CTooltip content={Language.edit || 'Edit'}>
+                    <CButton
+                      color="secondary"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onEdit(recipe)}
+                    >
+                      <CIcon icon={cilPencil} />
+                    </CButton>
+                  </CTooltip>
+                  <CTooltip content={Language.delete || 'Delete'}>
+                    <CButton
+                      color="danger"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onDelete(recipe._id)}
+                    >
+                      <CIcon icon={cilTrash} />
+                    </CButton>
+                  </CTooltip>
+                </div>
+              </CCardHeader>
+
+              <CCardBody className="si-rec-card-body">
+                <div className="si-rec-preview">
+                  {recipe.rawMaterials.slice(0, 3).map((rm, idx) => (
+                    <div className="si-rec-preview-line" key={idx}>
+                      <span className="si-rec-preview-name">
+                        {rm.rawMaterial?.name || 'Unknown'}
+                      </span>
+                      <span className="si-rec-preview-qty">
+                        {rm.quantityPerUnit} {rm.rawMaterial?.unit || ''}
+                      </span>
+                    </div>
+                  ))}
+                  {ingredientsCount > 3 && !expanded && (
+                    <div className="si-rec-more">+{ingredientsCount - 3} more</div>
+                  )}
+                </div>
+
+                {ingredientsCount > 3 && (
                   <CButton
-                    color="danger"
-                    variant="ghost"
+                    color="link"
                     size="sm"
-                    onClick={() => onDelete(recipe._id)}
+                    className="si-rec-expand-btn"
+                    onClick={() => toggleExpand(recipe._id)}
                   >
-                    <CIcon icon={cilTrash} />
+                    <CIcon icon={cilInfo} className="me-1" />
+                    {expanded
+                      ? Language.hideDetails || 'Hide details'
+                      : Language.showAllIngredients || 'Show all'}
                   </CButton>
-                </CTooltip>
-              </div>
-            </CCardHeader>
-
-            <CCardBody>
-              <div className="mb-3">
-                {recipe.rawMaterials.slice(0, 2).map((rm, idx) => (
-                  <div key={idx} className="d-flex justify-content-between mb-2">
-                    <span className="fw-medium">{rm.rawMaterial?.name}</span>
-                    <span className="text-muted">
-                      {rm.quantityPerUnit} {rm.rawMaterial?.unit}
-                    </span>
-                  </div>
-                ))}
-                {recipe.rawMaterials.length > 2 && !isExpanded(recipe._id) && (
-                  <div className="text-center text-muted small">
-                    +{recipe.rawMaterials.length - 2} {Language.moreIngredients}
-                  </div>
                 )}
-              </div>
 
-              <CButton
-                color="link"
-                size="sm"
-                className="p-0 d-flex align-items-center"
-                onClick={() => toggleExpand(recipe._id)}
-              >
-                <CIcon icon={cilInfo} className="me-1" />
-                {isExpanded(recipe._id) ? Language.hideDetails : Language.showAllIngredients}
-              </CButton>
-
-              <CCollapse visible={isExpanded(recipe._id)}>
-                <CTable small responsive className="mt-3">
-                  <CTableHead>
-                    <CTableRow>
-                      <CTableHeaderCell>{Language.ingredient}</CTableHeaderCell>
-                      <CTableHeaderCell className="text-end">{Language.quantity}</CTableHeaderCell>
-                    </CTableRow>
-                  </CTableHead>
-                  <CTableBody>
-                    {recipe.rawMaterials.map((rm, idx) => (
-                      <CTableRow key={idx}>
-                        <CTableDataCell>{rm.rawMaterial?.name}</CTableDataCell>
-                        <CTableDataCell className="text-end">
-                          {rm.quantityPerUnit} {rm.rawMaterial?.unit}
-                        </CTableDataCell>
+                <CCollapse visible={expanded}>
+                  <CTable small responsive className="si-rec-table mt-2 mb-0">
+                    <CTableHead>
+                      <CTableRow>
+                        <CTableHeaderCell>{Language.ingredient || 'Ingredient'}</CTableHeaderCell>
+                        <CTableHeaderCell className="text-end">
+                          {Language.quantity || 'Quantity'}
+                        </CTableHeaderCell>
                       </CTableRow>
-                    ))}
-                  </CTableBody>
-                </CTable>
-              </CCollapse>
-            </CCardBody>
-          </CCard>
-        </CCol>
-      ))}
+                    </CTableHead>
+                    <CTableBody>
+                      {recipe.rawMaterials.map((rm, idx) => (
+                        <CTableRow key={idx}>
+                          <CTableDataCell>{rm.rawMaterial?.name || 'Unknown'}</CTableDataCell>
+                          <CTableDataCell className="text-end">
+                            {rm.quantityPerUnit} {rm.rawMaterial?.unit || ''}
+                          </CTableDataCell>
+                        </CTableRow>
+                      ))}
+                    </CTableBody>
+                  </CTable>
+                </CCollapse>
+              </CCardBody>
+            </CCard>
+          </CCol>
+        )
+      })}
     </CRow>
   )
 }

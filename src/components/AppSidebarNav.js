@@ -8,25 +8,23 @@ import 'simplebar-react/dist/simplebar.min.css'
 import { CBadge, CNavLink, CSidebarNav } from '@coreui/react'
 
 export const AppSidebarNav = ({ items }) => {
-  const navLink = (name, icon, badge, indent = false) => {
-    return (
-      <>
-        {icon
-          ? icon
-          : indent && (
-              <span className="nav-icon">
-                <span className="nav-icon-bullet"></span>
-              </span>
-            )}
-        {name && name}
-        {badge && (
-          <CBadge color={badge.color} className="ms-auto">
-            {badge.text}
-          </CBadge>
-        )}
-      </>
-    )
-  }
+  const navLink = (name, icon, badge, indent = false) => (
+    <>
+      {icon
+        ? icon
+        : indent && (
+            <span className="nav-icon">
+              <span className="nav-icon-bullet"></span>
+            </span>
+          )}
+      {name && name}
+      {badge && (
+        <CBadge color={badge.color} className="ms-auto">
+          {badge.text}
+        </CBadge>
+      )}
+    </>
+  )
 
   const navItem = (item, index, indent = false) => {
     const { component, name, badge, icon, ...rest } = item
@@ -49,17 +47,28 @@ export const AppSidebarNav = ({ items }) => {
     const Component = component
     return (
       <Component compact as="div" key={index} toggler={navLink(name, icon)} {...rest}>
-        {item.items?.map((item, index) =>
-          item.items ? navGroup(item, index) : navItem(item, index, true),
+        {item.items?.map((child, i) =>
+          child.items ? navGroup(child, i) : navItem(child, i, true),
         )}
       </Component>
     )
   }
 
+  const render = (node, index) => {
+    if (node.label && Array.isArray(node.items)) {
+      return (
+        <React.Fragment key={`section-${index}`}>
+          <div className="nav-section-label">{node.label}</div>
+          {node.items.map((child, i) => (child.items ? navGroup(child, i) : navItem(child, i)))}
+        </React.Fragment>
+      )
+    }
+    return node.items ? navGroup(node, index) : navItem(node, index)
+  }
+
   return (
     <CSidebarNav as={SimpleBar}>
-      {items &&
-        items.map((item, index) => (item.items ? navGroup(item, index) : navItem(item, index)))}
+      {items && items.map((node, index) => render(node, index))}
     </CSidebarNav>
   )
 }
