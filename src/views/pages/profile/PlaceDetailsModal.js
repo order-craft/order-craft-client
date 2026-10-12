@@ -1,5 +1,5 @@
-import React from "react";
-import PropTypes from "prop-types";
+import React from 'react'
+import PropTypes from 'prop-types'
 import {
   CModal,
   CModalHeader,
@@ -16,24 +16,11 @@ import {
   CCardBody,
   CFormText,
   CFormSwitch,
-} from "@coreui/react";
-import CIcon from "@coreui/icons-react";
-import {
-  cilLocationPin,
-  cilBuilding,
-  cilImage,
-  cilSave,
-  cilX,
-} from "@coreui/icons";
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilLocationPin, cilBuilding, cilImage, cilSave, cilX } from '@coreui/icons'
 
-const PlaceDetailsModal = ({
-  visible,
-  onClose,
-  data,
-  onChange,
-  onFileChange,
-  onSave,
-}) => {
+const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onSave }) => {
   return (
     <CModal
       visible={visible}
@@ -45,7 +32,7 @@ const PlaceDetailsModal = ({
     >
       <CModalHeader className="bg-gradient-info text-white">
         <CIcon icon={cilBuilding} className="me-2" />
-        {data?.placeName ? `Edit ${data.placeName}` : "Add New Place"}
+        {data?.placeName ? `Edit ${data.placeName}` : 'Add New Place'}
       </CModalHeader>
       <CModalBody className="p-4">
         <CCard className="shadow-sm mb-4">
@@ -62,7 +49,7 @@ const PlaceDetailsModal = ({
                   type="text"
                   name="placeName"
                   placeholder="Enter place name"
-                  value={data?.placeName || ""}
+                  value={data?.placeName || ''}
                   onChange={onChange}
                 />
               </CCol>
@@ -72,7 +59,7 @@ const PlaceDetailsModal = ({
                   type="text"
                   name="phoneNumber"
                   placeholder="Enter phone number"
-                  value={data?.phoneNumber || ""}
+                  value={data?.phoneNumber || ''}
                   onChange={onChange}
                 />
               </CCol>
@@ -85,14 +72,44 @@ const PlaceDetailsModal = ({
                   type="text"
                   name="PlaceAddress"
                   placeholder="Enter full address"
-                  value={data?.PlaceAddress || ""}
+                  value={data?.PlaceAddress || ''}
                   onChange={onChange}
                 />
               </CCol>
             </CRow>
           </CCardBody>
         </CCard>
-
+        <CCard className="shadow-sm mb-4">
+          <CCardBody>
+            <h5 className="mb-4 text-info">Brand color</h5>
+            <CRow className="align-items-center">
+              <CCol md={4}>
+                <CFormInput
+                  type="color"
+                  name="brandColor"
+                  value={data?.brandColor || '#8B5A2B'}
+                  onChange={onChange}
+                  style={{ height: 48, padding: 4, cursor: 'pointer' }}
+                />
+              </CCol>
+              <CCol md={8}>
+                <CFormText>
+                  This is the accent color shown to your customers in the ordering app (section
+                  tiles, highlights). Pick something that matches your brand.
+                </CFormText>
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: '0.85rem',
+                    color: '#6c757d',
+                  }}
+                >
+                  Current: <strong>{data?.brandColor || '#8B5A2B'}</strong>
+                </div>
+              </CCol>
+            </CRow>
+          </CCardBody>
+        </CCard>
         <CCard className="shadow-sm mb-4">
           <CCardBody>
             <h5 className="mb-4 text-info">
@@ -106,7 +123,7 @@ const PlaceDetailsModal = ({
                 <CFormInput
                   type="file"
                   name="placeLogo"
-                  onChange={(e) => onFileChange(e, "logo")}
+                  onChange={(e) => onFileChange(e, 'logo')}
                   className="mb-2"
                 />
                 <CFormText>Recommended size: 200x200px</CFormText>
@@ -126,7 +143,7 @@ const PlaceDetailsModal = ({
                 <CFormInput
                   type="file"
                   name="placePicture"
-                  onChange={(e) => onFileChange(e, "place")}
+                  onChange={(e) => onFileChange(e, 'place')}
                   className="mb-2"
                 />
                 <CFormText>Recommended size: 800x600px</CFormText>
@@ -159,7 +176,7 @@ const PlaceDetailsModal = ({
                   type="number"
                   name="distance"
                   placeholder="Enter distance"
-                  value={data?.distance || ""}
+                  value={data?.distance || ''}
                   onChange={onChange}
                 />
               </CCol>
@@ -169,7 +186,7 @@ const PlaceDetailsModal = ({
                   type="text"
                   name="lat"
                   placeholder="Enter latitude"
-                  value={data?.lat || ""}
+                  value={data?.lat || ''}
                   onChange={onChange}
                 />
               </CCol>
@@ -179,7 +196,7 @@ const PlaceDetailsModal = ({
                   type="text"
                   name="long"
                   placeholder="Enter longitude"
-                  value={data?.long || ""}
+                  value={data?.long || ''}
                   onChange={onChange}
                 />
               </CCol>
@@ -193,22 +210,17 @@ const PlaceDetailsModal = ({
               <div className="pe-3">
                 <div className="fw-bold">Enable order status tracking</div>
                 <CFormText>
-                  When on, orders go through Pending → Preparing → Completed.
-                  When off, orders are placed directly as &quot;Placed&quot; and
-                  the staff only handle payment.
+                  When on, orders go through Pending → Preparing → Completed. When off, orders are
+                  placed directly as &quot;Placed&quot; and the staff only handle payment.
                 </CFormText>
               </div>
               <CFormSwitch
                 id="statusFlowEnabledSwitch"
-                checked={
-                  data?.statusFlowEnabled === undefined
-                    ? true
-                    : data.statusFlowEnabled
-                }
+                checked={data?.statusFlowEnabled === undefined ? true : data.statusFlowEnabled}
                 onChange={(e) =>
                   onChange({
                     target: {
-                      name: "statusFlowEnabled",
+                      name: 'statusFlowEnabled',
                       value: e.target.checked,
                     },
                   })
@@ -220,12 +232,7 @@ const PlaceDetailsModal = ({
       </CModalBody>
 
       <CModalFooter className="border-top-0">
-        <CButton
-          color="secondary"
-          onClick={onClose}
-          variant="outline"
-          shape="rounded-pill"
-        >
+        <CButton color="secondary" onClick={onClose} variant="outline" shape="rounded-pill">
           <CIcon icon={cilX} className="me-2" />
           Cancel
         </CButton>
@@ -235,8 +242,8 @@ const PlaceDetailsModal = ({
         </CButton>
       </CModalFooter>
     </CModal>
-  );
-};
+  )
+}
 
 PlaceDetailsModal.propTypes = {
   visible: PropTypes.bool.isRequired,
@@ -254,7 +261,8 @@ PlaceDetailsModal.propTypes = {
     lat: PropTypes.string,
     long: PropTypes.string,
     statusFlowEnabled: PropTypes.bool,
+    brandColor: PropTypes.string,
   }),
-};
+}
 
-export default PlaceDetailsModal;
+export default PlaceDetailsModal

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react'
 import {
   CCard,
   CCardBody,
@@ -10,8 +10,8 @@ import {
   CRow,
   CCol,
   CSpinner,
-} from "@coreui/react";
-import { CIcon } from "@coreui/icons-react";
+} from '@coreui/react'
+import { CIcon } from '@coreui/icons-react'
 import {
   cilUser,
   cilCamera,
@@ -20,40 +20,40 @@ import {
   cilLocationPin,
   cilLockLocked,
   cilHome,
-} from "@coreui/icons";
-import { GetToken } from "../../../helpers/GetToken";
-import { BaseUrl } from "../../../helpers/BaseUrl";
-import PersonalDetailsModal from "./personalDetailsModal";
-import PlaceDetailsModal from "./PlaceDetailsModal";
-import SettingsModal from "./SettingsModal";
-import PDVerificationModal from "./PDVerificationModal";
+} from '@coreui/icons'
+import { GetToken } from '../../../helpers/GetToken'
+import { BaseUrl } from '../../../helpers/BaseUrl'
+import PersonalDetailsModal from './personalDetailsModal'
+import PlaceDetailsModal from './PlaceDetailsModal'
+import SettingsModal from './SettingsModal'
+import PDVerificationModal from './PDVerificationModal'
 
-import axios from "axios";
-import AlertToast from "./AlertToast";
+import axios from 'axios'
+import AlertToast from './AlertToast'
 
 const Profile = () => {
-  const [visible, setVisible] = useState(false);
-  const [DetailsVisible, setDetailsVisible] = useState(false);
+  const [visible, setVisible] = useState(false)
+  const [DetailsVisible, setDetailsVisible] = useState(false)
 
-  const [emailSent, setEmailSent] = useState(false);
-  const [confirmationCode, setConfirmationCode] = useState("");
+  const [emailSent, setEmailSent] = useState(false)
+  const [confirmationCode, setConfirmationCode] = useState('')
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [data, setUserDate] = useState();
-  const token = GetToken();
-  const [tempSrcProfile, setTempSrcProfile] = useState("");
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [data, setUserDate] = useState()
+  const token = GetToken()
+  const [tempSrcProfile, setTempSrcProfile] = useState('')
 
   const fetchUserData = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const response = await axios.get(`${BaseUrl}/auth/get-user`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      });
-      const userData = response.data;
-      console.log(response.data);
+      })
+      const userData = response.data
+      console.log(response.data)
       setPlaceData({
         placeName: response.data.placeName,
         PlaceAddress: response.data.PlaceAddress,
@@ -64,28 +64,24 @@ const Profile = () => {
         long: response.data.placeLocation.long,
         lat: response.data.placeLocation.lat,
         statusFlowEnabled:
-          response.data.statusFlowEnabled === undefined
-            ? true
-            : response.data.statusFlowEnabled,
-      });
-      setUserDate(userData);
-      setEmail(response.data.email);
-      setPersonalPhoneNumber(response.data.personalPhoneNumber);
+          response.data.statusFlowEnabled === undefined ? true : response.data.statusFlowEnabled,
+        brandColor: response.data.brandColor || '#8B5A2B',
+      })
+      setUserDate(userData)
+      setEmail(response.data.email)
+      setPersonalPhoneNumber(response.data.personalPhoneNumber)
     } catch (error) {
-      console.error(
-        "Error fetching user data:",
-        error.response?.data || error.message,
-      );
+      console.error('Error fetching user data:', error.response?.data || error.message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
   //send verification code to change pwd
-  const [oldPassword, setOldPassword] = useState("");
-  const [message, setMessage] = useState("");
+  const [oldPassword, setOldPassword] = useState('')
+  const [message, setMessage] = useState('')
 
   const sendPwdVerificationCode = async (oldPassword) => {
-    setLoading(true);
+    setLoading(true)
 
     try {
       const response = await axios.post(
@@ -96,36 +92,27 @@ const Profile = () => {
             Authorization: `Bearer ${token}`,
           },
         },
-      );
+      )
 
       // Handle successful response
-      console.log("Verification email sent:", response.data.message);
-      setMessage(response.data.message); // Show success message in UI
-      setEmailSent(true);
+      console.log('Verification email sent:', response.data.message)
+      setMessage(response.data.message) // Show success message in UI
+      setEmailSent(true)
     } catch (error) {
-      console.error(
-        "Error sending verification code:",
-        error.response?.data || error.message,
-      );
+      console.error('Error sending verification code:', error.response?.data || error.message)
 
       // Display error message in UI
-      setError(
-        error.response?.data?.error || "Failed to send verification code",
-      );
+      setError(error.response?.data?.error || 'Failed to send verification code')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
   //change pwd after sending verification code
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
 
-  const changePassword = async (
-    verificationCode,
-    newPassword,
-    confirmPassword,
-  ) => {
-    setLoading(true);
+  const changePassword = async (verificationCode, newPassword, confirmPassword) => {
+    setLoading(true)
 
     try {
       const response = await axios.post(
@@ -136,35 +123,32 @@ const Profile = () => {
             Authorization: `Bearer ${token}`,
           },
         },
-      );
+      )
 
       // Handle successful response
-      console.log("Password changed successfully:", response.data.message);
-      setMessage(response.data.message); // Show success message in UI
-      setEmailSent(false);
-      setNewPassword("");
-      setOldPassword("");
-      setConfirmPassword("");
-      setConfirmationCode("");
+      console.log('Password changed successfully:', response.data.message)
+      setMessage(response.data.message) // Show success message in UI
+      setEmailSent(false)
+      setNewPassword('')
+      setOldPassword('')
+      setConfirmPassword('')
+      setConfirmationCode('')
     } catch (error) {
-      console.error(
-        "Error changing password:",
-        error.response?.data || error.message,
-      );
+      console.error('Error changing password:', error.response?.data || error.message)
 
       // Display error message in UI
-      setError(error.response?.data?.error || "Failed to change password");
+      setError(error.response?.data?.error || 'Failed to change password')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const changeProfilePic = (e, picType) => {
-    const file = e.target.files[0];
-    previewFile(file, picType);
-  };
+    const file = e.target.files[0]
+    previewFile(file, picType)
+  }
   const profileChange = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const response = await axios.post(
         `${BaseUrl}/auth/superClient/change-profile`,
@@ -174,28 +158,25 @@ const Profile = () => {
             Authorization: `Bearer ${token}`,
           },
         },
-      );
-      setLoading(false);
+      )
+      setLoading(false)
       // Handle successful response
-      console.log("profile changed successfully:", response.data.message);
-      setMessage(response.data.message); // Show success message in UI
+      console.log('profile changed successfully:', response.data.message)
+      setMessage(response.data.message) // Show success message in UI
     } catch (error) {
-      setLoading(false);
-      console.error(
-        "Error changing profile:",
-        error.response?.data || error.message,
-      );
+      setLoading(false)
+      console.error('Error changing profile:', error.response?.data || error.message)
 
       // Display error message in UI
-      setError(error.response?.data?.error || "Failed to change profile");
+      setError(error.response?.data?.error || 'Failed to change profile')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
   const updateBusinessDetails = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      console.log(placeData);
+      console.log(placeData)
       const response = await axios.post(
         `${BaseUrl}/auth/superClient/update-business-details`,
         { placeData },
@@ -204,57 +185,47 @@ const Profile = () => {
             Authorization: `Bearer ${token}`,
           },
         },
-      );
-      setLoading(false);
+      )
+      setLoading(false)
       // Handle successful response
-      console.log(
-        "Business details changed successfully:",
-        response.data.message,
-      );
-      setMessage(response.data.message); // Show success message in UI
+      console.log('Business details changed successfully:', response.data.message)
+      setMessage(response.data.message) // Show success message in UI
     } catch (error) {
-      setLoading(false);
-      console.error(
-        "Error changing Business details:",
-        error.response?.data || error.message,
-      );
+      setLoading(false)
+      console.error('Error changing Business details:', error.response?.data || error.message)
 
       // Display error message in UI
-      setError(
-        error.response?.data?.error || "Failed to change Business details",
-      );
+      setError(error.response?.data?.error || 'Failed to change Business details')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   // Preview uploaded image
   const previewFile = (file, picType) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
     reader.onloadend = () => {
-      if (picType === "profile") {
-        setTempSrcProfile(reader.result);
+      if (picType === 'profile') {
+        setTempSrcProfile(reader.result)
       }
-      if (picType === "logo") {
-        setPlaceData((prev) => ({ ...prev, logoPreview: reader.result }));
+      if (picType === 'logo') {
+        setPlaceData((prev) => ({ ...prev, logoPreview: reader.result }))
       }
-      if (picType === "place") {
-        setPlaceData((prev) => ({ ...prev, picturePreview: reader.result }));
+      if (picType === 'place') {
+        setPlaceData((prev) => ({ ...prev, picturePreview: reader.result }))
       }
-    };
-  };
+    }
+  }
 
   //personal details modal
-  const [visiblePDModal, setVisiblePDModal] = useState(false);
-  const [email, setEmail] = useState(data?.email);
-  const [personalPhoneNumber, setPersonalPhoneNumber] = useState(
-    data?.personalPhoneNumber,
-  );
-  const [pDVerifModal, setPDVerifModal] = useState(false);
-  const [PDVerifCode, setPDVerifCode] = useState("");
+  const [visiblePDModal, setVisiblePDModal] = useState(false)
+  const [email, setEmail] = useState(data?.email)
+  const [personalPhoneNumber, setPersonalPhoneNumber] = useState(data?.personalPhoneNumber)
+  const [pDVerifModal, setPDVerifModal] = useState(false)
+  const [PDVerifCode, setPDVerifCode] = useState('')
   const sendEmailPDVerif = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const response = await axios.post(
         `${BaseUrl}/auth/client/personal-details-change`,
@@ -264,29 +235,24 @@ const Profile = () => {
             Authorization: `Bearer ${token}`,
           },
         },
-      );
+      )
 
       // Handle successful response
-      console.log("Verification email sent:", response.data.message);
-      setVisiblePDModal(false);
-      setPDVerifModal(true);
-      setMessage(response.data.message); // Show success message in UI
+      console.log('Verification email sent:', response.data.message)
+      setVisiblePDModal(false)
+      setPDVerifModal(true)
+      setMessage(response.data.message) // Show success message in UI
     } catch (error) {
-      console.error(
-        "Error sending verification code:",
-        error.response?.data || error.message,
-      );
+      console.error('Error sending verification code:', error.response?.data || error.message)
 
       // Display error message in UI
-      setError(
-        error.response?.data?.error || "Failed to send verification code",
-      );
+      setError(error.response?.data?.error || 'Failed to send verification code')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
   const confirmChangePDCode = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
       const response = await axios.post(
         `${BaseUrl}/auth/client/verify-pd-change-code`,
@@ -296,59 +262,51 @@ const Profile = () => {
             Authorization: `Bearer ${token}`,
           },
         },
-      );
+      )
 
       // Handle successful response
-      console.log(
-        "personal details changed successfully:",
-        response.data.message,
-      );
-      setPDVerifModal(false);
-      setPDVerifCode("");
-      fetchUserData();
-      setMessage(response.data.message); // Show success message in UI
+      console.log('personal details changed successfully:', response.data.message)
+      setPDVerifModal(false)
+      setPDVerifCode('')
+      fetchUserData()
+      setMessage(response.data.message) // Show success message in UI
     } catch (error) {
-      console.error(
-        "Error sending verification code:",
-        error.response?.data || error.message,
-      );
+      console.error('Error sending verification code:', error.response?.data || error.message)
 
       // Display error message in UI
-      setError(
-        error.response?.data?.error || "Failed to send verification code",
-      );
+      setError(error.response?.data?.error || 'Failed to send verification code')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-  const [placeData, setPlaceData] = useState({});
+  }
+  const [placeData, setPlaceData] = useState({})
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setPlaceData((prev) => ({ ...prev, [name]: value }));
-  };
+    const { name, value } = e.target
+    setPlaceData((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleFileChange = (e, type) => {
-    const file = e.target.files[0];
-    const previewUrl = file ? URL.createObjectURL(file) : "";
-    if (type === "logo") {
-      setPlaceData((prev) => ({ ...prev, logoPreview: previewUrl }));
-    } else if (type === "picture") {
-      setPlaceData((prev) => ({ ...prev, picturePreview: previewUrl }));
+    const file = e.target.files[0]
+    const previewUrl = file ? URL.createObjectURL(file) : ''
+    if (type === 'logo') {
+      setPlaceData((prev) => ({ ...prev, logoPreview: previewUrl }))
+    } else if (type === 'picture') {
+      setPlaceData((prev) => ({ ...prev, picturePreview: previewUrl }))
     }
-  };
+  }
 
   const handleSave = () => {
-    console.log("Saving data:", placeData);
-    setDetailsVisible(false);
-  };
+    console.log('Saving data:', placeData)
+    setDetailsVisible(false)
+  }
 
   useEffect(() => {
-    fetchUserData();
-  }, []);
+    fetchUserData()
+  }, [])
 
   if (loading) {
-    return <CSpinner />;
+    return <CSpinner />
   }
 
   return (
@@ -378,24 +336,18 @@ const Profile = () => {
               <div className="d-flex justify-content-center">
                 <div className="position-relative">
                   <CCardImage
-                    src={
-                      data?.profilePicture || "https://via.placeholder.com/300"
-                    }
+                    src={data?.profilePicture || 'https://via.placeholder.com/300'}
                     alt="Profile Picture"
                     className="rounded-circle border-4 border-white shadow-lg"
                     style={{
-                      width: "180px",
-                      height: "180px",
-                      objectFit: "cover",
-                      transform: "translateY(-50px)",
+                      width: '180px',
+                      height: '180px',
+                      objectFit: 'cover',
+                      transform: 'translateY(-50px)',
                     }}
                   />
                   <div className="position-absolute bottom-0 end-0 bg-white rounded-circle p-2 shadow-sm">
-                    <CIcon
-                      icon={cilCamera}
-                      className="text-primary"
-                      size="lg"
-                    />
+                    <CIcon icon={cilCamera} className="text-primary" size="lg" />
                   </div>
                 </div>
               </div>
@@ -404,11 +356,11 @@ const Profile = () => {
             {/* User Information */}
             <div className="text-center mt-3 pt-4">
               <CCardTitle className="fw-bold fs-3 text-dark mb-1">
-                {data?.fullName || "Your Name"}
+                {data?.fullName || 'Your Name'}
               </CCardTitle>
               <CCardText className="text-muted mb-3">
                 <CIcon icon={cilBuilding} className="me-1" />
-                {data?.placeName || "Your Business"}
+                {data?.placeName || 'Your Business'}
               </CCardText>
 
               {/* Info Cards */}
@@ -417,15 +369,12 @@ const Profile = () => {
                   <div className="bg-light rounded-3 p-3 h-100">
                     <div className="d-flex align-items-center">
                       <div className="bg-primary bg-opacity-10 rounded-circle p-2 me-3">
-                        <CIcon
-                          icon={cilEnvelopeOpen}
-                          className="text-primary"
-                        />
+                        <CIcon icon={cilEnvelopeOpen} className="text-primary" />
                       </div>
                       <div className="text-start">
                         <small className="text-muted d-block">Email</small>
                         <span className="fw-semibold text-break">
-                          {data?.email || "your.email@example.com"}
+                          {data?.email || 'your.email@example.com'}
                         </span>
                       </div>
                     </div>
@@ -440,7 +389,7 @@ const Profile = () => {
                       <div className="text-start">
                         <small className="text-muted d-block">Location</small>
                         <span className="fw-semibold text-break">
-                          {data?.PlaceAddress || "Your Address"}
+                          {data?.PlaceAddress || 'Your Address'}
                         </span>
                       </div>
                     </div>
@@ -534,7 +483,7 @@ const Profile = () => {
       <AlertToast message={message} setMessage={setMessage} type="success" />
       <AlertToast message={error} setMessage={setError} type="danger" />
     </CRow>
-  );
-};
+  )
+}
 
-export default Profile;
+export default Profile
