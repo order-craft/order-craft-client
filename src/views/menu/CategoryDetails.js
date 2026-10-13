@@ -1,60 +1,53 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
+  CButton,
   CCard,
   CCardBody,
-  CRow,
-  CCol,
-  CButton,
   CModal,
-  CModalBody,
-  CModalFooter,
-  CModalHeader,
-  CModalTitle,
-  CForm,
   CFormInput,
   CFormTextarea,
-  CInputGroup,
-  CInputGroupText,
+  CFormSwitch,
+  CFormFeedback,
   CSpinner,
-  CBadge,
-  CAlert,
 } from '@coreui/react'
-import { useParams } from 'react-router-dom'
-import axios from 'axios'
-import { BaseUrl } from '../../helpers/BaseUrl'
+import CIcon from '@coreui/icons-react'
 import {
+  cilSearch,
+  cilPlus,
   cilPencil,
   cilTrash,
-  cilSearch,
-  cilWarning,
-  cilPlus,
-  cilCloudUpload,
   cilFastfood,
+  cilWarning,
+  cilChevronLeft,
+  cilCloudUpload,
 } from '@coreui/icons'
-import CIcon from '@coreui/icons-react'
+import axios from 'axios'
+import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './product.css'
 
 const CategoryDetails = () => {
-  // Language
+  const { id } = useParams()
+  const navigate = useNavigate()
   const t = useSelector((state) => state.language)
   const Language = translations[t]
-  const { id } = useParams()
 
-  // State
   const [category, setCategory] = useState(null)
+  const [section, setSection] = useState(null)
   const [products, setProducts] = useState([])
-  const [filteredProducts, setFilteredProducts] = useState([])
   const [loading, setLoading] = useState(false)
-  const [modalMode, setModalMode] = useState(null) // 'add' or 'edit'
-  const [currentProductId, setCurrentProductId] = useState(null)
+  const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [errorMsg, setErrorMsg] = useState(null)
+  const [busyIds, setBusyIds] = useState(new Set())
+
+  const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | null
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [formError, setFormError] = useState('')
   const [tempSrc, setTempSrc] = useState(null)
 
-  // Form data
-  const [productData, setProductData] = useState({
+  const [form, setForm] = useState({
     name: '',
     description: '',
     price: '',
@@ -62,48 +55,53 @@ const CategoryDetails = () => {
     img: '',
   })
 
-  // Fetch category details and products
+  const [confirmTarget, setConfirmTarget] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  /* ---------- data ---------- */
   const fetchCategoryDetails = async () => {
     setLoading(true)
+    setError('')
     try {
       const token = localStorage.getItem('token')
       const response = await axios.get(`${BaseUrl}/categories/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
-      setCategory(response.data.category)
-      setProducts(response.data.products)
-      setFilteredProducts(response.data.products)
+      setCategory(response.data.category || response.data)
+      setProducts(response.data.products || [])
     } catch (err) {
-      console.error('Error fetching category details', err)
-      handleErrorDisplay(err.response?.data?.error || 'Failed to fetch category details')
+      setError(Language.fetchError || 'Error fetching category details')
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   useEffect(() => {
-    fetchCategoryDetails()
+    if (id) fetchCategoryDetails()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  // Filter products based on search query
-  useEffect(() => {
-    setFilteredProducts(
-      products.filter((product) => product.name.toLowerCase().includes(searchQuery.toLowerCase())),
-    )
-  }, [searchQuery, products])
+  /* ---------- derived ---------- */
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products
+    const q = searchQuery.trim().toLowerCase()
+    return products.filter((p) => (p.name || '').toLowerCase().includes(q))
+  }, [products, searchQuery])
 
-  // Handle error display
-  const handleErrorDisplay = (error) => {
-    setErrorMsg(error)
-    setTimeout(() => {
-      setErrorMsg(null)
-    }, 3000)
-  }
+  const totals = useMemo(() => {
+    let available = 0
+    let discounted = 0
+    products.forEach((p) => {
+      if (p.available !== false) available++
+      if (Number(p.discountPercentage) > 0) discounted++
+    })
+    return { available, discounted }
+  }, [products])
 
-  // Reset form and modal state
+  /* ---------- modal ---------- */
   const resetForm = () => {
-    setProductData({
+    setForm({
       name: '',
       description: '',
       price: '',
@@ -111,397 +109,492 @@ const CategoryDetails = () => {
       img: '',
     })
     setTempSrc(null)
-    setCurrentProductId(null)
+    setEditingProduct(null)
+    setFormError('')
     setModalMode(null)
   }
 
-  // Handle modal close
-  const handleModalClose = () => {
+  const openAdd = () => {
     resetForm()
-  }
-
-  // Open modal in add mode
-  const openAddModal = () => {
     setModalMode('add')
   }
 
-  // Open modal in edit mode
-  const openEditModal = (product) => {
-    setProductData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
+  const openEdit = (product) => {
+    setForm({
+      name: product.name || '',
+      description: product.description || '',
+      price: String(product.price ?? ''),
       discountPercentage: product.discountPercentage || 0,
       img: product.img || '',
     })
     setTempSrc(product.img || null)
-    setCurrentProductId(product._id)
+    setEditingProduct(product)
+    setFormError('')
     setModalMode('edit')
   }
 
-  // Save product (handles both add and edit)
-  const handleSaveProduct = async () => {
-    if (!productData.name || !productData.price) {
-      handleErrorDisplay('Name and price are required')
+  const closeModal = () => {
+    resetForm()
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onloadend = () => {
+      setTempSrc(reader.result)
+      setForm((prev) => ({ ...prev, img: reader.result }))
+    }
+  }
+
+  const handleSave = async () => {
+    if (!form.name.trim()) {
+      setFormError(Language.nameRequired || 'Name is required')
+      return
+    }
+    if (!form.price || isNaN(Number(form.price))) {
+      setFormError(Language.priceRequired || 'Valid price is required')
       return
     }
 
-    setLoading(true)
+    setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
       const url =
-        modalMode === 'add' ? `${BaseUrl}/products` : `${BaseUrl}/products/${currentProductId}`
-
+        modalMode === 'add' ? `${BaseUrl}/products` : `${BaseUrl}/products/${editingProduct._id}`
       const method = modalMode === 'add' ? 'post' : 'put'
 
       await axios[method](
         url,
         {
-          ...productData,
+          ...form,
+          price: Number(form.price),
+          discountPercentage: Number(form.discountPercentage) || 0,
           categoryId: id,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        { headers: { Authorization: `Bearer ${token}` } },
       )
 
-      resetForm()
+      closeModal()
       fetchCategoryDetails()
     } catch (err) {
-      handleErrorDisplay(err.response?.data?.error || 'Operation failed')
+      setFormError(err.response?.data?.error || Language.saveError || 'Operation failed')
       console.error('Error saving product', err)
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
-  // Delete a product
-  const handleDeleteProduct = async (productId) => {
-    if (
-      window.confirm(
-        Language.confirmDeleteProduct || 'Are you sure you want to delete this product?',
+  /* ---------- delete ---------- */
+  const askDelete = (product) => {
+    setConfirmTarget(product)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmTarget) return
+    setDeleting(true)
+    try {
+      const token = localStorage.getItem('token')
+      await axios.delete(`${BaseUrl}/products/${confirmTarget._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setConfirmTarget(null)
+      fetchCategoryDetails()
+    } catch (err) {
+      console.error('Error deleting product', err)
+      setConfirmTarget(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  /* ---------- availability toggle ---------- */
+  const toggleAvailability = async (product) => {
+    const current = product.available !== false
+    const next = !current
+
+    // Optimistic
+    setProducts((prev) => prev.map((p) => (p._id === product._id ? { ...p, available: next } : p)))
+    setBusyIds((prev) => new Set(prev).add(product._id))
+
+    try {
+      const token = localStorage.getItem('token')
+      await axios.put(
+        `${BaseUrl}/products/${product._id}/availability`,
+        { available: next },
+        { headers: { Authorization: `Bearer ${token}` } },
       )
-    ) {
-      try {
-        const token = localStorage.getItem('token')
-        await axios.delete(`${BaseUrl}/products/${productId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        fetchCategoryDetails()
-      } catch (err) {
-        handleErrorDisplay(err.response?.data?.error || 'Failed to delete product')
-        console.error('Error deleting product', err)
-      }
+    } catch (err) {
+      // Revert
+      setProducts((prev) =>
+        prev.map((p) => (p._id === product._id ? { ...p, available: current } : p)),
+      )
+      console.error('Error toggling availability', err)
+    } finally {
+      setBusyIds((prev) => {
+        const next = new Set(prev)
+        next.delete(product._id)
+        return next
+      })
     }
   }
 
-  // Handle file upload for product image
-  const handleFileChange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+  /* ---------- navigation ---------- */
+  const goBack = () => navigate(-1)
 
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onloadend = () => {
-      setTempSrc(reader.result)
-      setProductData((prev) => ({
-        ...prev,
-        img: reader.result,
-      }))
-    }
+  /* ---------- render ---------- */
+  if (loading && !category) {
+    return (
+      <div className="text-center py-5">
+        <CSpinner color="primary" />
+      </div>
+    )
   }
 
-  if (loading && !modalMode) return <CSpinner color="primary" />
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="alert alert-danger">{error}</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="category-details-container">
-      {/* Header and Search */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1>{category?.name}</h1>
-        <CInputGroup style={{ width: '300px' }}>
-          <CInputGroupText>
-            <CIcon icon={cilSearch} />
-          </CInputGroupText>
-          <CFormInput
-            placeholder={Language.searchProducts || 'Search products...'}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </CInputGroup>
-      </div>
-
-      {/* Add Product Button */}
-      <div className="d-flex justify-content-end mb-4">
-        <CButton color="success" onClick={openAddModal}>
-          <CIcon icon={cilPlus} className="me-2" />
-          {Language.addNewProduct}
-        </CButton>
-      </div>
-
-      {/* Products Grid */}
-      <CRow className="g-4">
-        {filteredProducts.length === 0 ? (
-          <div className="text-center py-5">
-            <CIcon icon={cilWarning} size="xxl" className="text-muted mb-3" />
-            <h3 className="text-muted">{Language.noProductsFound || 'No products found'}</h3>
-            <p className="text-muted">
-              {Language.tryAdjustSearch || 'Try adjusting your search or add new products'}
-            </p>
+    <CCard className="mb-4">
+      {/* ---- Top strip ---- */}
+      <div className="pd-header">
+        <div className="pd-header-inner">
+          <div className="pd-header-left">
+            <div className="pd-breadcrumb">
+              <CIcon
+                icon={cilChevronLeft}
+                onClick={goBack}
+                style={{ cursor: 'pointer' }}
+                aria-label="Back"
+              />
+              <span>{Language.menu || 'Menu'}</span>
+              <span>·</span>
+              <span>{category?.name || 'Category'}</span>
+            </div>
+            <h5 className="pd-title">{category?.name || Language.products || 'Products'}</h5>
+            <div className="pd-subtitle">
+              <strong>{products.length}</strong> {products.length === 1 ? 'product' : 'products'}
+              {' · '}
+              <strong>{totals.available}</strong> available
+              {totals.discounted > 0 && (
+                <>
+                  {' · '}
+                  <strong>{totals.discounted}</strong> on discount
+                </>
+              )}
+            </div>
           </div>
-        ) : (
-          filteredProducts.map((product) => (
-            <CCol key={product._id} xs={12} sm={6} md={4} lg={3}>
-              <CCard className="product-card h-100 border-0">
-                {/* Product Image with Badges */}
-                <div className="product-image-container position-relative">
-                  {product.img ? (
-                    <img src={product.img} alt={product.name} className="product-image" />
-                  ) : (
-                    <div className="product-image-placeholder">
-                      <CIcon icon={cilFastfood} size="xxl" className="text-light opacity-50" />
-                    </div>
-                  )}
 
-                  {/* Discount Badge */}
-                  {product.discountPercentage > 0 && (
-                    <div className="discount-badge">-{product.discountPercentage}%</div>
-                  )}
-
-                  {/* Quick Actions (hover) */}
-                  <div className="product-actions">
-                    <CButton
-                      color="light"
-                      shape="rounded-pill"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        openEditModal(product)
-                      }}
-                    >
-                      <CIcon icon={cilPencil} />
-                    </CButton>
-                    <CButton
-                      color="light"
-                      shape="rounded-pill"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteProduct(product._id)
-                      }}
-                    >
-                      <CIcon icon={cilTrash} className="text-danger" />
-                    </CButton>
-                  </div>
-                </div>
-
-                <CCardBody>
-                  {/* Product Title */}
-                  <h5 className="product-title mb-2">
-                    {product.name}
-                    {product.isPopular && (
-                      <CBadge color="warning" className="ms-2">
-                        {Language.popular || 'Popular'}
-                      </CBadge>
-                    )}
-                  </h5>
-
-                  {/* Product Description */}
-                  <p className="product-description text-muted small mb-3">
-                    {product.description || Language.noDescription || 'No description available'}
-                  </p>
-
-                  {/* Pricing */}
-                  <div className="product-pricing">
-                    {product.discountPercentage > 0 ? (
-                      <>
-                        <span className="original-price text-muted text-decoration-line-through me-2">
-                          {product.price} {Language.currency || 'TND'}
-                        </span>
-                        <span className="discounted-price text-danger fw-bold">
-                          {(product.price * (1 - product.discountPercentage / 100)).toFixed(2)}{' '}
-                          {Language.currency || 'TND'}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="current-price fw-bold">
-                        {product.price} {Language.currency || 'TND'}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Additional Info */}
-                  <div className="product-meta d-flex justify-content-between mt-3">
-                    {product.category && (
-                      <CBadge color="light" className="text-dark">
-                        {product.category}
-                      </CBadge>
-                    )}
-                    {product.stock !== undefined && (
-                      <small className={product.stock < 5 ? 'text-warning' : 'text-success'}>
-                        {product.stock} {Language.inStock || 'in stock'}
-                      </small>
-                    )}
-                  </div>
-                </CCardBody>
-              </CCard>
-            </CCol>
-          ))
-        )}
-      </CRow>
-
-      {/* Unified Product Modal */}
-      <CModal
-        visible={!!modalMode}
-        onClose={handleModalClose}
-        className="product-modal"
-        backdrop="static"
-      >
-        <CModalHeader className="border-0 pb-0">
-          <CModalTitle className="modal-title">
-            <CIcon icon={modalMode === 'edit' ? cilPencil : cilPlus} className="me-2" />
-            {modalMode === 'edit' ? Language.editProduct : Language.addProduct}
-          </CModalTitle>
-        </CModalHeader>
-
-        {errorMsg && (
-          <CAlert
-            color="danger"
-            className="alert-dismissible fade show mx-3 mb-0 mt-2"
-            closeButton
-            onClose={() => setErrorMsg(null)}
-          >
-            <CIcon icon={cilWarning} className="me-2" />
-            {errorMsg}
-          </CAlert>
-        )}
-
-        <CModalBody className="pt-4">
-          <CForm className="row g-3">
-            {/* Name Field */}
-            <div className="col-md-12">
-              <CFormInput
-                required
-                label={
-                  <>
-                    {Language.name} <span className="text-danger">*</span>
-                  </>
-                }
-                value={productData.name}
-                onChange={(e) => setProductData({ ...productData, name: e.target.value })}
-                placeholder={Language.enterProductName || 'Enter product name'}
-                className="form-control-lg"
+          <div className="pd-header-right">
+            <div className="pd-search">
+              <CIcon icon={cilSearch} className="pd-search-icon" />
+              <input
+                type="text"
+                placeholder={Language.searchProducts || 'Search products...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <CButton color="primary" onClick={openAdd}>
+              <CIcon icon={cilPlus} className="me-2" />
+              {Language.addNewProduct || 'New product'}
+            </CButton>
+          </div>
+        </div>
+      </div>
 
-            {/* Description Field */}
-            <div className="col-md-12">
-              <CFormTextarea
-                label={Language.description}
-                value={productData.description}
-                onChange={(e) => setProductData({ ...productData, description: e.target.value })}
-                placeholder={Language.enterProductDescription || 'Enter product description'}
-                rows={3}
-              />
+      {/* ---- Grid ---- */}
+      <CCardBody className="p-0">
+        <div className="pd-grid">
+          {products.length === 0 ? (
+            <div className="pd-empty">
+              <CIcon icon={cilFastfood} size="xl" />
+              <div className="pd-empty-title">{Language.noProductsYet || 'No products yet'}</div>
+              <div className="pd-empty-body">
+                {Language.noProductsHint || 'Add the items customers can order from this category.'}
+              </div>
+              <CButton color="primary" onClick={openAdd}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.addNewProduct || 'New product'}
+              </CButton>
             </div>
-
-            {/* Price & Discount Fields */}
-            <div className="col-md-6">
-              <CFormInput
-                required
-                label={
-                  <>
-                    {Language.price} <span className="text-danger">*</span>
-                  </>
-                }
-                type="number"
-                value={productData.price}
-                onChange={(e) => setProductData({ ...productData, price: e.target.value })}
-                placeholder="0.00"
-                className="form-control-lg"
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div className="col-md-6">
-              <CFormInput
-                label={Language.discountPercentage}
-                type="number"
-                value={productData.discountPercentage || 0}
-                onChange={(e) =>
-                  setProductData({
-                    ...productData,
-                    discountPercentage: parseFloat(e.target.value),
-                  })
-                }
-                placeholder="0"
-                min="0"
-                max="100"
-                addon="%"
-              />
-            </div>
-
-            {/* Image Upload */}
-            <div className="col-md-12">
-              <div className="image-upload-container">
-                <label className="form-label">{Language.image}</label>
-                <div className="image-upload-card">
-                  <CFormInput
-                    type="file"
-                    name="img"
-                    onChange={handleFileChange}
-                    className="d-none"
-                    id="productImageUpload"
-                    accept="image/*"
-                  />
-                  <label htmlFor="productImageUpload" className="upload-area">
-                    {tempSrc ? (
-                      <div className="image-preview-container">
-                        <img src={tempSrc} alt="Product Preview" className="image-preview" />
-                        <div className="image-overlay">
-                          <CIcon icon={cilCloudUpload} size="xl" />
-                          <span>{Language.changeImage || 'Change Image'}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="upload-placeholder">
-                        <CIcon icon={cilCloudUpload} size="xl" />
-                        <span>{Language.clickToUpload || 'Click to upload product image'}</span>
-                        <small className="text-muted d-block mt-2">
-                          {Language.recommendedSize || 'Recommended size: 800x800px'}
-                        </small>
-                      </div>
-                    )}
-                  </label>
-                </div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="pd-empty">
+              <CIcon icon={cilWarning} size="xl" />
+              <div className="pd-empty-title">
+                {Language.noProductsMatch || 'No products match'}
+              </div>
+              <div className="pd-empty-body">
+                {Language.noProductsMatchHint || 'Try a different search term.'}
               </div>
             </div>
-          </CForm>
-        </CModalBody>
+          ) : (
+            filteredProducts.map((product) => {
+              const discount = Number(product.discountPercentage) || 0
+              const raw = Number(product.price) || 0
+              const finalPrice = discount > 0 ? raw * (1 - discount / 100) : raw
+              const available = product.available !== false
+              const busy = busyIds.has(product._id)
 
-        <CModalFooter className="border-0">
-          <CButton color="light" onClick={handleModalClose} className="px-4" disabled={loading}>
-            {Language.cancel}
+              return (
+                <div key={product._id} className={`pd-card ${available ? '' : 'is-unavailable'}`}>
+                  <div className="pd-image-wrap">
+                    {product.img ? (
+                      <img src={product.img} alt={product.name} className="pd-image" />
+                    ) : (
+                      <div className="pd-image-placeholder">
+                        {(product.name || '?').charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    {discount > 0 && available && <div className="pd-discount">-{discount}%</div>}
+
+                    {!available && (
+                      <div className="pd-unavailable-veil">
+                        {Language.unavailable || 'Unavailable'}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pd-body">
+                    <p className="pd-name">{product.name}</p>
+                    {product.description && <div className="pd-desc">{product.description}</div>}
+                    <div className="pd-price-row">
+                      <span className="pd-price-final">{finalPrice.toFixed(2)} TND</span>
+                      {discount > 0 && <span className="pd-price-original">{raw.toFixed(2)}</span>}
+                    </div>
+                  </div>
+
+                  <div className="pd-actions">
+                    <div className="pd-actions-left">
+                      {busy ? (
+                        <CSpinner size="sm" />
+                      ) : (
+                        <CFormSwitch
+                          checked={available}
+                          onChange={() => toggleAvailability(product)}
+                          aria-label="Toggle availability"
+                        />
+                      )}
+                      <span>
+                        {available
+                          ? Language.available || 'Available'
+                          : Language.unavailable || 'Unavailable'}
+                      </span>
+                    </div>
+                    <div className="pd-actions-right">
+                      <CButton
+                        color="secondary"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(product)}
+                        aria-label="Edit product"
+                      >
+                        <CIcon icon={cilPencil} />
+                      </CButton>
+                      <CButton
+                        color="danger"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => askDelete(product)}
+                        aria-label="Delete product"
+                      >
+                        <CIcon icon={cilTrash} />
+                      </CButton>
+                    </div>
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </CCardBody>
+
+      {/* ---- Add / Edit modal ---- */}
+      <CModal
+        visible={!!modalMode}
+        onClose={closeModal}
+        size="lg"
+        backdrop="static"
+        className="pd-modal"
+      >
+        <div className="pd-modal-header">
+          <h5 className="pd-modal-title">
+            <CIcon icon={modalMode === 'edit' ? cilPencil : cilPlus} />
+            {modalMode === 'edit'
+              ? Language.editProduct || 'Edit product'
+              : Language.addNewProduct || 'New product'}
+          </h5>
+          <button className="pd-modal-close" onClick={closeModal} aria-label="Close" type="button">
+            &times;
+          </button>
+        </div>
+
+        <div className="pd-modal-body">
+          {/* Basic info */}
+          <div className="pd-form-section">
+            <div className="pd-form-section-title">{Language.basicInfo || 'Basic info'}</div>
+
+            <div className="pd-field">
+              <label htmlFor="pd-name">{Language.name || 'Name'}</label>
+              <CFormInput
+                id="pd-name"
+                value={form.name}
+                autoFocus
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Cappuccino"
+              />
+            </div>
+
+            <div className="pd-field">
+              <label htmlFor="pd-desc">{Language.description || 'Description'}</label>
+              <CFormTextarea
+                id="pd-desc"
+                rows={3}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Short description"
+              />
+            </div>
+          </div>
+
+          {/* Pricing */}
+          <div className="pd-form-section">
+            <div className="pd-form-section-title">{Language.pricing || 'Pricing'}</div>
+
+            <div className="pd-row-2">
+              <div className="pd-field">
+                <label htmlFor="pd-price">{Language.price || 'Price'} (TND)</label>
+                <CFormInput
+                  id="pd-price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="pd-field">
+                <label htmlFor="pd-discount">{Language.discountPercentage || 'Discount'} (%)</label>
+                <CFormInput
+                  id="pd-discount"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  value={form.discountPercentage}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      discountPercentage: e.target.value,
+                    })
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Image */}
+          <div className="pd-form-section">
+            <div className="pd-form-section-title">{Language.image || 'Image'}</div>
+
+            <label className="pd-upload" htmlFor="pd-upload">
+              {tempSrc ? (
+                <img src={tempSrc} alt="Preview" className="pd-upload-preview" />
+              ) : (
+                <>
+                  <CIcon icon={cilCloudUpload} size="xl" className="mb-2 text-muted" />
+                  <div className="pd-upload-hint">
+                    {Language.clickToUpload || 'Click to upload product image'}
+                  </div>
+                </>
+              )}
+              <input
+                id="pd-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+              />
+            </label>
+          </div>
+
+          {formError && (
+            <CFormFeedback invalid className="d-block mt-3">
+              {formError}
+            </CFormFeedback>
+          )}
+        </div>
+
+        <div className="pd-modal-footer">
+          <CButton color="secondary" variant="outline" onClick={closeModal} disabled={submitting}>
+            {Language.cancel || 'Cancel'}
           </CButton>
-          <CButton
-            color="primary"
-            onClick={handleSaveProduct}
-            className="px-4"
-            disabled={loading || !productData.name || !productData.price}
-          >
-            {loading ? (
-              <CSpinner size="sm" />
+          <CButton color="primary" onClick={handleSave} disabled={submitting}>
+            {submitting ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.saving || 'Saving…'}
+              </>
             ) : modalMode === 'edit' ? (
-              Language.saveChanges
+              Language.saveChanges || 'Save'
             ) : (
-              Language.addProduct
+              Language.create || 'Create'
             )}
           </CButton>
-        </CModalFooter>
+        </div>
       </CModal>
-    </div>
+
+      {/* ---- Confirm delete ---- */}
+      <CModal
+        visible={!!confirmTarget}
+        onClose={() => setConfirmTarget(null)}
+        backdrop="static"
+        className="pd-modal"
+      >
+        <div className="pd-confirm-body">
+          <div className="pd-confirm-icon">
+            <CIcon icon={cilTrash} />
+          </div>
+          <div className="pd-confirm-title">{Language.deleteProduct || 'Delete product'}</div>
+          <div className="pd-confirm-text">
+            {Language.deleteProductConfirm ||
+              'This will permanently remove the product from the menu. This cannot be undone.'}
+          </div>
+        </div>
+        <div className="pd-modal-footer">
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={() => setConfirmTarget(null)}
+            disabled={deleting}
+          >
+            {Language.cancel || 'Cancel'}
+          </CButton>
+          <CButton color="danger" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.deleting || 'Deleting…'}
+              </>
+            ) : (
+              <>
+                <CIcon icon={cilTrash} className="me-2" />
+                {Language.delete || 'Delete'}
+              </>
+            )}
+          </CButton>
+        </div>
+      </CModal>
+    </CCard>
   )
 }
 

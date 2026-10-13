@@ -1,47 +1,72 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
+  CButton,
   CCard,
   CCardBody,
-  CCardHeader,
-  CButton,
-  CForm,
-  CFormInput,
-  CTable,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableBody,
-  CTableDataCell,
   CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
+  CFormInput,
   CSpinner,
-  CAlert,
   CToaster,
   CToast,
   CToastHeader,
   CToastBody,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPlus, cilPencil, cilTrash, cilCheckCircle, cilWarning } from '@coreui/icons'
+import { cilPlus, cilPencil, cilTrash, cilCreditCard, cilWarning } from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
+import { useSelector } from 'react-redux'
+import translations from '../../app/Language'
+import './PaymentMethodManager.css'
+
+/* deterministic color per payment-method id */
+const palette = [
+  '#0d6efd',
+  '#6610f2',
+  '#d63384',
+  '#fd7e14',
+  '#198754',
+  '#20c997',
+  '#0dcaf0',
+  '#e83e8c',
+]
+const colorFor = (id) => {
+  let h = 0
+  const s = String(id || '')
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return palette[Math.abs(h) % palette.length]
+}
 
 const PaymentMethodManager = () => {
+  const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+
   const [methods, setMethods] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalVisible, setModalVisible] = useState(false)
   const [editMode, setEditMode] = useState(false)
-  const [formData, setFormData] = useState({ name: '', description: '' })
   const [editId, setEditId] = useState(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+  })
   const [errors, setErrors] = useState({})
-  const [toast, setToast] = useState({ show: false, message: '', color: 'success' })
-  const [deleteLoading, setDeleteLoading] = useState(null)
-  const [saveLoading, setSaveLoading] = useState(false)
-  const token = GetToken()
+  const [submitting, setSubmitting] = useState(false)
+
+  const [confirmTarget, setConfirmTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const [toasts, setToasts] = useState([])
+  const showToast = (msg, color = 'success') => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, msg, color }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id))
+    }, 5000)
+  }
+  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
 
   const axiosConfig = {
     headers: {
@@ -50,13 +75,14 @@ const PaymentMethodManager = () => {
     },
   }
 
+  /* ---------- data ---------- */
   const fetchMethods = async () => {
     try {
       setLoading(true)
       const res = await axios.get(`${BaseUrl}/payment-methods`, axiosConfig)
       setMethods(res.data)
     } catch (error) {
-      showToast('Failed to fetch payment methods', 'danger')
+      showToast(Language.fetchError || 'Failed to fetch payment methods', 'danger')
     } finally {
       setLoading(false)
     }
@@ -64,194 +90,309 @@ const PaymentMethodManager = () => {
 
   useEffect(() => {
     fetchMethods()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const validateForm = () => {
-    const newErrors = {}
-    if (!formData.name.trim()) newErrors.name = 'Name is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+  /* ---------- modal ---------- */
+  const openAdd = () => {
+    setFormData({ name: '', description: '' })
+    setEditMode(false)
+    setEditId(null)
+    setErrors({})
+    setModalVisible(true)
   }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-    if (errors[name]) setErrors({ ...errors, [name]: null })
-  }
-
-  const handleSave = async () => {
-    if (!validateForm()) return
-    setSaveLoading(true)
-    try {
-      if (editMode) {
-        await axios.put(`${BaseUrl}/payment-methods/${editId}`, formData, axiosConfig)
-        showToast('Payment method updated', 'success')
-      } else {
-        await axios.post(`${BaseUrl}/payment-methods`, formData, axiosConfig)
-        showToast('Payment method created', 'success')
-      }
-      setModalVisible(false)
-      setFormData({ name: '', description: '' })
-      fetchMethods()
-    } catch (error) {
-      const msg = error.response?.data?.message || 'Error saving payment method'
-      showToast(msg, 'danger')
-    } finally {
-      setSaveLoading(false)
-    }
-  }
-
-  const handleEdit = (method) => {
+  const openEdit = (method) => {
+    setFormData({
+      name: method.name || '',
+      description: method.description || '',
+    })
     setEditMode(true)
     setEditId(method._id)
-    setFormData({ name: method.name, description: method.description || '' })
+    setErrors({})
     setModalVisible(true)
+  }
+
+  const closeModal = () => {
+    setModalVisible(false)
+    setFormData({ name: '', description: '' })
+    setEditMode(false)
+    setEditId(null)
     setErrors({})
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this payment method?')) return
-    setDeleteLoading(id)
+  const validate = () => {
+    const e = {}
+    if (!formData.name.trim()) e.name = 'Name is required'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const handleSave = async () => {
+    if (!validate()) return
+
+    setSubmitting(true)
     try {
-      await axios.delete(`${BaseUrl}/payment-methods/${id}`, axiosConfig)
-      showToast('Payment method deleted', 'success')
+      if (editMode) {
+        await axios.put(`${BaseUrl}/payment-methods/${editId}`, formData, axiosConfig)
+        showToast(Language.methodUpdated || 'Payment method updated')
+      } else {
+        await axios.post(`${BaseUrl}/payment-methods`, formData, axiosConfig)
+        showToast(Language.methodCreated || 'Payment method created')
+      }
+      closeModal()
       fetchMethods()
     } catch (error) {
-      showToast('Error deleting payment method', 'danger')
+      const msg =
+        error.response?.data?.message || Language.saveError || 'Error saving payment method'
+      setErrors({ submit: msg })
     } finally {
-      setDeleteLoading(null)
+      setSubmitting(false)
     }
   }
 
-  const showToast = (message, color) => {
-    setToast({ show: true, message, color })
-    setTimeout(() => setToast({ ...toast, show: false }), 5000)
+  /* ---------- delete ---------- */
+  const askDelete = (method) => {
+    setConfirmTarget(method)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmTarget) return
+    setDeleting(true)
+    try {
+      await axios.delete(`${BaseUrl}/payment-methods/${confirmTarget._id}`, axiosConfig)
+      showToast(Language.methodDeleted || 'Payment method deleted')
+      setConfirmTarget(null)
+      fetchMethods()
+    } catch (error) {
+      showToast(Language.deleteError || 'Error deleting payment method', 'danger')
+      setConfirmTarget(null)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
     <>
-      <CCard className="shadow-lg border-0 rounded-3">
-        <CCardHeader className="d-flex justify-content-between align-items-center bg-dark text-white">
-          <h5 className="mb-0">Payment Methods</h5>
-          <CButton
-            color="light"
-            className="text-dark"
-            onClick={() => {
-              setEditMode(false)
-              setFormData({ name: '', description: '' })
-              setModalVisible(true)
-              setErrors({})
-            }}
+      <CToaster position="top-end">
+        {toasts.map(({ id, msg, color }) => (
+          <CToast
+            key={id}
+            autohide
+            delay={5000}
+            color={color}
+            visible
+            onClose={() => removeToast(id)}
           >
-            <CIcon icon={cilPlus} className="me-2" />
-            Add New
-          </CButton>
-        </CCardHeader>
-        <CCardBody>
-          {loading ? (
+            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
+            <CToastBody>{msg}</CToastBody>
+          </CToast>
+        ))}
+      </CToaster>
+
+      <CCard className="mb-4">
+        <div className="pm-header">
+          <div className="pm-header-inner">
+            <div className="pm-header-left">
+              <h5 className="pm-title">{Language.paymentMethods || 'Payment methods'}</h5>
+              <div className="pm-subtitle">
+                <strong>{methods.length}</strong> {methods.length === 1 ? 'method' : 'methods'}
+              </div>
+            </div>
+
+            <div className="pm-header-right">
+              <CButton color="primary" onClick={openAdd}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.addMethod || 'New method'}
+              </CButton>
+            </div>
+          </div>
+        </div>
+
+        <CCardBody className="p-0">
+          {loading && methods.length === 0 ? (
             <div className="text-center py-5">
-              <CSpinner color="dark" />
-              <p className="mt-3">Loading payment methods...</p>
+              <CSpinner color="primary" />
             </div>
           ) : methods.length === 0 ? (
-            <CAlert color="info" className="text-center">
-              No payment methods found. Start by adding one.
-            </CAlert>
+            <div className="pm-empty">
+              <CIcon icon={cilCreditCard} size="xl" />
+              <div className="pm-empty-title">
+                {Language.noMethodsYet || 'No payment methods yet'}
+              </div>
+              <div className="pm-empty-body">
+                {Language.noMethodsHint ||
+                  'Payment methods are used at checkout — like Cash, Card, or PayPal.'}
+              </div>
+              <CButton color="primary" onClick={openAdd}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.addMethod || 'New method'}
+              </CButton>
+            </div>
           ) : (
-            <div className="table-responsive">
-              <CTable hover striped responsive>
-                <CTableHead>
-                  <CTableRow>
-                    <CTableHeaderCell>Name</CTableHeaderCell>
-                    <CTableHeaderCell>Description</CTableHeaderCell>
-                    <CTableHeaderCell width="150px">Actions</CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                <CTableBody>
-                  {methods.map((method) => (
-                    <CTableRow key={method._id}>
-                      <CTableDataCell>{method.name}</CTableDataCell>
-                      <CTableDataCell>{method.description}</CTableDataCell>
-                      <CTableDataCell>
-                        <div className="d-flex gap-2">
-                          <CButton color="info" size="sm" onClick={() => handleEdit(method)}>
-                            <CIcon icon={cilPencil} />
-                          </CButton>
-                          <CButton
-                            color="danger"
-                            size="sm"
-                            onClick={() => handleDelete(method._id)}
-                            disabled={deleteLoading === method._id}
-                          >
-                            {deleteLoading === method._id ? (
-                              <CSpinner size="sm" />
-                            ) : (
-                              <CIcon icon={cilTrash} />
-                            )}
-                          </CButton>
-                        </div>
-                      </CTableDataCell>
-                    </CTableRow>
-                  ))}
-                </CTableBody>
-              </CTable>
+            <div className="pm-list">
+              {methods.map((method) => {
+                const color = colorFor(method._id)
+                const initial = (method.name || '?').charAt(0).toUpperCase()
+                return (
+                  <div className="pm-row" key={method._id}>
+                    <div className="pm-badge" style={{ background: color }}>
+                      {initial}
+                    </div>
+
+                    <div className="pm-info">
+                      <p className="pm-name">{method.name}</p>
+                      {method.description && <div className="pm-desc">{method.description}</div>}
+                    </div>
+
+                    <div className="pm-actions">
+                      <CButton
+                        color="secondary"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openEdit(method)}
+                        aria-label="Edit method"
+                      >
+                        <CIcon icon={cilPencil} />
+                      </CButton>
+                      <CButton
+                        color="danger"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => askDelete(method)}
+                        aria-label="Delete method"
+                      >
+                        <CIcon icon={cilTrash} />
+                      </CButton>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </CCardBody>
-      </CCard>
 
-      {/* Modal */}
-      <CModal visible={modalVisible} onClose={() => setModalVisible(false)} backdrop="static">
-        <CModalHeader closeButton>
-          <CModalTitle>{editMode ? 'Edit Payment Method' : 'Add New Payment Method'}</CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <CForm>
-            <div className="mb-3">
+        {/* ---- Add/Edit modal ---- */}
+        <CModal visible={modalVisible} onClose={closeModal} backdrop="static" className="pm-modal">
+          <div className="pm-modal-header">
+            <h5 className="pm-modal-title">
+              <CIcon icon={editMode ? cilPencil : cilPlus} />
+              {editMode
+                ? Language.editMethod || 'Edit payment method'
+                : Language.addMethod || 'New payment method'}
+            </h5>
+            <button
+              className="pm-modal-close"
+              onClick={closeModal}
+              aria-label="Close"
+              type="button"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div className="pm-modal-body">
+            <div className="pm-field">
+              <label htmlFor="pm-name">{Language.name || 'Name'}</label>
               <CFormInput
-                label="Name"
-                name="name"
+                id="pm-name"
+                autoFocus
                 value={formData.name}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  setErrors({ ...errors, name: null, submit: null })
+                }}
+                placeholder="e.g. Cash, Card, PayPal"
                 invalid={!!errors.name}
-                placeholder="e.g. Bank Card, PayPal, Cash"
               />
-              {errors.name && <div className="invalid-feedback d-block">{errors.name}</div>}
+              {errors.name && <div className="text-danger small mt-1">{errors.name}</div>}
             </div>
-            <div className="mb-3">
-              <CFormInput
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="Optional description"
-              />
-            </div>
-          </CForm>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setModalVisible(false)} disabled={saveLoading}>
-            Cancel
-          </CButton>
-          <CButton color="primary" onClick={handleSave} disabled={saveLoading}>
-            {saveLoading ? <CSpinner size="sm" /> : editMode ? 'Update' : 'Create'}
-          </CButton>
-        </CModalFooter>
-      </CModal>
 
-      {/* Toast */}
-      <CToaster placement="top-end">
-        <CToast visible={toast.show} color={toast.color}>
-          <CToastHeader closeButton>
-            <CIcon
-              icon={toast.color === 'success' ? cilCheckCircle : cilWarning}
-              className="me-2"
-            />
-            {toast.color === 'success' ? 'Success' : 'Error'}
-          </CToastHeader>
-          <CToastBody>{toast.message}</CToastBody>
-        </CToast>
-      </CToaster>
+            <div className="pm-field">
+              <label htmlFor="pm-desc">
+                {Language.description || 'Description'}{' '}
+                <span className="text-muted">({Language.optional || 'optional'})</span>
+              </label>
+              <CFormInput
+                id="pm-desc"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    description: e.target.value,
+                  })
+                }
+                placeholder="Shown next to the method at checkout"
+              />
+            </div>
+
+            {errors.submit && <div className="text-danger small mt-1">{errors.submit}</div>}
+          </div>
+
+          <div className="pm-modal-footer">
+            <CButton color="secondary" variant="outline" onClick={closeModal} disabled={submitting}>
+              {Language.cancel || 'Cancel'}
+            </CButton>
+            <CButton color="primary" onClick={handleSave} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  {Language.saving || 'Saving…'}
+                </>
+              ) : editMode ? (
+                Language.saveChanges || 'Save'
+              ) : (
+                Language.create || 'Create'
+              )}
+            </CButton>
+          </div>
+        </CModal>
+
+        {/* ---- Confirm delete ---- */}
+        <CModal
+          visible={!!confirmTarget}
+          onClose={() => setConfirmTarget(null)}
+          backdrop="static"
+          className="pm-modal"
+        >
+          <div className="pm-confirm-body">
+            <div className="pm-confirm-icon">
+              <CIcon icon={cilTrash} />
+            </div>
+            <div className="pm-confirm-title">
+              {Language.deleteMethod || 'Delete payment method'}
+            </div>
+            <div className="pm-confirm-text">
+              {confirmTarget
+                ? `Delete "${confirmTarget.name}"? Existing orders that used it will keep their record.`
+                : Language.deleteMethodConfirm || 'Delete this payment method?'}
+            </div>
+          </div>
+          <div className="pm-modal-footer">
+            <CButton
+              color="secondary"
+              variant="outline"
+              onClick={() => setConfirmTarget(null)}
+              disabled={deleting}
+            >
+              {Language.cancel || 'Cancel'}
+            </CButton>
+            <CButton color="danger" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  {Language.deleting || 'Deleting…'}
+                </>
+              ) : (
+                <>
+                  <CIcon icon={cilTrash} className="me-2" />
+                  {Language.delete || 'Delete'}
+                </>
+              )}
+            </CButton>
+          </div>
+        </CModal>
+      </CCard>
     </>
   )
 }

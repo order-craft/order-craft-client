@@ -1,23 +1,24 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  CTable,
-  CTableBody,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableDataCell,
   CButton,
-  CContainer,
   CCard,
   CCardBody,
-  CCol,
-  CRow,
   CSpinner,
-  CAlert,
-  CForm,
-  CFormLabel,
-  CFormInput,
+  CToaster,
+  CToast,
+  CToastHeader,
+  CToastBody,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import {
+  cilSearch,
+  cilCloudDownload,
+  cilWarning,
+  cilHistory,
+  cilChevronBottom,
+  cilChevronTop,
+  cilUser,
+} from '@coreui/icons'
 import axios from 'axios'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
@@ -26,46 +27,189 @@ import { GetToken } from '../../helpers/GetToken'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
+import { useAuth } from '../../context/AuthContext'
+import '../dashboard/receipt.css'
+
+const palette = [
+  '#0d6efd',
+  '#6610f2',
+  '#d63384',
+  '#fd7e14',
+  '#198754',
+  '#20c997',
+  '#0dcaf0',
+  '#e83e8c',
+]
+const colorFor = (id) => {
+  let h = 0
+  const s = String(id || '')
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return palette[Math.abs(h) % palette.length]
+}
 
 const ArchivedOrdersByDate = () => {
   const token = GetToken()
-
-  // Language
   const t = useSelector((state) => state.language)
   const Language = translations[t]
-  const memoizedLanguage = useMemo(
-    () => ({
-      title: Language.user + ' ' + (Language.orders || 'Orders'),
-      pickRange: Language.pickRange || 'Pick date range',
-      startDate: Language.startDate || 'Start date',
-      endDate: Language.endDate || 'End date',
-      apply: Language.apply || 'Apply',
-      exportPdf: Language.exportPdf || 'Export PDF',
-      totalRevenue: `${Language.total} ${Language.revenue}`,
-      totalTips: `${Language.total} ${Language.tips || 'Tips'}`,
-      products: Language.products,
-      totalPrice: `${Language.total}${Language.price}`,
-      date: Language.date,
-      loading: Language.loading || 'Loading...',
-      errorMessage: Language.errorMessage || 'An error occurred',
-      noOrders: Language.noOrders || 'No orders found',
-    }),
-    [t],
-  )
+  const { role } = useAuth()
+  const isSuperClient = role === 'superClient'
 
-  // Default range: last 7 days
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const sevenDaysAgoStr = format(new Date(Date.now() - 6 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd')
 
   const [startDate, setStartDate] = useState(sevenDaysAgoStr)
   const [endDate, setEndDate] = useState(todayStr)
+  const [selectedWaiterId, setSelectedWaiterId] = useState('all')
+  const [waiters, setWaiters] = useState([])
 
   const [orders, setOrders] = useState([])
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [totalTips, setTotalTips] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [loaded, setLoaded] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
 
+  const [toasts, setToasts] = useState([])
+  const showToast = (msg, color = 'success') => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, msg, color }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id))
+    }, 5000)
+  }
+  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+
+  /* ---------- fetch waiters (superClient only) ---------- */
+  useEffect(() => {
+    if (!isSuperClient || !token) return
+    const loadWaiters = async () => {
+      try {
+        const response = await axios.get(`${BaseUrl}/auth/superClient/getUsers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setWaiters(response.data || [])
+      } catch (err) {
+        console.error('Failed to load waiters:', err)
+      }
+    }
+    loadWaiters()
+  }, [isSuperClient, token])
+
+  /* ---------- data ---------- */
+  const fetchOrdersByRange = useCallback(async () => {
+    if (!token) {
+      setError('Authentication token not found')
+      return
+    }
+    try {
+      setLoading(true)
+      setError(null)
+
+      const body = { startDate, endDate }
+      if (isSuperClient && selectedWaiterId !== 'all') {
+        body.userId = selectedWaiterId
+      }
+
+      const res = await axios.post(`${BaseUrl}/dashboard/history`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = res.data || {}
+      const list = data.orders || []
+      setOrders(list)
+      setTotalRevenue(data.totalRevenue || 0)
+      setTotalTips(list.reduce((sum, o) => sum + (o.tips || 0), 0))
+      setLoaded(true)
+    } catch (err) {
+      console.error(err)
+      setError(err.response?.data?.message || 'Failed to fetch orders')
+      showToast('Failed to fetch orders', 'danger')
+    } finally {
+      setLoading(false)
+    }
+  }, [token, startDate, endDate, isSuperClient, selectedWaiterId])
+
+  /* re-fetch when a superClient changes the waiter filter (if already loaded) */
+  useEffect(() => {
+    if (loaded) fetchOrdersByRange()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedWaiterId])
+
+  /* ---------- PDF ---------- */
+  const generatePDF = useCallback(() => {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.width
+    const genDate = format(new Date(), 'yyyy-MM-dd HH:mm')
+
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Archived Orders', 14, 18)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(120)
+    doc.text(`Range: ${startDate} → ${endDate}`, 14, 25)
+    if (isSuperClient && selectedWaiterId !== 'all') {
+      const w = waiters.find((x) => x._id === selectedWaiterId)
+      if (w) {
+        doc.text(`Waiter: ${w.fullName}`, 14, 31)
+      }
+    }
+    doc.text(`Generated on: ${genDate}`, 14, 37)
+
+    doc.setTextColor(0)
+    doc.setFontSize(11)
+    doc.text(`Total Revenue: ${totalRevenue.toFixed(2)} TND`, pageWidth - 15, 18, {
+      align: 'right',
+    })
+    doc.text(`Total Tips: ${totalTips.toFixed(2)} TND`, pageWidth - 15, 25, {
+      align: 'right',
+    })
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Grand Total: ${(totalRevenue + totalTips).toFixed(2)} TND`, pageWidth - 15, 32, {
+      align: 'right',
+    })
+
+    const tableData = orders.flatMap((order) =>
+      (order.products || []).map((p) => [
+        p.productName || 'N/A',
+        p.quantity || 0,
+        `${(p.productPrice || 0).toFixed(2)}`,
+        `${(p.totalPrice || p.total || 0).toFixed(2)}`,
+        `${(order.tips || 0).toFixed(2)}`,
+        formatDate(order.timestamp),
+      ]),
+    )
+
+    doc.autoTable({
+      head: [['Product', 'Qty', 'Unit Price', 'Total', 'Tips', 'Date']],
+      body: tableData,
+      startY: 45,
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      margin: { top: 45, left: 14, right: 14 },
+    })
+
+    doc.save(`archived-orders-${startDate}-to-${endDate}.pdf`)
+  }, [
+    orders,
+    startDate,
+    endDate,
+    totalRevenue,
+    totalTips,
+    isSuperClient,
+    selectedWaiterId,
+    waiters,
+  ])
+
+  /* ---------- helpers ---------- */
   const formatDate = (dateString) => {
     try {
       return format(new Date(dateString), 'yyyy-MM-dd HH:mm')
@@ -74,207 +218,281 @@ const ArchivedOrdersByDate = () => {
     }
   }
 
-  const fetchOrdersByRange = useCallback(async () => {
-    if (!token) {
-      setError('Authentication token not found')
-      return
-    }
+  const preview = (order) => {
+    const names = (order.products || [])
+      .slice(0, 2)
+      .map((p) => p.productName || p.name)
+      .filter(Boolean)
+    if (names.length === 0) return 'No items'
+    const more = (order.products?.length || 0) - names.length
+    return `${names.join(', ')}${more > 0 ? ` +${more}` : ''}`
+  }
 
-    try {
-      setLoading(true)
-      setError(null)
+  const toggleRow = (id) => {
+    setExpandedId((prev) => (prev === id ? null : id))
+  }
 
-      // Send dates in req.body exactly as requested by your controller
-      const body = {
-        startDate, // e.g., "2025-08-01"
-        endDate, // e.g., "2025-08-27"
-      }
+  const canFetch = !!startDate && !!endDate && !loading && startDate <= endDate
 
-      // 🔧 Adjust the route if you mounted the controller elsewhere
-      const res = await axios.post(`${BaseUrl}/dashboard/history`, body, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+  const selectedWaiter = useMemo(
+    () => waiters.find((w) => w._id === selectedWaiterId),
+    [waiters, selectedWaiterId],
+  )
 
-      const data = res.data || {}
-      const list = data.orders || []
-
-      setOrders(list)
-      setTotalRevenue(data.totalRevenue || 0)
-
-      const tips = list.reduce((sum, order) => sum + (order.tips || 0), 0)
-      setTotalTips(tips)
-    } catch (err) {
-      console.error(err)
-      setError(err.response?.data?.message || 'Failed to fetch orders')
-    } finally {
-      setLoading(false)
-    }
-  }, [token, startDate, endDate])
-
-  const generatePDF = useCallback(() => {
-    const doc = new jsPDF()
-    const genDate = format(new Date(), 'yyyy-MM-dd HH:mm')
-    const pageWidth = doc.internal.pageSize.width
-
-    // Header
-    doc.setFontSize(18)
-    doc.text('Archived Orders (By Date Range)', 14, 15)
-    doc.setFontSize(12)
-    doc.text(`Range: ${startDate} → ${endDate}`, 14, 22)
-    doc.text(`Generated on: ${genDate}`, 14, 29)
-
-    // Totals
-    doc.setFontSize(12)
-    doc.text(`Total Revenue: ${totalRevenue.toFixed(2)} TND`, pageWidth - 80, 15)
-    doc.text(`Total Tips: ${totalTips.toFixed(2)} TND`, pageWidth - 80, 22)
-    doc.text(`Grand Total: ${(totalRevenue + totalTips).toFixed(2)} TND`, pageWidth - 80, 29)
-
-    // Table
-    const tableData = orders.flatMap((order) =>
-      (order.products || []).map((p) => [
-        p.productName || 'N/A',
-        p.quantity || 0,
-        `${(p.productPrice || 0).toFixed(2)} TND`,
-        `${(p.totalPrice || p.total || p.quantity * (p.productPrice || 0)).toFixed(2)} TND`,
-        `${(order.tips || 0).toFixed(2)} TND`,
-        formatDate(order.timestamp),
-      ]),
-    )
-
-    doc.autoTable({
-      head: [['Product', 'Qty', 'Unit Price', 'Total', 'Tips', 'Date']],
-      body: tableData,
-      startY: 40,
-      headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
-      margin: { top: 40 },
-    })
-
-    doc.save(`archived-orders-${startDate}-to-${endDate}.pdf`)
-  }, [orders, startDate, endDate, totalRevenue, totalTips])
-
+  /* ---------- render ---------- */
   return (
-    <CContainer className="py-4">
-      <CRow className="mb-4">
-        <CCol xs={12} md={8}>
-          <h2 className="mb-3">{memoizedLanguage.title}</h2>
-          <p className="text-muted">{memoizedLanguage.pickRange}</p>
-          <CForm
-            onSubmit={(e) => {
-              e.preventDefault()
-              fetchOrdersByRange()
-            }}
+    <>
+      <CToaster position="top-end">
+        {toasts.map(({ id, msg, color }) => (
+          <CToast
+            key={id}
+            autohide
+            delay={5000}
+            color={color}
+            visible
+            onClose={() => removeToast(id)}
           >
-            <CRow className="g-3">
-              <CCol xs={12} md={4}>
-                <CFormLabel htmlFor="startDate">{memoizedLanguage.startDate}</CFormLabel>
-                <CFormInput
-                  id="startDate"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  required
-                />
-              </CCol>
-              <CCol xs={12} md={4}>
-                <CFormLabel htmlFor="endDate">{memoizedLanguage.endDate}</CFormLabel>
-                <CFormInput
-                  id="endDate"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  required
-                />
-              </CCol>
-              <CCol xs={12} md={4} className="d-flex align-items-end">
-                <CButton color="primary" type="submit" disabled={loading} className="w-100">
-                  {loading ? (
-                    <>
-                      <CSpinner size="sm" className="me-2" />
-                      {memoizedLanguage.loading}
-                    </>
-                  ) : (
-                    memoizedLanguage.apply
-                  )}
-                </CButton>
-              </CCol>
-            </CRow>
-          </CForm>
-        </CCol>
+            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
+            <CToastBody>{msg}</CToastBody>
+          </CToast>
+        ))}
+      </CToaster>
 
-        <CCol xs={12} md={4} className="mt-4 mt-md-0">
-          <div className="bg-light p-3 rounded text-center mb-3">
-            <h6 className="mb-1">{memoizedLanguage.totalRevenue}</h6>
-            <h4 className="mb-0 text-primary">{totalRevenue.toFixed(2)} TND</h4>
-          </div>
-          <div className="bg-light p-3 rounded text-center">
-            <h6 className="mb-1">{memoizedLanguage.totalTips}</h6>
-            <h4 className="mb-0 text-success">{totalTips.toFixed(2)} TND</h4>
-          </div>
-        </CCol>
-      </CRow>
+      <CCard className="mb-4">
+        {/* ---- Top strip ---- */}
+        <div className="rc-header">
+          <div className="rc-header-inner">
+            <div className="rc-header-left">
+              <h5 className="rc-title">{Language.history || 'Order history'}</h5>
+              <div className="rc-subtitle">
+                {loaded ? (
+                  <>
+                    <strong>{orders.length}</strong> {orders.length === 1 ? 'order' : 'orders'}
+                    {selectedWaiter && (
+                      <>
+                        {' · '}
+                        {selectedWaiter.fullName}
+                      </>
+                    )}
+                    {' · '}
+                    {startDate} → {endDate}
+                  </>
+                ) : (
+                  'Pick a date range and load the orders.'
+                )}
+              </div>
+            </div>
 
-      {error && (
-        <CAlert color="danger" className="mb-4">
-          {memoizedLanguage.errorMessage}: {error}
-        </CAlert>
-      )}
+            <div className="rc-header-right">
+              {isSuperClient && (
+                <div className="rc-date" style={{ minWidth: 160 }}>
+                  <CIcon icon={cilUser} className="rc-date-icon" />
+                  <select
+                    value={selectedWaiterId}
+                    onChange={(e) => setSelectedWaiterId(e.target.value)}
+                    aria-label="Filter by waiter"
+                    style={{
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      fontSize: '0.88rem',
+                      color: '#1a1a1a',
+                      cursor: 'pointer',
+                      width: '100%',
+                    }}
+                  >
+                    <option value="all">All waiters</option>
+                    {waiters.map((w) => (
+                      <option key={w._id} value={w._id}>
+                        {w.fullName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-      {loading && orders.length === 0 ? (
-        <div className="text-center my-5">
-          <CSpinner color="primary" />
-          <p className="mt-3">{memoizedLanguage.loading}</p>
-        </div>
-      ) : orders.length === 0 ? (
-        <CContainer className="text-center mt-5">
-          <h2>{memoizedLanguage.noOrders}</h2>
-        </CContainer>
-      ) : (
-        <>
-          <div className="table-responsive">
-            <CTable hover striped responsive>
-              <CTableHead>
-                <CTableRow>
-                  <CTableHeaderCell>#</CTableHeaderCell>
-                  <CTableHeaderCell>{memoizedLanguage.products}</CTableHeaderCell>
-                  <CTableHeaderCell>{memoizedLanguage.totalPrice}</CTableHeaderCell>
-                  <CTableHeaderCell>{memoizedLanguage.totalTips}</CTableHeaderCell>
-                  <CTableHeaderCell>{memoizedLanguage.date}</CTableHeaderCell>
-                </CTableRow>
-              </CTableHead>
-              <CTableBody>
-                {orders.map((order, index) => (
-                  <CTableRow key={order.orderId || index}>
-                    <CTableDataCell>{index + 1}</CTableDataCell>
-                    <CTableDataCell>
-                      <ul className="list-unstyled mb-0">
-                        {order.products?.map((product, pIndex) => (
-                          <li key={pIndex}>
-                            {product.productName} - {product.quantity} × {product.productPrice} TND
-                          </li>
-                        ))}
-                      </ul>
-                    </CTableDataCell>
-                    <CTableDataCell>{order.totalPrice?.toFixed(2) || '0.00'} TND</CTableDataCell>
-                    <CTableDataCell>{order.tips?.toFixed(2) || '0.00'} TND</CTableDataCell>
-                    <CTableDataCell>{formatDate(order.timestamp)}</CTableDataCell>
-                  </CTableRow>
-                ))}
-              </CTableBody>
-            </CTable>
-          </div>
+              <div className="rc-date-group">
+                <div className="rc-date">
+                  <CIcon icon={cilSearch} className="rc-date-icon" />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    max={endDate}
+                  />
+                </div>
+                <span className="rc-date-sep">to</span>
+                <div className="rc-date">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    max={todayStr}
+                  />
+                </div>
+              </div>
 
-          <CCard className="mt-4 shadow-sm">
-            <CCardBody className="d-flex justify-content-center gap-3">
-              <CButton color="secondary" variant="outline" onClick={generatePDF}>
-                {memoizedLanguage.exportPdf}
+              <CButton color="primary" onClick={fetchOrdersByRange} disabled={!canFetch}>
+                {loading ? (
+                  <>
+                    <CSpinner size="sm" className="me-2" />
+                    {Language.loading || 'Loading…'}
+                  </>
+                ) : (
+                  <>
+                    <CIcon icon={cilSearch} className="me-2" />
+                    {Language.apply || 'Apply'}
+                  </>
+                )}
               </CButton>
-            </CCardBody>
-          </CCard>
-        </>
-      )}
-    </CContainer>
+
+              <CButton
+                color="secondary"
+                variant="outline"
+                onClick={generatePDF}
+                disabled={orders.length === 0}
+              >
+                <CIcon icon={cilCloudDownload} className="me-2" />
+                {Language.exportPDF || 'Export PDF'}
+              </CButton>
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Stats ---- */}
+        {loaded && orders.length > 0 && (
+          <div className="rc-stats">
+            <div className="rc-stat">
+              <div className="rc-stat-label">{Language.totalRevenue || 'Revenue'}</div>
+              <div className="rc-stat-value is-primary">
+                {totalRevenue.toFixed(2)}
+                <span className="rc-stat-unit">TND</span>
+              </div>
+            </div>
+            <div className="rc-stat">
+              <div className="rc-stat-label">{Language.totalTips || 'Tips'}</div>
+              <div className="rc-stat-value is-success">
+                {totalTips.toFixed(2)}
+                <span className="rc-stat-unit">TND</span>
+              </div>
+            </div>
+            <div className="rc-stat">
+              <div className="rc-stat-label">{Language.orders || 'Orders'}</div>
+              <div className="rc-stat-value">{orders.length}</div>
+            </div>
+          </div>
+        )}
+
+        {/* ---- Content ---- */}
+        <CCardBody className="p-0">
+          {!loaded && !loading ? (
+            <div className="rc-empty">
+              <CIcon icon={cilHistory} size="xl" />
+              <div className="rc-empty-title">{Language.pickRange || 'Pick a date range'}</div>
+              <div className="rc-empty-body">
+                {Language.pickRangeHint || 'Select a start and end date, then tap Apply.'}
+              </div>
+            </div>
+          ) : loading && orders.length === 0 ? (
+            <div className="rc-skeleton">
+              <div className="rc-skeleton-row" />
+              <div className="rc-skeleton-row" />
+              <div className="rc-skeleton-row" />
+            </div>
+          ) : error && orders.length === 0 ? (
+            <div className="rc-empty">
+              <CIcon icon={cilWarning} size="xl" />
+              <div className="rc-empty-title">
+                {Language.errorMessage || 'Something went wrong'}
+              </div>
+              <div className="rc-empty-body">{error}</div>
+              <CButton color="primary" onClick={fetchOrdersByRange}>
+                {Language.retry || 'Retry'}
+              </CButton>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="rc-empty">
+              <CIcon icon={cilHistory} size="xl" />
+              <div className="rc-empty-title">{Language.noOrders || 'No orders in this range'}</div>
+              <div className="rc-empty-body">
+                {selectedWaiter
+                  ? `${selectedWaiter.fullName} has no orders in this range.`
+                  : Language.noOrdersInRangeHint || 'Try a different date range.'}
+              </div>
+            </div>
+          ) : (
+            <div className="rc-list">
+              {orders.map((order, index) => {
+                const isOpen = expandedId === order.orderId
+                return (
+                  <React.Fragment key={order.orderId || index}>
+                    <div
+                      className={`rc-row ${isOpen ? 'is-expanded' : ''}`}
+                      onClick={() => toggleRow(order.orderId)}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="rc-avatar" style={{ background: colorFor(order.orderId) }}>
+                        {index + 1}
+                      </div>
+
+                      <div className="rc-info">
+                        <p className="rc-preview">{preview(order)}</p>
+                        <div className="rc-meta">
+                          <span>{formatDate(order.timestamp)}</span>
+                          {order.userFullName && <span>· {order.userFullName}</span>}
+                          {order.tips > 0 && (
+                            <span className="rc-tip">+{Number(order.tips).toFixed(2)} TND tip</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rc-price">{Number(order.totalPrice || 0).toFixed(2)} TND</div>
+
+                      <div className="rc-chevron">
+                        <CIcon icon={isOpen ? cilChevronTop : cilChevronBottom} />
+                      </div>
+                    </div>
+
+                    {isOpen && (
+                      <div className="rc-expand">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Item</th>
+                              <th className="num">Qty</th>
+                              <th className="num">Unit</th>
+                              <th className="num">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(order.products || []).map((p, i) => {
+                              const unit = Number(p.productPrice || p.price || 0)
+                              const qty = Number(p.quantity || 0)
+                              const total = Number(p.totalPrice || p.total || unit * qty)
+                              return (
+                                <tr key={i}>
+                                  <td>{p.productName || p.name || 'Item'}</td>
+                                  <td className="num">{qty}</td>
+                                  <td className="num">{unit.toFixed(2)}</td>
+                                  <td className="num">{total.toFixed(2)}</td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </React.Fragment>
+                )
+              })}
+            </div>
+          )}
+        </CCardBody>
+      </CCard>
+    </>
   )
 }
 
-export default React.memo(ArchivedOrdersByDate)
+export default ArchivedOrdersByDate

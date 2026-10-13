@@ -1,0 +1,354 @@
+/* =========================================================================
+   Daily receipt + History (rc- namespace)
+   ========================================================================= */
+
+/* ---- Top strip ---- */
+.rc-header {
+  padding: 18px 20px 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+}
+
+.rc-header-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.rc-header-left {
+  min-width: 0;
+}
+
+.rc-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 2px 0;
+}
+
+.rc-subtitle {
+  font-size: 0.82rem;
+  color: var(--cui-secondary-color, #6c757d);
+}
+
+.rc-subtitle strong {
+  color: #1a1a1a;
+}
+
+.rc-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Date pickers */
+.rc-date-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rc-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+  padding: 6px 12px;
+  background: #fff;
+  height: 38px;
+}
+
+.rc-date-icon {
+  color: var(--cui-secondary-color, #6c757d);
+  flex-shrink: 0;
+}
+
+.rc-date input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.88rem;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.rc-date-sep {
+  color: var(--cui-secondary-color, #6c757d);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* ---- Stats strip ---- */
+.rc-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 20px 4px 20px;
+  background: #fff;
+}
+
+.rc-stat {
+  padding: 14px 16px;
+  background: #fafbfc;
+  border: 1px solid var(--cui-border-color, #eef0f3);
+  border-radius: 12px;
+}
+
+.rc-stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cui-secondary-color, #6c757d);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.rc-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  line-height: 1.1;
+}
+
+.rc-stat-value.is-primary {
+  color: #0d6efd;
+}
+.rc-stat-value.is-success {
+  color: #198754;
+}
+
+.rc-stat-unit {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cui-secondary-color, #6c757d);
+  margin-left: 2px;
+}
+
+/* ---- List ---- */
+.rc-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+  margin: 12px 20px 20px 20px;
+}
+
+.rc-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.rc-row:last-child {
+  border-bottom: none;
+}
+.rc-row:hover {
+  background: #fafbfc;
+}
+.rc-row.is-expanded {
+  background: #f8f9fc;
+  box-shadow: inset 3px 0 0 0 var(--cui-primary, #0d6efd);
+}
+
+.rc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #fff;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.rc-info {
+  min-width: 0;
+}
+
+.rc-preview {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1a1a1a;
+  margin: 0 0 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rc-meta {
+  font-size: 0.8rem;
+  color: var(--cui-secondary-color, #6c757d);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.rc-price {
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: #1a1a1a;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.rc-tip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #d1e7dd;
+  color: #0f5132;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.rc-chevron {
+  color: var(--cui-secondary-color, #6c757d);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+}
+
+/* ---- Expanded panel ---- */
+.rc-expand {
+  padding: 12px 18px 16px 76px;
+  background: #f8f9fc;
+  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+}
+
+.rc-expand table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rc-expand th {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cui-secondary-color, #6c757d);
+  font-weight: 600;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+}
+
+.rc-expand th.num,
+.rc-expand td.num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.rc-expand td {
+  font-size: 0.88rem;
+  padding: 8px 4px;
+  border-bottom: 1px dashed var(--cui-border-color, #e9ecef);
+}
+
+.rc-expand tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---- Empty ---- */
+.rc-empty {
+  margin: 12px 20px 20px 20px;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--cui-secondary-color, #6c757d);
+  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.rc-empty svg {
+  margin-bottom: 8px;
+  color: #c8ccd0;
+}
+.rc-empty-title {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+.rc-empty-body {
+  font-size: 0.85rem;
+}
+.rc-empty .btn {
+  margin-top: 14px;
+}
+
+/* ---- Skeleton loading ---- */
+.rc-skeleton {
+  padding: 12px 20px 20px 20px;
+}
+
+.rc-skeleton-row {
+  height: 68px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f1f3f5 0%, #fafbfc 50%, #f1f3f5 100%);
+  background-size: 200% 100%;
+  animation: rcShimmer 1.4s infinite linear;
+  margin-bottom: 10px;
+}
+
+@keyframes rcShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 767.98px) {
+  .rc-header {
+    padding: 14px 16px 12px 16px;
+  }
+  .rc-header-right {
+    width: 100%;
+  }
+  .rc-date-group {
+    width: 100%;
+  }
+  .rc-date {
+    flex: 1 1 45%;
+    min-width: 0;
+  }
+  .rc-date input {
+    width: 100%;
+  }
+  .rc-stats {
+    grid-template-columns: 1fr;
+    padding: 14px 16px 4px 16px;
+  }
+  .rc-list {
+    margin: 10px 16px 16px 16px;
+  }
+  .rc-row {
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    row-gap: 10px;
+    padding: 12px 14px;
+  }
+  .rc-chevron {
+    grid-column: 3 / 4;
+  }
+  .rc-expand {
+    padding: 12px 14px 16px 14px;
+  }
+}

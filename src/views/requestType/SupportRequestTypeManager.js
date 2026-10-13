@@ -1,47 +1,66 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
+  CButton,
   CCard,
   CCardBody,
-  CCardHeader,
-  CButton,
-  CForm,
-  CFormInput,
-  CTable,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableBody,
-  CTableDataCell,
   CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
+  CFormInput,
   CSpinner,
-  CAlert,
   CToaster,
   CToast,
   CToastHeader,
   CToastBody,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilPlus, cilPencil, cilTrash, cilBell } from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
-import CIcon from '@coreui/icons-react'
-import { cilPencil, cilTrash, cilPlus, cilCheckCircle, cilWarning } from '@coreui/icons'
-
+import { useSelector } from 'react-redux'
+import translations from '../../app/Language'
+import './requestType.css'
+const avatarPalette = [
+  '#0d6efd',
+  '#6610f2',
+  '#d63384',
+  '#fd7e14',
+  '#198754',
+  '#20c997',
+  '#0dcaf0',
+  '#e83e8c',
+]
+const colorFor = (id) => {
+  let h = 0
+  const s = String(id || '')
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return avatarPalette[Math.abs(h) % avatarPalette.length]
+}
 const SupportRequestTypeManager = () => {
+  const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+
   const [requestTypes, setRequestTypes] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalVisible, setModalVisible] = useState(false)
   const [editMode, setEditMode] = useState(false)
-  const [formData, setFormData] = useState({ name: '', icon: '' })
   const [editId, setEditId] = useState(null)
+  const [formData, setFormData] = useState({ name: '', icon: '' })
   const [errors, setErrors] = useState({})
-  const [toast, setToast] = useState({ show: false, message: '', color: 'success' })
-  const [deleteLoading, setDeleteLoading] = useState(null)
-  const [saveLoading, setSaveLoading] = useState(false)
-  const token = GetToken()
+  const [submitting, setSubmitting] = useState(false)
+
+  const [confirmTarget, setConfirmTarget] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+
+  const [toasts, setToasts] = useState([])
+  const showToast = (msg, color = 'success') => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, msg, color }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id))
+    }, 5000)
+  }
+  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
 
   const axiosConfig = {
     headers: {
@@ -50,14 +69,14 @@ const SupportRequestTypeManager = () => {
     },
   }
 
+  /* ---------- data ---------- */
   const fetchRequestTypes = async () => {
     try {
       setLoading(true)
       const response = await axios.get(`${BaseUrl}/sup/request-types`, axiosConfig)
       setRequestTypes(response.data.data)
     } catch (error) {
-      showToast('Failed to fetch request types', 'danger')
-      console.error('Failed to fetch request types', error)
+      showToast(Language.fetchError || 'Failed to fetch request types', 'danger')
     } finally {
       setLoading(false)
     }
@@ -65,217 +84,299 @@ const SupportRequestTypeManager = () => {
 
   useEffect(() => {
     fetchRequestTypes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const validateForm = () => {
-    const newErrors = {}
-    if (!formData.name.trim()) newErrors.name = 'Name is required'
-    if (!formData.icon.trim()) newErrors.icon = 'Icon is required'
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+  /* ---------- modal ---------- */
+  const openAdd = () => {
+    setFormData({ name: '', icon: '' })
+    setEditMode(false)
+    setEditId(null)
+    setErrors({})
+    setModalVisible(true)
   }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: null })
-    }
-  }
-
-  const handleSave = async () => {
-    if (!validateForm()) return
-
-    setSaveLoading(true)
-    try {
-      if (editMode) {
-        await axios.put(`${BaseUrl}/sup/request-types/${editId}`, formData, axiosConfig)
-        showToast('Request type updated successfully', 'success')
-      } else {
-        await axios.post(`${BaseUrl}/sup/request-types`, formData, axiosConfig)
-        showToast('Request type created successfully', 'success')
-      }
-      setFormData({ name: '', icon: '' })
-      setModalVisible(false)
-      fetchRequestTypes()
-    } catch (error) {
-      const message = error.response?.data?.message || 'Error saving request type'
-      showToast(message, 'danger')
-      console.error('Error saving request type', error)
-    } finally {
-      setSaveLoading(false)
-    }
-  }
-
-  const handleEdit = (type) => {
+  const openEdit = (type) => {
+    setFormData({ name: type.name || '', icon: type.icon || '' })
     setEditMode(true)
     setEditId(type._id)
-    setFormData({ name: type.name, icon: type.icon })
+    setErrors({})
     setModalVisible(true)
+  }
+
+  const closeModal = () => {
+    setModalVisible(false)
+    setFormData({ name: '', icon: '' })
+    setEditMode(false)
+    setEditId(null)
     setErrors({})
   }
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this request type?')) return
+  const validate = () => {
+    const e = {}
+    if (!formData.name.trim()) e.name = 'Name is required'
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
 
-    setDeleteLoading(id)
+  const handleSave = async () => {
+    if (!validate()) return
+
+    setSubmitting(true)
     try {
-      await axios.delete(`${BaseUrl}/sup/request-types/${id}`, axiosConfig)
-      showToast('Request type deleted successfully', 'success')
+      if (editMode) {
+        await axios.put(`${BaseUrl}/sup/request-types/${editId}`, formData, axiosConfig)
+        showToast(Language.typeUpdated || 'Request type updated')
+      } else {
+        await axios.post(`${BaseUrl}/sup/request-types`, formData, axiosConfig)
+        showToast(Language.typeCreated || 'Request type created')
+      }
+      closeModal()
       fetchRequestTypes()
     } catch (error) {
-      showToast('Failed to delete request type', 'danger')
-      console.error('Error deleting request type', error)
+      const msg = error.response?.data?.message || Language.saveError || 'Error saving request type'
+      setErrors({ submit: msg })
     } finally {
-      setDeleteLoading(null)
+      setSubmitting(false)
     }
   }
 
-  const showToast = (message, color) => {
-    setToast({ show: true, message, color })
-    setTimeout(() => setToast({ ...toast, show: false }), 5000)
+  /* ---------- delete ---------- */
+  const askDelete = (type) => setConfirmTarget(type)
+
+  const confirmDelete = async () => {
+    if (!confirmTarget) return
+    setDeleting(true)
+    try {
+      await axios.delete(`${BaseUrl}/sup/request-types/${confirmTarget._id}`, axiosConfig)
+      showToast(Language.typeDeleted || 'Request type deleted')
+      setConfirmTarget(null)
+      fetchRequestTypes()
+    } catch (error) {
+      showToast(Language.deleteError || 'Failed to delete request type', 'danger')
+      setConfirmTarget(null)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
     <>
-      <CCard className="shadow-lg border-0 rounded-3">
-        <CCardHeader className="d-flex justify-content-between align-items-center bg-primary text-white">
-          <h5 className="mb-0">Support Request Types</h5>
-          <CButton
-            color="light"
-            onClick={() => {
-              setEditMode(false)
-              setFormData({ name: '', icon: '' })
-              setModalVisible(true)
-              setErrors({})
-            }}
-            className="text-primary"
+      <CToaster position="top-end">
+        {toasts.map(({ id, msg, color }) => (
+          <CToast
+            key={id}
+            autohide
+            delay={5000}
+            color={color}
+            visible
+            onClose={() => removeToast(id)}
           >
-            <CIcon icon={cilPlus} className="me-2" />
-            Add New
-          </CButton>
-        </CCardHeader>
-        <CCardBody>
-          {loading ? (
+            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
+            <CToastBody>{msg}</CToastBody>
+          </CToast>
+        ))}
+      </CToaster>
+
+      <CCard className="mb-4">
+        <div className="rt-header">
+          <div className="rt-header-inner">
+            <div className="rt-header-left">
+              <h5 className="rt-title">{Language.supportTypes || 'Support request types'}</h5>
+              <div className="rt-subtitle">
+                <strong>{requestTypes.length}</strong>{' '}
+                {requestTypes.length === 1 ? 'type' : 'types'}
+                {' · '}
+                Shown to customers when they call a waiter
+              </div>
+            </div>
+
+            <div className="rt-header-right">
+              <CButton color="primary" onClick={openAdd}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.addRequestType || 'New type'}
+              </CButton>
+            </div>
+          </div>
+        </div>
+
+        <CCardBody className="p-0">
+          {loading && requestTypes.length === 0 ? (
             <div className="text-center py-5">
               <CSpinner color="primary" />
-              <p className="mt-3">Loading request types...</p>
             </div>
           ) : requestTypes.length === 0 ? (
-            <CAlert color="info" className="text-center">
-              No request types found. Create one to get started!
-            </CAlert>
+            <div className="rt-empty">
+              <CIcon icon={cilBell} size="xl" />
+              <div className="rt-empty-title">
+                {Language.noRequestTypesYet || 'No request types yet'}
+              </div>
+              <div className="rt-empty-body">
+                {Language.noRequestTypesHint ||
+                  'Add the reasons customers can call a waiter — like Bill, Water, or Help.'}
+              </div>
+              <CButton color="primary" onClick={openAdd}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.addRequestType || 'New type'}
+              </CButton>
+            </div>
           ) : (
-            <div className="table-responsive">
-              <CTable hover striped responsive>
-                <CTableHead>
-                  <CTableRow>
-                    <CTableHeaderCell className="bg-light">Name</CTableHeaderCell>
-                    <CTableHeaderCell className="bg-light">Icon</CTableHeaderCell>
-                    <CTableHeaderCell className="bg-light" width="200px">
-                      Actions
-                    </CTableHeaderCell>
-                  </CTableRow>
-                </CTableHead>
-                <CTableBody>
-                  {requestTypes.map((type) => (
-                    <CTableRow key={type._id}>
-                      <CTableDataCell>{type.name}</CTableDataCell>
-                      <CTableDataCell>{type.icon}</CTableDataCell>
-                      <CTableDataCell>
-                        <div className="d-flex gap-2">
-                          <CButton
-                            color="info"
-                            size="sm"
-                            onClick={() => handleEdit(type)}
-                            disabled={deleteLoading === type._id}
-                          >
-                            <CIcon icon={cilPencil} />
-                          </CButton>
-                          <CButton
-                            color="danger"
-                            size="sm"
-                            onClick={() => handleDelete(type._id)}
-                            disabled={deleteLoading === type._id}
-                          >
-                            {deleteLoading === type._id ? (
-                              <CSpinner size="sm" />
-                            ) : (
-                              <CIcon icon={cilTrash} />
-                            )}
-                          </CButton>
-                        </div>
-                      </CTableDataCell>
-                    </CTableRow>
-                  ))}
-                </CTableBody>
-              </CTable>
+            <div className="rt-list">
+              {requestTypes.map((type) => (
+                <div className="rt-row" key={type._id}>
+                  <div className="rt-avatar" style={{ background: colorFor(type._id) }}>
+                    {(type.name || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="rt-info">
+                    <p className="rt-name">{type.name}</p>
+                  </div>
+                  <div className="rt-actions">
+                    <CButton
+                      color="secondary"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openEdit(type)}
+                      aria-label="Edit type"
+                    >
+                      <CIcon icon={cilPencil} />
+                    </CButton>
+                    <CButton
+                      color="danger"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => askDelete(type)}
+                      aria-label="Delete type"
+                    >
+                      <CIcon icon={cilTrash} />
+                    </CButton>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CCardBody>
-      </CCard>
 
-      <CModal visible={modalVisible} onClose={() => setModalVisible(false)} backdrop="static">
-        <CModalHeader closeButton>
-          <CModalTitle>{editMode ? 'Edit Request Type' : 'Add New Request Type'}</CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <CForm>
-            <div className="mb-3">
+        {/* Add/Edit modal */}
+        <CModal visible={modalVisible} onClose={closeModal} backdrop="static" className="rt-modal">
+          <div className="rt-modal-header">
+            <h5 className="rt-modal-title">
+              <CIcon icon={editMode ? cilPencil : cilPlus} />
+              {editMode
+                ? Language.editRequestType || 'Edit request type'
+                : Language.addRequestType || 'New request type'}
+            </h5>
+            <button
+              className="rt-modal-close"
+              onClick={closeModal}
+              aria-label="Close"
+              type="button"
+            >
+              &times;
+            </button>
+          </div>
+
+          <div className="rt-modal-body">
+            <div className="rt-field">
+              <label htmlFor="rt-name">{Language.name || 'Name'}</label>
               <CFormInput
-                label="Name"
-                name="name"
+                id="rt-name"
+                autoFocus
                 value={formData.name}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  setErrors({ ...errors, name: null, submit: null })
+                }}
+                placeholder="e.g. Bill, Water, Help"
                 invalid={!!errors.name}
-                placeholder="Enter request type name"
               />
-              {errors.name && <div className="invalid-feedback d-block">{errors.name}</div>}
+              {errors.name && <div className="text-danger small mt-1">{errors.name}</div>}
             </div>
-            <div className="mb-3">
-              <CFormInput
-                label="Icon"
-                name="icon"
-                value={formData.icon}
-                onChange={handleInputChange}
-                invalid={!!errors.icon}
-                placeholder="Enter icon (emoji or class name)"
-              />
-              {errors.icon && <div className="invalid-feedback d-block">{errors.icon}</div>}
-              <small className="text-muted">
-                You can get the name of the icon from the list of icons in the link <br />
-                <a href="https://feathericons.com/">feather-icons</a>
-              </small>
-            </div>
-          </CForm>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setModalVisible(false)} disabled={saveLoading}>
-            Cancel
-          </CButton>
-          <CButton color="primary" onClick={handleSave} disabled={saveLoading}>
-            {saveLoading ? <CSpinner size="sm" /> : editMode ? 'Update' : 'Create'}
-          </CButton>
-        </CModalFooter>
-      </CModal>
 
-      <CToaster placement="top-end">
-        <CToast
-          visible={toast.show}
-          color={toast.color}
-          onClose={() => setToast({ ...toast, show: false })}
+            <div className="rt-field">
+              <label htmlFor="rt-icon">
+                {Language.icon || 'Icon'}{' '}
+                <span className="text-muted">({Language.optional || 'optional'})</span>
+              </label>
+              <CFormInput
+                id="rt-icon"
+                value={formData.icon}
+                onChange={(e) => {
+                  setFormData({ ...formData, icon: e.target.value })
+                  setErrors({ ...errors, icon: null, submit: null })
+                }}
+                placeholder="e.g. file-text, droplet, bell"
+                invalid={!!errors.icon}
+              />
+              {errors.icon && <div className="text-danger small mt-1">{errors.icon}</div>}
+            </div>
+
+            {errors.submit && <div className="text-danger small mt-1">{errors.submit}</div>}
+          </div>
+
+          <div className="rt-modal-footer">
+            <CButton color="secondary" variant="outline" onClick={closeModal} disabled={submitting}>
+              {Language.cancel || 'Cancel'}
+            </CButton>
+            <CButton color="primary" onClick={handleSave} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  {Language.saving || 'Saving…'}
+                </>
+              ) : editMode ? (
+                Language.saveChanges || 'Save'
+              ) : (
+                Language.create || 'Create'
+              )}
+            </CButton>
+          </div>
+        </CModal>
+
+        {/* Confirm delete */}
+        <CModal
+          visible={!!confirmTarget}
+          onClose={() => setConfirmTarget(null)}
+          backdrop="static"
+          className="rt-modal"
         >
-          <CToastHeader closeButton>
-            <CIcon
-              icon={toast.color === 'success' ? cilCheckCircle : cilWarning}
-              className="me-2"
-            />
-            {toast.color === 'success' ? 'Success' : 'Error'}
-          </CToastHeader>
-          <CToastBody>{toast.message}</CToastBody>
-        </CToast>
-      </CToaster>
+          <div className="rt-confirm-body">
+            <div className="rt-confirm-icon">
+              <CIcon icon={cilTrash} />
+            </div>
+            <div className="rt-confirm-title">
+              {Language.deleteRequestType || 'Delete request type'}
+            </div>
+            <div className="rt-confirm-text">
+              {confirmTarget
+                ? `Delete "${confirmTarget.name}"? Customers will no longer see this option.`
+                : 'Delete this request type?'}
+            </div>
+          </div>
+          <div className="rt-modal-footer">
+            <CButton
+              color="secondary"
+              variant="outline"
+              onClick={() => setConfirmTarget(null)}
+              disabled={deleting}
+            >
+              {Language.cancel || 'Cancel'}
+            </CButton>
+            <CButton color="danger" onClick={confirmDelete} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  {Language.deleting || 'Deleting…'}
+                </>
+              ) : (
+                <>
+                  <CIcon icon={cilTrash} className="me-2" />
+                  {Language.delete || 'Delete'}
+                </>
+              )}
+            </CButton>
+          </div>
+        </CModal>
+      </CCard>
     </>
   )
 }

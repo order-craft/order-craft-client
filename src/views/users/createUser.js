@@ -3,169 +3,213 @@ import {
   CButton,
   CCard,
   CCardBody,
-  CCardHeader,
-  CCol,
-  CForm,
   CFormInput,
-  CFormFeedback,
-  CFormLabel,
-  CRow,
-  CModal,
-  CModalBody,
-  CModalFooter,
-  CModalHeader,
-  CModalTitle,
+  CSpinner,
+  CToaster,
+  CToast,
+  CToastHeader,
+  CToastBody,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilArrowLeft, cilCheck, cilLowVision } from '@coreui/icons'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
-import { useNavigate } from 'react-router-dom'
-import Loading from '../../helpers/Loading'
+import { useSelector } from 'react-redux'
+import translations from '../../app/Language'
+import './users.css'
 
 const CreateUser = () => {
-  const [validated, setValidated] = useState(false)
-  const [formData, setFormData] = useState({
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+  const navigate = useNavigate()
+
+  const [form, setForm] = useState({
     fullName: '',
     email: '',
     password: '',
-    role: 'client',
   })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [modalMessage, setModalMessage] = useState('')
-  const [modalError, setModalError] = useState(false)
-  const navigate = useNavigate()
+  const [showPassword, setShowPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const [submitting, setSubmitting] = useState(false)
+  const [toasts, setToasts] = useState([])
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-    const form = event.currentTarget
-    if (form.checkValidity() === false) {
-      event.stopPropagation()
-    } else {
-      setLoading(true)
-      try {
-        const token = localStorage.getItem('token')
-        await axios.post(`${BaseUrl}/auth/superClient/create-user`, formData, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        setLoading(false)
-        setModalMessage('Client created successfully')
-        setModalError(false)
-        setShowModal(true)
-        // Reset form on successful creation
-        setFormData({
-          fullName: '',
-          email: '',
-          password: '',
-          role: 'client',
-        })
-        setError('')
-      } catch (err) {
-        setLoading(false)
-        setModalMessage('Error creating client')
-        setModalError(true)
-        setShowModal(true)
-        console.error(err)
-      }
-    }
-    setValidated(true)
+  const showToast = (msg, color = 'success') => {
+    const id = Date.now() + Math.random()
+    setToasts((prev) => [...prev, { id, msg, color }])
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((x) => x.id !== id))
+    }, 4000)
+  }
+  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+
+  const validate = () => {
+    const e = {}
+    if (!form.fullName.trim()) e.fullName = 'Name is required'
+    if (!form.email.trim()) e.email = 'Email is required'
+    else if (!/^\S+@\S+\.\S+$/.test(form.email)) e.email = 'Invalid email format'
+    if (!form.password) e.password = 'Password is required'
+    else if (form.password.length < 6) e.password = 'Password must be at least 6 characters'
+    setErrors(e)
+    return Object.keys(e).length === 0
   }
 
-  const handleChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevState) => ({
-      ...prevState,
-      [id]: value,
-    }))
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!validate()) return
 
-  const handleCloseModal = () => {
-    setShowModal(false)
-    if (!modalError) {
-      navigate('/users/usersList') // Navigate to the users list page if no error
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('token')
+      await axios.post(
+        `${BaseUrl}/auth/superClient/create-user`,
+        {
+          fullName: form.fullName.trim(),
+          email: form.email.trim(),
+          password: form.password,
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      showToast(Language.userCreated || 'Waiter created successfully')
+      setTimeout(() => navigate('/users/usersList'), 800)
+    } catch (err) {
+      showToast(
+        err.response?.data?.error || Language.saveError || 'Error creating waiter',
+        'danger',
+      )
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
-    <CRow>
-      <CCol xs={12}>
-        <CCard className="mb-4">
-          <CCardHeader>
-            <strong>Create Client</strong>
-          </CCardHeader>
-          <CCardBody>
-            {!loading && (
-              <CForm
-                className="row g-3 needs-validation"
-                noValidate
-                validated={validated}
-                onSubmit={handleSubmit}
+    <>
+      <CToaster position="top-end">
+        {toasts.map(({ id, msg, color }) => (
+          <CToast
+            key={id}
+            autohide
+            delay={4000}
+            color={color}
+            visible
+            onClose={() => removeToast(id)}
+          >
+            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
+            <CToastBody>{msg}</CToastBody>
+          </CToast>
+        ))}
+      </CToaster>
+
+      <CCard className="mb-4">
+        <div className="ut-header">
+          <div className="ut-header-inner">
+            <div className="ut-header-left">
+              <h5 className="ut-title">{Language.createUser || 'New waiter'}</h5>
+              <div className="ut-subtitle">
+                {Language.createUserHint || 'Add a staff member who can log in and take orders.'}
+              </div>
+            </div>
+
+            <div className="ut-header-right">
+              <CButton
+                color="secondary"
+                variant="outline"
+                onClick={() => navigate('/users/usersList')}
               >
-                <CCol md={6}>
-                  <CFormLabel htmlFor="fullName">Full Name</CFormLabel>
+                <CIcon icon={cilArrowLeft} className="me-2" />
+                {Language.cancel || 'Back'}
+              </CButton>
+            </div>
+          </div>
+        </div>
+
+        <CCardBody className="p-0">
+          <div className="ut-create-wrap">
+            <form className="ut-create-card" onSubmit={handleSubmit} noValidate>
+              <div className="ut-field">
+                <label htmlFor="cu-name">{Language.FullName || 'Full name'}</label>
+                <CFormInput
+                  id="cu-name"
+                  value={form.fullName}
+                  autoFocus
+                  onChange={(e) => {
+                    setForm({ ...form, fullName: e.target.value })
+                    setErrors({ ...errors, fullName: null })
+                  }}
+                  invalid={!!errors.fullName}
+                />
+                {errors.fullName && <div className="text-danger small mt-1">{errors.fullName}</div>}
+              </div>
+
+              <div className="ut-field">
+                <label htmlFor="cu-email">{Language.email || 'Email'}</label>
+                <CFormInput
+                  id="cu-email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => {
+                    setForm({ ...form, email: e.target.value })
+                    setErrors({ ...errors, email: null })
+                  }}
+                  invalid={!!errors.email}
+                />
+                {errors.email && <div className="text-danger small mt-1">{errors.email}</div>}
+              </div>
+
+              <div className="ut-field">
+                <label htmlFor="cu-password">{Language.password || 'Password'}</label>
+                <div className="ut-password-wrap">
                   <CFormInput
-                    type="text"
-                    id="fullName"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    required
+                    id="cu-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={form.password}
+                    onChange={(e) => {
+                      setForm({ ...form, password: e.target.value })
+                      setErrors({ ...errors, password: null })
+                    }}
+                    invalid={!!errors.password}
                   />
-                  <CFormFeedback invalid>Please provide a valid name.</CFormFeedback>
-                </CCol>
-                <CCol md={6}>
-                  <CFormLabel htmlFor="email">Email</CFormLabel>
-                  <CFormInput
-                    type="email"
-                    id="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                  />
-                  <CFormFeedback invalid>Please provide a valid email.</CFormFeedback>
-                </CCol>
-                <CCol md={6}>
-                  <CFormLabel htmlFor="password">Password</CFormLabel>
-                  <CFormInput
-                    type="password"
-                    id="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
-                  <CFormFeedback invalid>Please provide a valid password.</CFormFeedback>
-                </CCol>
-                <CCol xs={12}>
-                  <CButton disabled={loading} color="primary" type="submit">
-                    {loading ? (
-                      <>
-                        {' '}
-                        <CSpinner />
-                        "Loading"
-                      </>
-                    ) : (
-                      'Create Client'
-                    )}
-                  </CButton>
-                </CCol>
-              </CForm>
-            )}
-          </CCardBody>
-        </CCard>
-        <CModal visible={showModal} onClose={handleCloseModal}>
-          <CModalHeader>
-            <CModalTitle>{modalError ? 'Error' : 'Success'}</CModalTitle>
-          </CModalHeader>
-          <CModalBody>{modalMessage}</CModalBody>
-          <CModalFooter>
-            <CButton color="primary" onClick={handleCloseModal}>
-              Close
-            </CButton>
-          </CModalFooter>
-        </CModal>
-      </CCol>
-    </CRow>
+                  <button
+                    type="button"
+                    className="ut-password-toggle"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    <CIcon icon={showPassword ? cilLowVision : cilLowVision} />
+                  </button>
+                </div>
+                {errors.password && <div className="text-danger small mt-1">{errors.password}</div>}
+              </div>
+
+              <div className="d-flex justify-content-end gap-2 mt-4">
+                <CButton
+                  color="secondary"
+                  variant="outline"
+                  type="button"
+                  onClick={() => navigate('/users/usersList')}
+                  disabled={submitting}
+                >
+                  {Language.cancel || 'Cancel'}
+                </CButton>
+                <CButton color="primary" type="submit" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <CSpinner size="sm" className="me-2" />
+                      {Language.creating || 'Creating…'}
+                    </>
+                  ) : (
+                    <>
+                      <CIcon icon={cilCheck} className="me-2" />
+                      {Language.createUser || 'Create waiter'}
+                    </>
+                  )}
+                </CButton>
+              </div>
+            </form>
+          </div>
+        </CCardBody>
+      </CCard>
+    </>
   )
 }
 

@@ -1,322 +1,423 @@
-import React, { useEffect, useState } from 'react'
-import {
-  CCard,
-  CCardBody,
-  CRow,
-  CCol,
-  CSpinner,
-  CCardFooter,
-  CModal,
-  CModalBody,
-  CModalFooter,
-  CModalHeader,
-  CModalTitle,
-  CButton,
-  CForm,
-  CFormInput,
-  CBadge,
-} from '@coreui/react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import axios from 'axios'
-import { cilPencil, cilTrash, cilList } from '@coreui/icons'
+import { CButton, CCard, CCardBody, CModal, CFormInput, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
+import {
+  cilSearch,
+  cilPlus,
+  cilPencil,
+  cilTrash,
+  cilList,
+  cilWarning,
+  cilChevronLeft,
+} from '@coreui/icons'
+import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import './category.css'
+
+/* deterministic color per category id */
+const palette = [
+  '#0d6efd',
+  '#6610f2',
+  '#d63384',
+  '#fd7e14',
+  '#198754',
+  '#20c997',
+  '#0dcaf0',
+  '#e83e8c',
+]
+const colorFor = (id) => {
+  let h = 0
+  const s = String(id || '')
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
+  return palette[Math.abs(h) % palette.length]
+}
 
 const SectionDetails = () => {
-  //language
   const t = useSelector((state) => state.language)
   const Language = translations[t]
 
-  const { sectionId } = useParams() // Get sectionId from URL params
-  const [categories, setCategories] = useState(null)
-  const [loadingCategories, setLoadingCategories] = useState(false)
-  const [error, setError] = useState('')
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [categoryToEdit, setCategoryToEdit] = useState(null)
-  const [newCategoryName, setNewCategoryName] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false)
+  const { sectionId } = useParams()
   const navigate = useNavigate()
 
-  // Fetch categories for the section
+  const [section, setSection] = useState(null)
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  const [modalMode, setModalMode] = useState(null) // 'add' | 'edit' | null
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [formName, setFormName] = useState('')
+  const [formError, setFormError] = useState('')
+
+  const [confirmTarget, setConfirmTarget] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  /* ---------- data ---------- */
   const fetchCategories = async () => {
-    setLoadingCategories(true)
+    setLoading(true)
+    setError('')
     try {
       const token = localStorage.getItem('token')
       const response = await axios.get(`${BaseUrl}/sections/${sectionId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       })
-      setCategories(response.data.categories) // Store the categories of the section
+      setSection(response.data)
+      setCategories(response.data.categories || [])
     } catch (err) {
-      setError('Error fetching categories')
+      setError(Language.fetchError || 'Error fetching categories')
       console.error(err)
+    } finally {
+      setLoading(false)
     }
-    setLoadingCategories(false)
   }
 
   useEffect(() => {
-    if (sectionId) {
-      fetchCategories() // Fetch categories when sectionId is available
-    }
+    if (sectionId) fetchCategories()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionId])
 
-  const handleEditCategory = (category) => {
-    setCategoryToEdit(category)
-    setNewCategoryName(category.name)
-    setShowEditModal(true)
-  }
+  /* ---------- derived ---------- */
+  const filteredCategories = useMemo(() => {
+    if (!searchQuery.trim()) return categories
+    const q = searchQuery.trim().toLowerCase()
+    return categories.filter((c) => (c.name || '').toLowerCase().includes(q))
+  }, [categories, searchQuery])
 
-  const handleSaveCategory = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      await axios.put(
-        `${BaseUrl}/categories/${categoryToEdit._id}`,
-        { name: newCategoryName },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-      setShowEditModal(false)
-      fetchCategories() // Refresh categories after update
-    } catch (err) {
-      console.error('Error updating category', err)
-    }
-  }
-
-  const handleDeleteCategory = async (categoryId) => {
-    if (window.confirm('Are you sure you want to delete this category and products within it?')) {
-      try {
-        const token = localStorage.getItem('token')
-        await axios.delete(`${BaseUrl}/categories/${categoryId}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        fetchCategories() // Refresh categories after deletion
-      } catch (err) {
-        console.error('Error deleting category', err)
-      }
-    }
-  }
-  // Add this utility function somewhere in your code
-  const getRandomGradient = () => {
-    const gradients = [
-      '#667eea, #764ba2',
-      '#ff758c, #ff7eb3',
-      '#4facfe, #00f2fe',
-      '#43e97b, #38f9d7',
-      '#a18cd1, #fbc2eb',
-      '#ffc3a0, #ffafbd',
-      '#96fbc4, #f9f586',
-    ]
-    return gradients[Math.floor(Math.random() * gradients.length)]
-  }
-  const handleAddCategory = async () => {
-    try {
-      const token = localStorage.getItem('token')
-      await axios.post(
-        `${BaseUrl}/categories`,
-        { name: newCategoryName, sectionId }, // Send sectionId when adding new category
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      )
-      setShowAddCategoryModal(false)
-      fetchCategories() // Refresh categories after adding new category
-    } catch (err) {
-      console.error('Error adding category', err)
-    }
-  }
-
-  const filteredCategories = categories?.filter((category) =>
-    category.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  const totalProducts = useMemo(
+    () => categories.reduce((sum, c) => sum + (c.products?.length || 0), 0),
+    [categories],
   )
 
-  // BaseHub for colors display
-  if (loadingCategories) return <CSpinner color="primary" />
+  /* ---------- modal ---------- */
+  const openAdd = () => {
+    setFormName('')
+    setFormError('')
+    setEditingCategory(null)
+    setModalMode('add')
+  }
 
-  if (error) return <div>{error}</div>
+  const openEdit = (category, e) => {
+    if (e) e.stopPropagation()
+    setFormName(category.name || '')
+    setFormError('')
+    setEditingCategory(category)
+    setModalMode('edit')
+  }
+
+  const closeModal = () => {
+    setModalMode(null)
+    setEditingCategory(null)
+    setFormName('')
+    setFormError('')
+  }
+
+  const submitForm = async () => {
+    if (!formName.trim()) {
+      setFormError(Language.nameRequired || 'Name is required')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('token')
+      if (modalMode === 'edit' && editingCategory) {
+        await axios.put(
+          `${BaseUrl}/categories/${editingCategory._id}`,
+          { name: formName.trim() },
+          { headers: { Authorization: `Bearer ${token}` } },
+        )
+      } else {
+        await axios.post(
+          `${BaseUrl}/categories`,
+          { name: formName.trim(), sectionId },
+          { headers: { Authorization: `Bearer ${token}` } },
+        )
+      }
+      closeModal()
+      fetchCategories()
+    } catch (err) {
+      setFormError(err.response?.data?.error || Language.saveError || 'Error saving category')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  /* ---------- delete ---------- */
+  const askDelete = (category, e) => {
+    if (e) e.stopPropagation()
+    setConfirmTarget(category)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmTarget) return
+    setDeleting(true)
+    try {
+      const token = localStorage.getItem('token')
+      await axios.delete(`${BaseUrl}/categories/${confirmTarget._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      setConfirmTarget(null)
+      fetchCategories()
+    } catch (err) {
+      console.error('Error deleting category', err)
+      setConfirmTarget(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  /* ---------- navigation ---------- */
+  const openCategory = (id) => {
+    navigate(`/menu/categories/${id}`)
+  }
+
+  const goBack = () => navigate('/menu/sections')
+
+  /* ---------- render ---------- */
+  if (loading && !section) {
+    return (
+      <div className="text-center py-5">
+        <CSpinner color="primary" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="alert alert-danger">{error}</div>
+      </div>
+    )
+  }
 
   return (
-    <>
-      {/* Search Bar and Add Category Button */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-2">
-        {/* Search Bar */}
-        <CFormInput
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={Language.searchCategories}
-          className="mb-2 mb-md-0"
-          style={{ width: '100%', maxWidth: '300px' }}
-        />
+    <CCard className="mb-4">
+      {/* ---- Top strip ---- */}
+      <div className="dc-header">
+        <div className="dc-header-inner">
+          <div className="dc-header-left">
+            <div className="dc-breadcrumb">
+              <CIcon
+                icon={cilChevronLeft}
+                onClick={goBack}
+                style={{ cursor: 'pointer' }}
+                aria-label="Back"
+              />
+              <span>{Language.menu || 'Menu'}</span>
+              <span>·</span>
+              <span>{section?.name || 'Section'}</span>
+            </div>
+            <h5 className="dc-title">{Language.categories || 'Categories'}</h5>
+            <div className="dc-subtitle">
+              <strong>{categories.length}</strong>{' '}
+              {categories.length === 1 ? 'category' : 'categories'}
+              {' · '}
+              <strong>{totalProducts}</strong> products
+            </div>
+          </div>
 
-        {/* Add Category Button */}
-        <CButton
-          color="primary"
-          className="btn-sm"
-          style={{ width: 'auto' }}
-          onClick={() => setShowAddCategoryModal(true)}
-        >
-          {Language.addNewCategory}
-        </CButton>
+          <div className="dc-header-right">
+            <div className="dc-search">
+              <CIcon icon={cilSearch} className="dc-search-icon" />
+              <input
+                type="text"
+                placeholder={Language.searchCategories || 'Search categories...'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <CButton color="primary" onClick={openAdd}>
+              <CIcon icon={cilPlus} className="me-2" />
+              {Language.addNewCategory || 'New category'}
+            </CButton>
+          </div>
+        </div>
       </div>
 
-      <CRow className="g-4">
-        {filteredCategories?.map((category, index) => (
-          <CCol key={index} xs={12} sm={6} md={4} lg={3} className="mb-4">
-            <CCard
-              className="category-card h-100 border-0"
-              onClick={() => navigate(`/menu/categories/${category._id}`)}
-            >
-              {/* Optional category image placeholder - you can replace with actual image */}
-              <div
-                className="category-image-placeholder"
-                style={{
-                  background: `linear-gradient(135deg, ${getRandomGradient()})`,
-                  height: '120px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {category.image ? (
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="img-fluid h-100 w-100 object-fit-cover"
-                  />
-                ) : (
-                  <CIcon
-                    icon={cilList}
-                    size="xxl"
-                    className="text-white opacity-25"
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                    }}
-                  />
-                )}
+      {/* ---- Grid ---- */}
+      <CCardBody className="p-0">
+        <div className="dc-grid">
+          {categories.length === 0 ? (
+            <div className="dc-empty">
+              <CIcon icon={cilList} size="xl" />
+              <div className="dc-empty-title">
+                {Language.noCategoriesYet || 'No categories yet'}
               </div>
+              <div className="dc-empty-body">
+                {Language.noCategoriesHint ||
+                  'Categories group products inside a section — like Espresso, Iced, Teas.'}
+              </div>
+              <CButton color="primary" onClick={openAdd}>
+                <CIcon icon={cilPlus} className="me-2" />
+                {Language.addNewCategory || 'New category'}
+              </CButton>
+            </div>
+          ) : filteredCategories.length === 0 ? (
+            <div className="dc-empty">
+              <CIcon icon={cilWarning} size="xl" />
+              <div className="dc-empty-title">
+                {Language.noCategoriesMatch || 'No categories match'}
+              </div>
+              <div className="dc-empty-body">
+                {Language.noCategoriesMatchHint || 'Try a different search term.'}
+              </div>
+            </div>
+          ) : (
+            filteredCategories.map((category) => {
+              const color = colorFor(category._id)
+              const initial = (category.name || '?').charAt(0).toUpperCase()
+              const productCount = category.products?.length || 0
 
-              <CCardBody className="position-relative">
-                <h5 className="category-title mb-0">{category.name}</h5>
-                <div className="category-badge">
-                  <CBadge color="light" className="text-dark small">
-                    {category.products.length || 0} {Language.products}
-                  </CBadge>
-                </div>
-                {category.description && (
-                  <p className="category-description text-muted small mt-2 mb-0">
-                    {category.description}
-                  </p>
-                )}
-              </CCardBody>
+              return (
+                <div
+                  key={category._id}
+                  className="dc-card"
+                  onClick={() => openCategory(category._id)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="dc-card-band" style={{ background: color }}>
+                    {initial}
+                  </div>
 
-              <CCardFooter className="bg-transparent border-0 pt-0">
-                <div className="d-flex justify-content-between align-items-center">
-                  <div className="category-tags">
-                    {category.tags?.slice(0, 2).map((tag, i) => (
-                      <CBadge key={i} color="light" className="text-dark me-1 small">
-                        #{tag}
-                      </CBadge>
-                    ))}
-                    {category.tags?.length > 2 && (
-                      <CBadge color="light" className="text-dark small">
-                        +{category.tags.length - 2}
-                      </CBadge>
+                  <div className="dc-card-body">
+                    <p className="dc-card-title">{category.name}</p>
+                    <div className="dc-card-meta">
+                      <span>
+                        <strong>{productCount}</strong>{' '}
+                        {productCount === 1 ? 'product' : 'products'}
+                      </span>
+                    </div>
+                    {category.description && (
+                      <div className="dc-card-desc">{category.description}</div>
                     )}
                   </div>
-                  <div className="action-buttons">
-                    <CIcon
-                      cursor="pointer"
-                      icon={cilPencil}
-                      className="text-secondary me-2 action-icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleEditCategory(category)
-                      }}
-                    />
-                    <CIcon
-                      cursor="pointer"
-                      icon={cilTrash}
-                      className="text-danger action-icon"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteCategory(category._id)
-                      }}
-                    />
+
+                  <div className="dc-card-actions">
+                    <CButton
+                      color="secondary"
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => openEdit(category, e)}
+                      aria-label="Edit category"
+                    >
+                      <CIcon icon={cilPencil} />
+                    </CButton>
+                    <CButton
+                      color="danger"
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => askDelete(category, e)}
+                      aria-label="Delete category"
+                    >
+                      <CIcon icon={cilTrash} />
+                    </CButton>
                   </div>
                 </div>
-              </CCardFooter>
-            </CCard>
-          </CCol>
-        ))}
-      </CRow>
+              )
+            })
+          )}
+        </div>
+      </CCardBody>
 
-      {/* Edit Category Modal */}
-      {showEditModal && (
-        <CModal visible={showEditModal} onClose={() => setShowEditModal(false)}>
-          <CModalHeader>
-            <CModalTitle>{Language.editCategory}</CModalTitle>
-          </CModalHeader>
-          <CModalBody>
-            <CForm>
-              <CFormInput
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={Language.enterNewCategoryName}
-              />
-            </CForm>
-          </CModalBody>
-          <CModalFooter>
-            <CButton color="secondary" onClick={() => setShowEditModal(false)}>
-              {Language.cancel}
-            </CButton>
-            <CButton color="primary" onClick={handleSaveCategory}>
-              {Language.saveChanges}
-            </CButton>
-          </CModalFooter>
-        </CModal>
-      )}
+      {/* ---- Add / Edit modal ---- */}
+      <CModal visible={!!modalMode} onClose={closeModal} backdrop="static" className="dc-modal">
+        <div className="dc-modal-header">
+          <h5 className="dc-modal-title">
+            <CIcon icon={modalMode === 'edit' ? cilPencil : cilPlus} />
+            {modalMode === 'edit'
+              ? Language.editCategory || 'Edit category'
+              : Language.addNewCategory || 'New category'}
+          </h5>
+          <button className="dc-modal-close" onClick={closeModal} aria-label="Close" type="button">
+            &times;
+          </button>
+        </div>
 
-      {/* Add Category Modal */}
-      {showAddCategoryModal && (
-        <CModal visible={showAddCategoryModal} onClose={() => setShowAddCategoryModal(false)}>
-          <CModalHeader>
-            <CModalTitle>{Language.AddNewCategory}</CModalTitle>
-          </CModalHeader>
-          <CModalBody>
-            <CForm>
-              <CFormInput
-                type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={Language.enterNewCategoryName}
-              />
-            </CForm>
-          </CModalBody>
-          <CModalFooter>
-            <CButton color="secondary" onClick={() => setShowAddCategoryModal(false)}>
-              {Language.cancel}
-            </CButton>
-            <CButton color="primary" onClick={handleAddCategory}>
-              {Language.addCategory}
-            </CButton>
-          </CModalFooter>
-        </CModal>
-      )}
-    </>
+        <div className="dc-modal-body">
+          <div className="dc-field">
+            <label htmlFor="dc-category-name">{Language.categoryName || 'Category name'}</label>
+            <CFormInput
+              id="dc-category-name"
+              value={formName}
+              autoFocus
+              onChange={(e) => {
+                setFormName(e.target.value)
+                setFormError('')
+              }}
+              placeholder="e.g. Espresso"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submitForm()
+              }}
+            />
+            {formError && <div className="text-danger small mt-1">{formError}</div>}
+          </div>
+        </div>
+
+        <div className="dc-modal-footer">
+          <CButton color="secondary" variant="outline" onClick={closeModal} disabled={submitting}>
+            {Language.cancel || 'Cancel'}
+          </CButton>
+          <CButton color="primary" onClick={submitForm} disabled={submitting}>
+            {submitting ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.saving || 'Saving…'}
+              </>
+            ) : modalMode === 'edit' ? (
+              Language.saveChanges || 'Save'
+            ) : (
+              Language.create || 'Create'
+            )}
+          </CButton>
+        </div>
+      </CModal>
+
+      {/* ---- Confirm delete ---- */}
+      <CModal
+        visible={!!confirmTarget}
+        onClose={() => setConfirmTarget(null)}
+        backdrop="static"
+        className="dc-modal"
+      >
+        <div className="dc-confirm-body">
+          <div className="dc-confirm-icon">
+            <CIcon icon={cilTrash} />
+          </div>
+          <div className="dc-confirm-title">{Language.deleteCategory || 'Delete category'}</div>
+          <div className="dc-confirm-text">
+            {Language.deleteCategoryConfirm ||
+              'Deleting this category will also delete all its products. This cannot be undone.'}
+          </div>
+        </div>
+        <div className="dc-modal-footer">
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={() => setConfirmTarget(null)}
+            disabled={deleting}
+          >
+            {Language.cancel || 'Cancel'}
+          </CButton>
+          <CButton color="danger" onClick={confirmDelete} disabled={deleting}>
+            {deleting ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.deleting || 'Deleting…'}
+              </>
+            ) : (
+              <>
+                <CIcon icon={cilTrash} className="me-2" />
+                {Language.delete || 'Delete'}
+              </>
+            )}
+          </CButton>
+        </div>
+      </CModal>
+    </CCard>
   )
 }
 
