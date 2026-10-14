@@ -1,51 +1,36 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
-import {
-  CRow,
-  CCol,
-  CSpinner,
-  CButton,
-  CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
-  CTable,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableBody,
-  CTableDataCell,
-  CDropdown,
-  CDropdownMenu,
-  CDropdownToggle,
-  CDropdownItem,
-  CProgress,
-  CBadge,
-  CCard,
-  CCardBody,
-} from '@coreui/react'
+import { CCard, CCardBody, CButton, CSpinner } from '@coreui/react'
 import { CChartPie } from '@coreui/react-chartjs'
+import CIcon from '@coreui/icons-react'
+import { cilChart, cilArrowTop, cilArrowBottom, cilCloudDownload, cilCalendar } from '@coreui/icons'
 import axios from 'axios'
 import { format, eachDayOfInterval, startOfWeek, endOfWeek } from 'date-fns'
 import { GetToken } from '../../../helpers/GetToken'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
-import * as XLSX from 'xlsx'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
-import CIcon from '@coreui/icons-react'
-import { cilChart, cilArrowTop, cilArrowBottom, cilCloudDownload, cilInfo } from '@coreui/icons'
+import './sales.css'
+
+const SLICE_COLORS = [
+  '#0d6efd',
+  '#198754',
+  '#0dcaf0',
+  '#ffc107',
+  '#e83e8c',
+  '#6f42c1',
+  '#fd7e14',
+  '#20c997',
+]
 
 const CurrentWeekRevenue = ({ className }) => {
   const token = GetToken()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [weeklyRevenue, setWeeklyRevenue] = useState([])
   const [growthRate, setGrowthRate] = useState(0)
   const [revenueByMethod, setRevenueByMethod] = useState({})
-  const [modalVisible, setModalVisible] = useState(false)
-  const [selectedDay, setSelectedDay] = useState(null)
 
   const t = useSelector((state) => state.language)
   const Language = translations[t]
@@ -55,360 +40,289 @@ const CurrentWeekRevenue = ({ className }) => {
   const weekEnd = endOfWeek(today)
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd })
 
-  const getDayName = (date) => format(date, 'EEEE')
-  const getShortDayName = (date) => format(date, 'EEE')
+  const completeWeeklyData = useMemo(() => {
+    return weekDays.map((date) => {
+      const day = date.getDate()
+      const revenueForDay = weeklyRevenue.find((item) => item._id.day === day)?.dailyRevenue || 0
+      return {
+        dayName: format(date, 'EEEE'),
+        shortDayName: format(date, 'EEE'),
+        date: format(date, 'MMMM dd, yyyy'),
+        dailyRevenue: revenueForDay,
+      }
+    })
+  }, [weekDays, weeklyRevenue])
 
-  // To discuss for trans
-  const completeWeeklyData = weekDays.map((date) => {
-    const day = date.getDate()
-    const revenueForDay = weeklyRevenue.find((item) => item._id.day === day)?.dailyRevenue || 0
-    return {
-      dayName: getDayName(date),
-      shortDayName: getShortDayName(date),
-      date: format(date, 'MMMM dd, yyyy'),
-      dailyRevenue: revenueForDay,
-    }
-  })
+  const totalWeekRevenue = useMemo(
+    () => completeWeeklyData.reduce((sum, d) => sum + d.dailyRevenue, 0),
+    [completeWeeklyData],
+  )
 
-  const getCurrentWeekRevenue = async () => {
-    setLoading(true)
-    try {
-      const response = await axios.get(`${BaseUrl}/dashboard/weekly-revenue`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+  const maxDailyRevenue = useMemo(
+    () => completeWeeklyData.reduce((max, d) => Math.max(max, d.dailyRevenue), 0),
+    [completeWeeklyData],
+  )
 
-      const { dailyRevenue, growthRate, revenueByPaymentMethod } = response.data
-      setWeeklyRevenue(dailyRevenue)
-      setGrowthRate(growthRate)
-      setRevenueByMethod(revenueByPaymentMethod || {})
-    } catch (err) {
-      console.error('Error fetching current week revenue', err)
-    }
-    setLoading(false)
-  }
+  const methodEntries = Object.entries(revenueByMethod || {})
+  const isEmpty = !loading && totalWeekRevenue === 0
 
+  /* ---------- fetch ---------- */
   useEffect(() => {
+    const getCurrentWeekRevenue = async () => {
+      setLoading(true)
+      try {
+        const response = await axios.get(`${BaseUrl}/dashboard/weekly-revenue`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const { dailyRevenue, growthRate, revenueByPaymentMethod } = response.data
+        setWeeklyRevenue(dailyRevenue || [])
+        setGrowthRate(Number(growthRate) || 0)
+        setRevenueByMethod(revenueByPaymentMethod || {})
+      } catch (err) {
+        console.error('Error fetching current week revenue', err)
+      } finally {
+        setLoading(false)
+      }
+    }
     getCurrentWeekRevenue()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /* ---------- PDF ---------- */
   const exportToPDF = () => {
     const doc = new jsPDF()
-    doc.setFontSize(16)
-    doc.text(Language.CurrentWeekRevenueDetails, 14, 16)
-    doc.setFontSize(12)
-    doc.text(`${Language.Generatedon} ${format(new Date(), 'MMMM dd, yyyy')}`, 14, 24)
+    const pageWidth = doc.internal.pageSize.width
+
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Current Week Revenue', 14, 18)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(120)
+    doc.text(`${format(weekStart, 'MMM dd')} → ${format(weekEnd, 'MMM dd, yyyy')}`, 14, 25)
+    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 31)
+
+    doc.setTextColor(0)
+    doc.setFontSize(11)
+    doc.text(`Total: ${totalWeekRevenue.toFixed(2)} TND`, pageWidth - 15, 18, { align: 'right' })
+
     doc.autoTable({
-      startY: 30,
-      head: [[Language.Day, Language.Date, `${Language.Revenue} (TND)`]],
+      head: [['Day', 'Date', 'Revenue (TND)']],
       body: completeWeeklyData.map((item) => [
         item.dayName,
         item.date,
         item.dailyRevenue.toFixed(2),
       ]),
-      styles: { cellPadding: 5, fontSize: 10 },
-      headStyles: { fillColor: [79, 115, 223] },
+      startY: 40,
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      margin: { top: 40, left: 14, right: 14 },
     })
+
     doc.save(`week-revenue-${format(new Date(), 'yyyy-MM-dd')}.pdf`)
   }
 
-  const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      completeWeeklyData.map((item) => ({
-        Day: item.dayName,
-        Date: item.date,
-        'Revenue (TND)': item.dailyRevenue.toFixed(2),
-      })),
-    )
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Weekly Revenue')
-    XLSX.writeFile(workbook, `week-revenue-${format(new Date(), 'yyyy-MM-dd')}.xlsx`)
-  }
+  /* ---------- render ---------- */
+  const growthPositive = growthRate >= 0
 
-  const totalWeekRevenue = completeWeeklyData.reduce((sum, item) => sum + item.dailyRevenue, 0)
-  const maxDailyRevenue = Math.max(...completeWeeklyData.map((item) => item.dailyRevenue))
-  const getProgressColor = (value) => {
-    if (value > 75) return 'success'
-    if (value > 50) return 'info'
-    if (value > 25) return 'warning'
-    return 'danger'
-  }
   return (
-    <CCard className="dashboard-card">
-      <CCardBody>
-        <CRow className={className} xs={{ gutter: 4 }}>
-          <CCol>
-            <div className="dashboard-header">
-              <h5 className="dashboard-title">
-                <CIcon icon={cilChart} className="me-2" />
-                {Language.CurrentWeekRevenue}
-              </h5>
-              <div className="dashboard-actions">
-                <CButton
-                  color="primary"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setModalVisible(true)}
-                  className="me-2"
+    <CCard className={`sales-card ${className || ''}`}>
+      {/* ---- Header ---- */}
+      <div className="sales-card-header">
+        <div className="sales-card-header-left">
+          <h5 className="sales-card-title">
+            <CIcon icon={cilChart} />
+            {Language.CurrentWeekRevenue || 'This week'}
+          </h5>
+          <div className="sales-card-subtitle">
+            {format(weekStart, 'MMM dd')} → {format(weekEnd, 'MMM dd, yyyy')}
+          </div>
+        </div>
+
+        <div className="sales-card-header-right">
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={exportToPDF}
+            disabled={totalWeekRevenue === 0}
+          >
+            <CIcon icon={cilCloudDownload} className="me-2" />
+            {Language.ExporttoPDF || 'Export PDF'}
+          </CButton>
+        </div>
+      </div>
+
+      <CCardBody className="p-0">
+        {loading ? (
+          <div className="sales-skeleton">
+            <div>
+              <div className="sales-skeleton-line" style={{ width: '70%' }} />
+              <div className="sales-skeleton-line" style={{ width: '50%' }} />
+              <div className="sales-skeleton-line" style={{ width: '85%' }} />
+              <div className="sales-skeleton-line" style={{ width: '60%' }} />
+            </div>
+            <div>
+              <div className="sales-skeleton-circle" />
+            </div>
+          </div>
+        ) : isEmpty ? (
+          <div className="sales-empty">
+            <CIcon icon={cilCalendar} size="xl" />
+            <div className="sales-empty-title">
+              {Language.noRevenueThisWeek || 'No revenue this week yet'}
+            </div>
+            <div className="sales-empty-body">
+              {Language.noRevenueThisWeekHint ||
+                'Paid orders will appear here as the week goes on.'}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Total + growth */}
+            <div style={{ padding: '20px 20px 0 20px' }}>
+              <div className="sales-big-number">
+                {totalWeekRevenue.toFixed(2)}
+                <span className="unit">TND</span>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 10px',
+                    borderRadius: 999,
+                    background: growthPositive ? '#d1e7dd' : '#f8d7da',
+                    color: growthPositive ? '#0f5132' : '#842029',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                  }}
                 >
-                  <CIcon icon={cilInfo} className="me-1" />
-                  {Language.details}
-                </CButton>
-                <CDropdown>
-                  <CDropdownToggle color="secondary" size="sm">
-                    <CIcon icon={cilCloudDownload} className="me-1" />
-                    {Language.Export}
-                  </CDropdownToggle>
-                  <CDropdownMenu>
-                    <CDropdownItem onClick={exportToPDF}>{Language.ExporttoPDF}</CDropdownItem>
-                    <CDropdownItem onClick={exportToExcel}>{Language.ExporttoExel}</CDropdownItem>
-                  </CDropdownMenu>
-                </CDropdown>
+                  <CIcon icon={growthPositive ? cilArrowTop : cilArrowBottom} />
+                  {Math.abs(growthRate).toFixed(1)}%
+                  <span style={{ fontWeight: 500, opacity: 0.8 }}>vs last week</span>
+                </span>
               </div>
             </div>
 
-            <div className="revenue-summary">
-              {loading ? (
-                <div className="text-center py-4">
-                  <CSpinner color="primary" />
-                </div>
-              ) : (
-                <>
-                  <div className="total-revenue">
-                    <h3>{totalWeekRevenue.toFixed(2)} TND</h3>
-                    <CBadge
-                      color={growthRate >= 0 ? 'success' : 'danger'}
-                      shape="rounded-pill"
-                      className="ms-2"
-                    >
-                      {growthRate >= 0 ? (
-                        <CIcon icon={cilArrowTop} className="me-1" />
-                      ) : (
-                        <CIcon icon={cilArrowBottom} className="me-1" />
-                      )}
-                      {Math.abs(growthRate).toFixed(2)}%
-                    </CBadge>
-                  </div>
-
-                  <div className="daily-revenue-bars mt-4">
-                    {completeWeeklyData.map((day, index) => (
-                      <div
-                        key={index}
-                        className={`day-revenue d-flex flex-column align-items-center p-2 ${
-                          selectedDay === index ? 'active bg-light' : ''
-                        }`}
-                        onClick={() => setSelectedDay(index)}
-                        style={{ cursor: 'pointer', minWidth: '60px' }}
-                      >
-                        <div className="day-label fw-semibold mb-2 text-uppercase">
-                          {day.shortDayName}
-                        </div>
-                        <div className="w-100 px-2">
-                          <CProgress
-                            color={getProgressColor((day.dailyRevenue / maxDailyRevenue) * 100)}
-                            value={
-                              maxDailyRevenue > 0 ? (day.dailyRevenue / maxDailyRevenue) * 100 : 0
-                            }
-                            className="mb-2"
-                            height={6}
-                          />
-                        </div>
-                        <div className="day-amount small fw-bold">
-                          {day.dailyRevenue.toFixed(2)} TND
-                        </div>
+            {/* Split: daily rows + payment pie */}
+            <div className="sales-split">
+              {/* Daily rows */}
+              <div className="sales-breakdown">
+                {completeWeeklyData.map((day) => {
+                  const pct = maxDailyRevenue > 0 ? (day.dailyRevenue / maxDailyRevenue) * 100 : 0
+                  const isToday =
+                    format(new Date(), 'yyyy-MM-dd') === format(new Date(day.date), 'yyyy-MM-dd')
+                  return (
+                    <div className="sales-breakdown-row" key={day.date}>
+                      <div className="sales-breakdown-top">
+                        <span className="sales-breakdown-name">
+                          {isToday ? (
+                            <strong style={{ color: '#0d6efd' }}>{day.shortDayName}</strong>
+                          ) : (
+                            day.shortDayName
+                          )}
+                        </span>
+                        <span className="sales-breakdown-value">
+                          <span className="sales-breakdown-amount">
+                            {day.dailyRevenue.toFixed(2)} TND
+                          </span>
+                        </span>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </CCol>
-        </CRow>
+                      <div className="sales-bar-track">
+                        <div
+                          className="sales-bar-fill"
+                          style={{
+                            width: `${pct}%`,
+                            background: isToday ? '#0d6efd' : '#4dabf7',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
 
-        {/* Enhanced Modal with revenue details */}
-        <CModal
-          visible={modalVisible}
-          onClose={() => setModalVisible(false)}
-          size="lg"
-          backdrop="static"
-        >
-          <CModalHeader closeButton>
-            <CModalTitle>
-              <CIcon icon={cilChart} className="me-2" />
-              {Language.CurrentWeekRevenueDetails}
-            </CModalTitle>
-          </CModalHeader>
-          <CModalBody>
-            <CRow>
-              <CCol md={6}>
-                <div className="table-container">
-                  <CTable striped hover responsive>
-                    <CTableHead>
-                      <CTableRow>
-                        <CTableHeaderCell>{Language.Day}</CTableHeaderCell>
-                        <CTableHeaderCell>{Language.date}</CTableHeaderCell>
-                        <CTableHeaderCell className="text-end">
-                          {Language.revenue} (TND)
-                        </CTableHeaderCell>
-                      </CTableRow>
-                    </CTableHead>
-                    <CTableBody>
-                      {completeWeeklyData.map((item, index) => (
-                        <CTableRow key={index}>
-                          <CTableDataCell>{item.dayName}</CTableDataCell>
-                          <CTableDataCell>{item.date}</CTableDataCell>
-                          <CTableDataCell className="text-end">
-                            {item.dailyRevenue.toFixed(2)}
-                          </CTableDataCell>
-                        </CTableRow>
-                      ))}
-                      <CTableRow className="fw-bold">
-                        <CTableDataCell colSpan="2">Total</CTableDataCell>
-                        <CTableDataCell className="text-end">
-                          {totalWeekRevenue.toFixed(2)}
-                        </CTableDataCell>
-                      </CTableRow>
-                    </CTableBody>
-                  </CTable>
-                </div>
-              </CCol>
-              <CCol md={6}>
-                <div className="chart-container">
-                  <h6 className="text-center mb-3">{Language.RevenueByPaymentMethod}</h6>
+              {/* Payment pie */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div className="sales-chart">
                   <CChartPie
                     data={{
-                      labels: Object.keys(revenueByMethod),
+                      labels: methodEntries.map(([m]) => m),
                       datasets: [
                         {
-                          data: Object.values(revenueByMethod).map((v) => parseFloat(v.toFixed(2))),
-                          backgroundColor: [
-                            '#4e73df',
-                            '#1cc88a',
-                            '#36b9cc',
-                            '#f6c23e',
-                            '#e74a3b',
-                            '#858796',
-                          ],
-                          hoverBackgroundColor: [
-                            '#2e59d9',
-                            '#17a673',
-                            '#2c9faf',
-                            '#dda20a',
-                            '#be2617',
-                            '#6c757d',
-                          ],
+                          data: methodEntries.map(([, v]) => v),
+                          backgroundColor: methodEntries.map(
+                            (_, i) => SLICE_COLORS[i % SLICE_COLORS.length],
+                          ),
+                          borderWidth: 0,
                         },
                       ],
                     }}
                     options={{
+                      maintainAspectRatio: false,
+                      responsive: true,
                       plugins: {
-                        legend: {
-                          position: 'bottom',
-                          labels: {
-                            usePointStyle: true,
-                            padding: 20,
-                          },
-                        },
+                        legend: { display: false },
                         tooltip: {
                           callbacks: {
-                            label: function (context) {
-                              const label = context.label || ''
-                              const value = context.raw || 0
-                              const percentage = ((value / totalWeekRevenue) * 100).toFixed(1)
-                              return `${label}: ${value.toFixed(2)} TND (${percentage}%)`
+                            label: (ctx) => {
+                              const value = ctx.raw || 0
+                              const pct =
+                                totalWeekRevenue > 0
+                                  ? ((value / totalWeekRevenue) * 100).toFixed(1)
+                                  : '0.0'
+                              return `${ctx.label}: ${value.toFixed(2)} TND (${pct}%)`
                             },
                           },
                         },
                       },
-                      cutout: '60%',
+                      cutout: '68%',
                     }}
                   />
                 </div>
-              </CCol>
-            </CRow>
-          </CModalBody>
-          <CModalFooter>
-            <CButton color="secondary" onClick={() => setModalVisible(false)}>
-              {Language.close}
-            </CButton>
-          </CModalFooter>
-        </CModal>
 
-        <style>{`
-          .dashboard-card {
-            border-radius: 12px;
-            box-shadow: 0 0.15rem 1rem rgba(0, 0, 0, 0.05);
-            border: none;
-          }
-
-          .dashboard-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-          }
-
-          .dashboard-title {
-            font-weight: 600;
-            color: #4e73df;
-            margin: 0;
-          }
-
-          .dashboard-actions {
-            display: flex;
-            align-items: center;
-          }
-
-          .revenue-summary {
-            padding: 0.5rem 0;
-          }
-
-          .total-revenue {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-          }
-
-          .daily-revenue-bars {
-            display: flex;
-            justify-content: space-between;
-            gap: 0.5rem;
-          }
-
-          .day-revenue {
-            flex: 1;
-            text-align: center;
-            cursor: pointer;
-            padding: 0.5rem;
-            border-radius: 8px;
-            transition: all 0.2s;
-          }
-
-          .day-revenue:hover,
-          .day-revenue.active {
-            background-color: #f8f9fa;
-          }
-
-          .day-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #5a5c69;
-          }
-
-          .day-amount {
-            font-size: 0.75rem;
-            color: #858796;
-          }
-
-          .table-container {
-            max-height: 400px;
-            overflow-y: auto;
-          }
-
-          .chart-container {
-            height: 300px;
-            position: relative;
-          }
-        `}</style>
+                {methodEntries.length > 0 && (
+                  <div className="sales-breakdown">
+                    {methodEntries.map(([method, amount], i) => {
+                      const pct = totalWeekRevenue > 0 ? (amount / totalWeekRevenue) * 100 : 0
+                      const color = SLICE_COLORS[i % SLICE_COLORS.length]
+                      return (
+                        <div className="sales-breakdown-row" key={method}>
+                          <div className="sales-breakdown-top">
+                            <span className="sales-breakdown-name">{method}</span>
+                            <span className="sales-breakdown-value">
+                              <span className="sales-breakdown-amount">
+                                {amount.toFixed(2)} TND
+                              </span>
+                              <span className="sales-breakdown-pct">{pct.toFixed(1)}%</span>
+                            </span>
+                          </div>
+                          <div className="sales-bar-track">
+                            <div
+                              className="sales-bar-fill"
+                              style={{
+                                width: `${pct}%`,
+                                background: color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
       </CCardBody>
     </CCard>
   )

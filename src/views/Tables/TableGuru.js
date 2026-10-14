@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { CButton, CCard, CCardBody, CSpinner } from '@coreui/react'
+import { CButton, CCard, CCardBody } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilStar, cilReload, cilChart, cilWarning } from '@coreui/icons'
 import axios from 'axios'
@@ -9,18 +9,10 @@ import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './tableGuru.css'
 
-const PERIODS = [
-  { key: 'today', label: 'Today' },
-  { key: 'week', label: 'This week' },
-  { key: 'month', label: 'This month' },
-  { key: 'all', label: 'All time' },
-]
-
-/* Medal colors for the top 3 */
 const MEDALS = {
-  0: { accent: '#d4a017', bg: '#fef3c7', label: 'gold' }, // gold
-  1: { accent: '#94a3b8', bg: '#f1f5f9', label: 'silver' }, // silver
-  2: { accent: '#b45309', bg: '#ffedd5', label: 'bronze' }, // bronze
+  0: { accent: '#d4a017', bg: '#fef3c7' },
+  1: { accent: '#94a3b8', bg: '#f1f5f9' },
+  2: { accent: '#b45309', bg: '#ffedd5' },
 }
 
 const TableGuru = () => {
@@ -31,17 +23,14 @@ const TableGuru = () => {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [period, setPeriod] = useState('month')
 
-  /* ---------- fetch ---------- */
   const fetchRevenueData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const response = await axios.get(
-        `${BaseUrl}/tables/dashboard/revenue-per-table?period=${period}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      )
+      const response = await axios.get(`${BaseUrl}/tables/dashboard/revenue-per-table`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       setData(response.data || [])
     } catch (err) {
       console.error('Failed to fetch table leaderboard:', err)
@@ -49,30 +38,26 @@ const TableGuru = () => {
     } finally {
       setLoading(false)
     }
-  }, [token, period])
+  }, [token])
 
   useEffect(() => {
     fetchRevenueData()
   }, [fetchRevenueData])
 
-  /* ---------- derived ---------- */
   const sorted = useMemo(() => {
     return [...data].sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
   }, [data])
 
   const totals = useMemo(() => {
     const revenue = sorted.reduce((sum, t) => sum + (t.totalRevenue || 0), 0)
-    const withSales = sorted.filter((t) => (t.totalRevenue || 0) > 0).length
     const top = sorted[0] || null
-    return { revenue, withSales, top }
+    return { revenue, top, count: sorted.length }
   }, [sorted])
 
   const maxRevenue = sorted[0]?.totalRevenue || 0
 
-  /* ---------- render ---------- */
   return (
     <CCard className="mb-4">
-      {/* ---- Top strip ---- */}
       <div className="tg-header">
         <div className="tg-header-inner">
           <div className="tg-header-left">
@@ -83,35 +68,23 @@ const TableGuru = () => {
             <div className="tg-subtitle">
               {data.length > 0 ? (
                 <>
-                  <strong>{sorted.length}</strong> {sorted.length === 1 ? 'table' : 'tables'}
+                  <strong>{totals.count}</strong> {totals.count === 1 ? 'table' : 'tables'} open
                   {' · '}
-                  <strong>{totals.revenue.toFixed(2)}</strong> TND
+                  <strong>{totals.revenue.toFixed(2)}</strong> TND live
                   {totals.top && (
                     <>
-                      {' · Top: '}
+                      {' · Leading: '}
                       <strong>Table {totals.top.tableNumber}</strong>
                     </>
                   )}
                 </>
               ) : (
-                'Revenue ranking across your tables'
+                'Live ranking · updates as orders come in'
               )}
             </div>
           </div>
 
           <div className="tg-header-right">
-            <div className="tg-tabs">
-              {PERIODS.map((p) => (
-                <button
-                  key={p.key}
-                  type="button"
-                  className={`tg-tab ${period === p.key ? 'is-active' : ''}`}
-                  onClick={() => setPeriod(p.key)}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
             <CButton
               color="primary"
               onClick={fetchRevenueData}
@@ -144,61 +117,51 @@ const TableGuru = () => {
         ) : data.length === 0 ? (
           <div className="tg-empty">
             <CIcon icon={cilChart} size="xl" />
-            <div className="tg-empty-title">{Language.noTableData || 'No table data yet'}</div>
+            <div className="tg-empty-title">
+              {Language.noOpenTables || 'No open tables right now'}
+            </div>
             <div className="tg-empty-body">
-              {Language.noTableDataHint ||
-                'Once orders are archived, revenue will start ranking tables here.'}
+              {Language.noOpenTablesHint ||
+                'As soon as an order is placed, its table appears here.'}
             </div>
           </div>
         ) : (
           <>
-            {/* Stats */}
             <div className="tg-stats">
               <div className="tg-stat">
-                <div className="tg-stat-label">{Language.totalRevenue || 'Total revenue'}</div>
+                <div className="tg-stat-label">{Language.liveRevenue || 'Live revenue'}</div>
                 <div className="tg-stat-value is-primary">
                   {totals.revenue.toFixed(2)}
                   <span className="tg-stat-unit">TND</span>
                 </div>
               </div>
               <div className="tg-stat">
-                <div className="tg-stat-label">
-                  {Language.tablesWithSales || 'Tables with sales'}
-                </div>
-                <div className="tg-stat-value">{totals.withSales}</div>
+                <div className="tg-stat-label">{Language.openTables || 'Open tables'}</div>
+                <div className="tg-stat-value">{totals.count}</div>
               </div>
               <div className="tg-stat">
-                <div className="tg-stat-label">{Language.topTable || 'Top table'}</div>
+                <div className="tg-stat-label">{Language.topTable || 'Leading table'}</div>
                 <div className="tg-stat-value is-success">
                   {totals.top ? `#${totals.top.tableNumber}` : '—'}
                 </div>
               </div>
             </div>
 
-            {/* Leaderboard list */}
             <div className="tg-list">
               {sorted.map((row, index) => {
                 const revenue = row.totalRevenue || 0
                 const pct = maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0
                 const medal = MEDALS[index]
-                const isZero = revenue === 0
 
                 return (
                   <div
                     key={row.tableNumber}
-                    className={`tg-row ${medal ? 'is-medal' : ''} ${isZero ? 'is-zero' : ''}`}
+                    className={`tg-row ${medal ? 'is-medal' : ''}`}
                     style={medal ? { '--tg-accent': medal.accent } : undefined}
                   >
                     <div
                       className="tg-rank"
-                      style={
-                        medal
-                          ? {
-                              background: medal.bg,
-                              color: medal.accent,
-                            }
-                          : undefined
-                      }
+                      style={medal ? { background: medal.bg, color: medal.accent } : undefined}
                     >
                       {index + 1}
                     </div>
@@ -208,7 +171,7 @@ const TableGuru = () => {
                         <span className="tg-table-name">
                           {Language.table || 'Table'} {row.tableNumber}
                         </span>
-                        {index === 0 && !isZero && <span className="tg-crown">Top</span>}
+                        {index === 0 && <span className="tg-crown">Leading</span>}
                       </div>
                       <div className="tg-bar-track">
                         <div
@@ -222,8 +185,8 @@ const TableGuru = () => {
                     </div>
 
                     <div className="tg-amount">
-                      <div className="tg-revenue">{isZero ? '—' : `${revenue.toFixed(2)} TND`}</div>
-                      <div className="tg-pct">{isZero ? 'no sales' : `${pct.toFixed(0)}%`}</div>
+                      <div className="tg-revenue">{revenue.toFixed(2)} TND</div>
+                      <div className="tg-pct">{pct.toFixed(0)}%</div>
                     </div>
                   </div>
                 )

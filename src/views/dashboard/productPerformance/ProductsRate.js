@@ -1,50 +1,45 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useEffect, useMemo, useState } from 'react'
 import {
-  CCard,
-  CCardBody,
-  CCardHeader,
+  CButton,
+  CPagination,
+  CPaginationItem,
+  CSpinner,
   CTable,
   CTableBody,
   CTableDataCell,
   CTableHead,
   CTableHeaderCell,
   CTableRow,
-  CSpinner,
-  CButton,
-  CBadge,
-  CPagination,
-  CPaginationItem,
-  CFormSelect,
-} from "@coreui/react";
-import { cilStar, cilFilter, cilSearch } from "@coreui/icons";
-import CIcon from "@coreui/icons-react";
-import { BaseUrl } from "../../../helpers/BaseUrl";
-import { useSelector } from "react-redux";
-import translations from "../../../app/Language";
+} from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilSearch, cilStar, cilWarning } from '@coreui/icons'
+import axios from 'axios'
+import { BaseUrl } from '../../../helpers/BaseUrl'
+import { GetToken } from '../../../helpers/GetToken'
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
+import './productPerformance.css'
 
 const ProductsRate = () => {
-  const [productRatings, setProductRatings] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [searchTerm, setSearchTerm] = useState("");
+  const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+
+  const [productRatings, setProductRatings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+  const [searchTerm, setSearchTerm] = useState('')
   const [sortConfig, setSortConfig] = useState({
-    key: "rate",
-    direction: "descending",
-  });
-  const [margins, setMargins] = useState({}); // productId -> margin info
-  // language
-  const t = useSelector((state) => state.language);
-  const Language = translations[t];
+    key: 'rate',
+    direction: 'descending',
+  })
+  const [margins, setMargins] = useState({})
 
   useEffect(() => {
-    const fetchProductRatings = async () => {
-      setLoading(true);
+    const fetchData = async () => {
+      setLoading(true)
       try {
-        const token = localStorage.getItem("token");
-
         const [ratingsRes, marginsRes] = await Promise.all([
           axios.get(`${BaseUrl}/products/rates`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -52,283 +47,248 @@ const ProductsRate = () => {
           axios.get(`${BaseUrl}/dashboard/product-margins`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
-        ]);
-
-        setProductRatings(ratingsRes.data);
-        setFilteredProducts(ratingsRes.data);
-
-        const marginsMap = {};
-        (marginsRes.data || []).forEach((m) => {
-          marginsMap[String(m.productId)] = m;
-        });
-        setMargins(marginsMap);
+        ])
+        setProductRatings(ratingsRes.data || [])
+        const map = {}
+        ;(marginsRes.data || []).forEach((m) => {
+          map[String(m.productId)] = m
+        })
+        setMargins(map)
       } catch (error) {
-        console.error("Failed to fetch product data:", error);
+        console.error('Failed to fetch product data:', error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
+    fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-    fetchProductRatings();
-  }, []);
+  /* ---------- derived ---------- */
+  const filtered = useMemo(() => {
+    if (!searchTerm.trim()) return productRatings
+    const q = searchTerm.trim().toLowerCase()
+    return productRatings.filter((p) => (p.productName || '').toLowerCase().includes(q))
+  }, [productRatings, searchTerm])
 
-  // Filter products based on search term
-  useEffect(() => {
-    const filtered = productRatings.filter((product) =>
-      product.productName.toLowerCase().includes(searchTerm.toLowerCase()),
-    );
-    setFilteredProducts(filtered);
-    setCurrentPage(1); // Reset to first page when filtering
-  }, [searchTerm, productRatings]);
+  const sorted = useMemo(() => {
+    const arr = [...filtered]
+    arr.sort((a, b) => {
+      const av = a[sortConfig.key]
+      const bv = b[sortConfig.key]
+      if (av < bv) return sortConfig.direction === 'ascending' ? -1 : 1
+      if (av > bv) return sortConfig.direction === 'ascending' ? 1 : -1
+      return 0
+    })
+    return arr
+  }, [filtered, sortConfig])
 
-  // Sorting functionality
+  const totalPages = Math.max(1, Math.ceil(sorted.length / itemsPerPage))
+  const safePage = Math.min(currentPage, totalPages)
+  const firstIndex = (safePage - 1) * itemsPerPage
+  const lastIndex = firstIndex + itemsPerPage
+  const currentProducts = sorted.slice(firstIndex, lastIndex)
+
+  /* ---------- actions ---------- */
   const requestSort = (key) => {
-    let direction = "ascending";
-    if (sortConfig.key === key && sortConfig.direction === "ascending") {
-      direction = "descending";
-    }
-    setSortConfig({ key, direction });
-  };
+    setSortConfig((prev) =>
+      prev.key === key && prev.direction === 'ascending'
+        ? { key, direction: 'descending' }
+        : { key, direction: 'ascending' },
+    )
+  }
 
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (a[sortConfig.key] < b[sortConfig.key]) {
-      return sortConfig.direction === "ascending" ? -1 : 1;
-    }
-    if (a[sortConfig.key] > b[sortConfig.key]) {
-      return sortConfig.direction === "ascending" ? 1 : -1;
-    }
-    return 0;
-  });
+  const sortIcon = (key) => {
+    if (sortConfig.key !== key) return '↕'
+    return sortConfig.direction === 'ascending' ? '↑' : '↓'
+  }
 
-  // Pagination
-  const lastIndex = currentPage * itemsPerPage;
-  const firstIndex = lastIndex - itemsPerPage;
-  const currentProducts = sortedProducts.slice(firstIndex, lastIndex);
-  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
-
-  const handlePreviousPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
-
-  const getRatingColor = (rating) => {
-    if (rating >= 4) return "success";
-    if (rating >= 3) return "info";
-    if (rating >= 2) return "warning";
-    return "danger";
-  };
-
-  if (loading) {
-    return (
-      <div className="text-center py-5">
-        <CSpinner color="primary" size="sm" />
-        <p className="mt-3">{Language.loading}...</p>
-      </div>
-    );
+  const getRatingTone = (rating) => {
+    if (rating >= 4) return 'success'
+    if (rating >= 3) return 'info'
+    if (rating >= 2) return 'warning'
+    return 'danger'
   }
 
   return (
-    <CCard className="dashboard-card">
-      <CCardHeader className="dashboard-card-header">
-        <div className="d-flex justify-content-between align-items-center">
-          <h3 className="dashboard-title">
-            <CIcon icon={cilStar} className="me-2" />
-            {Language.productsRating}
-          </h3>
-          <CBadge color="primary">
-            {filteredProducts.length} {Language.products}
-          </CBadge>
-        </div>
-      </CCardHeader>
-      <CCardBody>
-        <div className="d-flex justify-content-between mb-4">
-          <div className="search-box">
-            <div className="input-group">
-              <span className="input-group-text">
-                <CIcon icon={cilSearch} />
-              </span>
-              <input
-                type="text"
-                className="form-control"
-                placeholder={Language.searchProducts}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="d-flex">
-            <CFormSelect
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="me-2"
-              style={{ width: "80px" }}
-            >
-              <option value="5">5</option>
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="50">50</option>
-            </CFormSelect>
-            <CButton color="primary" variant="outline">
-              <CIcon icon={cilFilter} className="me-1" />
-              {Language.filter}
-            </CButton>
+    <div className="pp-card">
+      <div className="pp-card-header">
+        <div className="pp-card-header-left">
+          <h5 className="pp-card-title">
+            <CIcon icon={cilStar} />
+            {Language.productsRating || 'Products & ratings'}
+          </h5>
+          <div className="pp-card-subtitle">
+            <strong>{productRatings.length}</strong>{' '}
+            {productRatings.length === 1 ? 'product' : 'products'}
+            {' · '}
+            with ratings and margins
           </div>
         </div>
 
-        <div className="table-responsive">
-          <CTable hover responsive striped>
-            <CTableHead>
-              <CTableRow>
-                <CTableHeaderCell onClick={() => requestSort("productName")}>
-                  {Language.productName}
-                  {sortConfig.key === "productName" && (
-                    <span className="ms-1">
-                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </CTableHeaderCell>
-                <CTableHeaderCell onClick={() => requestSort("rate")}>
-                  {Language.rate}
-                  {sortConfig.key === "rate" && (
-                    <span className="ms-1">
-                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </CTableHeaderCell>
-                <CTableHeaderCell onClick={() => requestSort("raters")}>
-                  {Language.numberOfRaters}
-                  {sortConfig.key === "raters" && (
-                    <span className="ms-1">
-                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </CTableHeaderCell>
-                <CTableHeaderCell onClick={() => requestSort("price")}>
-                  {Language.price} (TND)
-                  {sortConfig.key === "price" && (
-                    <span className="ms-1">
-                      {sortConfig.direction === "ascending" ? "↑" : "↓"}
-                    </span>
-                  )}
-                </CTableHeaderCell>
-                <CTableHeaderCell>
-                  {Language.profit || "Profit"}
-                </CTableHeaderCell>
-              </CTableRow>
-            </CTableHead>
-            <CTableBody>
-              {currentProducts.length > 0 ? (
-                currentProducts.map((product) => (
-                  <CTableRow key={product.productId}>
-                    <CTableDataCell className="fw-semibold">
-                      {product.productName}
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      <CBadge color={getRatingColor(product.rate)}>
-                        {product.rate.toFixed(2)} <CIcon icon={cilStar} />
-                      </CBadge>
-                    </CTableDataCell>
-                    <CTableDataCell>{product.raters}</CTableDataCell>
-                    <CTableDataCell>
-                      {product.price.toFixed(2)} TND
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      {(() => {
-                        const m = margins[String(product.productId)];
-                        if (!m) return <span className="text-muted">—</span>;
-                        if (m.avgUnitCost == null)
-                          return (
-                            <CBadge
-                              color="warning"
-                              title={
-                                Language.noRecipeAtOrderTime ||
-                                "No recipe at order time"
-                              }
-                            >
-                              {Language.noRecipe || "No recipe"}
-                            </CBadge>
-                          );
-                        const marginColor =
-                          m.marginPercent >= 40
-                            ? "success"
-                            : m.marginPercent >= 20
-                              ? "info"
-                              : "warning";
-                        return (
+        <div className="pp-card-header-right">
+          <div className="pp-search">
+            <CIcon icon={cilSearch} className="pp-search-icon" />
+            <input
+              type="text"
+              placeholder={Language.searchProducts || 'Search products'}
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                setCurrentPage(1)
+              }}
+            />
+          </div>
+          <select
+            className="pp-perpage"
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value))
+              setCurrentPage(1)
+            }}
+            aria-label="Rows per page"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="pp-skeleton">
+          <div className="pp-skeleton-chart" />
+        </div>
+      ) : productRatings.length === 0 ? (
+        <div className="pp-empty">
+          <CIcon icon={cilWarning} size="xl" />
+          <div className="pp-empty-title">{Language.noProductsFound || 'No products yet'}</div>
+          <div className="pp-empty-body">
+            {Language.noProductsHint || 'Products with ratings and margins will appear here.'}
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="pp-table-wrap">
+            <CTable hover responsive className="pp-table">
+              <CTableHead>
+                <CTableRow>
+                  <CTableHeaderCell onClick={() => requestSort('productName')}>
+                    {Language.productName || 'Product'}{' '}
+                    <span className="pp-sort">{sortIcon('productName')}</span>
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="text-end" onClick={() => requestSort('rate')}>
+                    {Language.rate || 'Rating'} <span className="pp-sort">{sortIcon('rate')}</span>
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="text-end" onClick={() => requestSort('raters')}>
+                    {Language.numberOfRaters || 'Raters'}{' '}
+                    <span className="pp-sort">{sortIcon('raters')}</span>
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="text-end" onClick={() => requestSort('price')}>
+                    {Language.price || 'Price'} <span className="pp-sort">{sortIcon('price')}</span>
+                  </CTableHeaderCell>
+                  <CTableHeaderCell className="text-end">
+                    {Language.profit || 'Profit'}
+                  </CTableHeaderCell>
+                </CTableRow>
+              </CTableHead>
+              <CTableBody>
+                {currentProducts.map((product) => {
+                  const m = margins[String(product.productId)]
+                  return (
+                    <CTableRow key={product.productId}>
+                      <CTableDataCell className="fw-semibold">{product.productName}</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        <span className={`pp-pill pp-pill-${getRatingTone(product.rate)}`}>
+                          {Number(product.rate || 0).toFixed(2)}
+                          <CIcon icon={cilStar} />
+                        </span>
+                      </CTableDataCell>
+                      <CTableDataCell className="text-end">{product.raters ?? 0}</CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        {Number(product.price || 0).toFixed(2)} TND
+                      </CTableDataCell>
+                      <CTableDataCell className="text-end">
+                        {!m ? (
+                          <span className="text-muted">—</span>
+                        ) : m.avgUnitCost == null ? (
+                          <span className="pp-pill pp-pill-warning">
+                            {Language.noRecipe || 'No recipe'}
+                          </span>
+                        ) : (
                           <>
-                            <CBadge color={marginColor}>
-                              {m.marginPercent}%
-                            </CBadge>
+                            <span
+                              className={`pp-pill pp-pill-${
+                                m.marginPercent >= 40
+                                  ? 'success'
+                                  : m.marginPercent >= 20
+                                    ? 'info'
+                                    : 'warning'
+                              }`}
+                            >
+                              {Number(m.marginPercent || 0).toFixed(0)}%
+                            </span>
                             <div className="small text-muted">
-                              {Number(m.profit).toFixed(2)} TND
+                              {Number(m.profit || 0).toFixed(2)} TND
                             </div>
                           </>
-                        );
-                      })()}
-                    </CTableDataCell>
-                  </CTableRow>
-                ))
-              ) : (
-                <CTableRow>
-                  <CTableDataCell colSpan="5" className="text-center py-4">
-                    {Language.noProductsFound}
-                  </CTableDataCell>
-                </CTableRow>
-              )}
-            </CTableBody>
-          </CTable>
-        </div>
-
-        <div className="d-flex justify-content-between align-items-center mt-4">
-          <div>
-            {Language.showing} {firstIndex + 1}-
-            {Math.min(lastIndex, filteredProducts.length)} {Language.of}{" "}
-            {filteredProducts.length} {Language.products}
+                        )}
+                      </CTableDataCell>
+                    </CTableRow>
+                  )
+                })}
+              </CTableBody>
+            </CTable>
           </div>
-          <CPagination>
-            <CPaginationItem
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-              aria-label="Previous"
-            >
-              <span aria-hidden="true">&laquo;</span>
-            </CPaginationItem>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              let pageNum;
-              if (totalPages <= 5) {
-                pageNum = i + 1;
-              } else if (currentPage <= 3) {
-                pageNum = i + 1;
-              } else if (currentPage >= totalPages - 2) {
-                pageNum = totalPages - 4 + i;
-              } else {
-                pageNum = currentPage - 2 + i;
-              }
-              return (
-                <CPaginationItem
-                  key={pageNum}
-                  active={pageNum === currentPage}
-                  onClick={() => setCurrentPage(pageNum)}
-                >
-                  {pageNum}
-                </CPaginationItem>
-              );
-            })}
-            <CPaginationItem
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-              aria-label="Next"
-            >
-              <span aria-hidden="true">&raquo;</span>
-            </CPaginationItem>
-          </CPagination>
-        </div>
-      </CCardBody>
-    </CCard>
-  );
-};
 
-export default ProductsRate;
+          <div className="pp-pagination">
+            <div className="pp-page-info">
+              {Language.showing || 'Showing'}{' '}
+              <strong>
+                {firstIndex + 1}–{Math.min(lastIndex, sorted.length)}
+              </strong>{' '}
+              {Language.of || 'of'} <strong>{sorted.length}</strong>{' '}
+              {Language.products || 'products'}
+            </div>
+
+            <CPagination>
+              <CPaginationItem
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={safePage === 1}
+                aria-label="Previous"
+              >
+                &laquo;
+              </CPaginationItem>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum
+                if (totalPages <= 5) pageNum = i + 1
+                else if (safePage <= 3) pageNum = i + 1
+                else if (safePage >= totalPages - 2) pageNum = totalPages - 4 + i
+                else pageNum = safePage - 2 + i
+                return (
+                  <CPaginationItem
+                    key={pageNum}
+                    active={pageNum === safePage}
+                    onClick={() => setCurrentPage(pageNum)}
+                  >
+                    {pageNum}
+                  </CPaginationItem>
+                )
+              })}
+              <CPaginationItem
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={safePage === totalPages}
+                aria-label="Next"
+              >
+                &raquo;
+              </CPaginationItem>
+            </CPagination>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+export default ProductsRate

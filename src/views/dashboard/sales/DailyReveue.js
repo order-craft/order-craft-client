@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import { CRow, CCol, CSpinner, CCard, CCardHeader, CCardBody, CProgress } from '@coreui/react'
+import { CCard, CCardBody, CSpinner } from '@coreui/react'
 import { CChartPie } from '@coreui/react-chartjs'
 import CIcon from '@coreui/icons-react'
-import { cilCash, cilCreditCard, cilWallet, cilMoney, cilChartPie } from '@coreui/icons'
-
+import { cilChartPie, cilCash, cilCreditCard, cilWallet, cilMoney } from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import './sales.css'
 
 const paymentMethodIcons = {
   Cash: cilCash,
@@ -18,345 +18,186 @@ const paymentMethodIcons = {
   'Bank Transfer': cilMoney,
 }
 
-const DailyRevenue = () => {
+const SLICE_COLORS = [
+  '#0d6efd',
+  '#198754',
+  '#0dcaf0',
+  '#ffc107',
+  '#e83e8c',
+  '#6f42c1',
+  '#fd7e14',
+  '#20c997',
+]
+
+const DailyRevenue = ({ className }) => {
   const token = GetToken()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [dailyRevenue, setDailyRevenue] = useState(0)
   const [revenueByMethod, setRevenueByMethod] = useState({})
+  const [dateLabel, setDateLabel] = useState('')
+
   const t = useSelector((state) => state.language)
   const Language = translations[t]
 
-  const getDailyRevenue = async () => {
-    setLoading(true)
-    try {
-      const response = await axios.get(`${BaseUrl}/dashboard/daily-revenue`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      setDailyRevenue(response.data.totalRevenue || 0)
-      setRevenueByMethod(response.data.revenueByPaymentMethod || {})
-    } catch (err) {
-      console.error('Error fetching daily revenue:', err)
-    }
-    setLoading(false)
-  }
-
   useEffect(() => {
+    const getDailyRevenue = async () => {
+      setLoading(true)
+      try {
+        const response = await axios.get(`${BaseUrl}/dashboard/daily-revenue`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setDailyRevenue(response.data.totalRevenue || 0)
+        setRevenueByMethod(response.data.revenueByPaymentMethod || {})
+        setDateLabel(
+          new Date().toLocaleDateString(undefined, {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric',
+          }),
+        )
+      } catch (err) {
+        console.error('Error fetching daily revenue:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
     getDailyRevenue()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const pieLabels = Object.keys(revenueByMethod)
-  const pieData = Object.values(revenueByMethod)
-  const totalRevenue = dailyRevenue || 1 // Avoid division by zero
-
-  // Helper function to determine progress bar color
-  const getProgressColor = (value) => {
-    if (value > 75) return 'success'
-    if (value > 50) return 'info'
-    if (value > 25) return 'warning'
-    return 'danger'
-  }
+  const entries = Object.entries(revenueByMethod)
+  const total = dailyRevenue || 0
+  const isEmpty = !loading && (entries.length === 0 || total === 0)
 
   return (
-    <div style={{ minWidth: '100%' }}>
-      <CRow className="justify-content-center" style={{ minWidth: '100%' }}>
-        <CCol xs={12} lg={12} style={{ minWidth: '100%' }}>
-          <CCard className="dashboard-card" style={{ minWidth: '100%' }}>
-            <CCardHeader className="dashboard-card-header" style={{ minWidth: '100%' }}>
-              <div className="d-flex justify-content-between align-items-center">
-                <h3 className="dashboard-title" style={{ color: 'white' }}>
-                  <CIcon icon={cilChartPie} className="me-2" style={{ color: 'white' }} />
-                  {Language.DailyRevenue}
-                </h3>
-                <span className="badge bg-primary">{new Date().toLocaleDateString()}</span>
+    <CCard className={`sales-card ${className || ''}`}>
+      {/* ---- Header ---- */}
+      <div className="sales-card-header">
+        <div className="sales-card-header-left">
+          <h5 className="sales-card-title">
+            <CIcon icon={cilChartPie} />
+            {Language.DailyRevenue || "Today's revenue"}
+          </h5>
+          <div className="sales-card-subtitle">
+            {dateLabel ||
+              new Date().toLocaleDateString(undefined, {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric',
+              })}
+          </div>
+        </div>
+      </div>
+
+      <CCardBody className="p-0">
+        {loading ? (
+          <div className="sales-skeleton">
+            <div>
+              <div className="sales-skeleton-circle" />
+            </div>
+            <div>
+              <div className="sales-skeleton-line" style={{ width: '80%' }} />
+              <div className="sales-skeleton-line" style={{ width: '60%' }} />
+              <div className="sales-skeleton-line" style={{ width: '70%' }} />
+              <div className="sales-skeleton-line" style={{ width: '50%' }} />
+            </div>
+          </div>
+        ) : isEmpty ? (
+          <div className="sales-empty">
+            <CIcon icon={cilChartPie} size="xl" />
+            <div className="sales-empty-title">
+              {Language.noRevenueYet || 'No revenue yet today'}
+            </div>
+            <div className="sales-empty-body">
+              {Language.noRevenueYetHint || 'Paid orders will appear here as the day goes on.'}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Total */}
+            <div
+              style={{
+                padding: '20px 20px 0 20px',
+              }}
+            >
+              <div className="sales-big-number">
+                {total.toFixed(2)}
+                <span className="unit">TND</span>
               </div>
-            </CCardHeader>
-            <CCardBody className="dashboard-card-body" style={{ minWidth: '100%' }}>
-              {loading ? (
-                <div className="text-center py-5">
-                  <CSpinner color="primary" style={{ width: '3rem', height: '3rem' }} />
-                  <p className="mt-3">{Language.Loading}...</p>
-                </div>
-              ) : (
-                <>
-                  <CRow className="mb-4" style={{ minWidth: '100%' }}>
-                    <CCol xs={12} className="mb-4" style={{ minWidth: '100%' }}>
-                      <div className="total-revenue-card">
-                        <h4 className="text-muted">{Language.TodaysRevenue}</h4>
-                        <h1 className="display-4 fw-bold text-primary">
-                          {dailyRevenue?.toFixed(2)} TND
-                        </h1>
+            </div>
+
+            {/* Pie + breakdown */}
+            <div className="sales-split">
+              <div className="sales-chart">
+                <CChartPie
+                  data={{
+                    labels: entries.map(([method]) => method),
+                    datasets: [
+                      {
+                        data: entries.map(([, amount]) => amount),
+                        backgroundColor: entries.map(
+                          (_, i) => SLICE_COLORS[i % SLICE_COLORS.length],
+                        ),
+                        borderWidth: 0,
+                      },
+                    ],
+                  }}
+                  options={{
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    plugins: {
+                      legend: { display: false },
+                      tooltip: {
+                        callbacks: {
+                          label: (context) => {
+                            const value = context.raw || 0
+                            const pct = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0'
+                            return `${context.label}: ${value.toFixed(2)} TND (${pct}%)`
+                          },
+                        },
+                      },
+                    },
+                    cutout: '68%',
+                  }}
+                />
+              </div>
+
+              <div className="sales-breakdown">
+                {entries.map(([method, amount], i) => {
+                  const pct = total > 0 ? (amount / total) * 100 : 0
+                  const color = SLICE_COLORS[i % SLICE_COLORS.length]
+                  return (
+                    <div className="sales-breakdown-row" key={method}>
+                      <div className="sales-breakdown-top">
+                        <span className="sales-breakdown-name">
+                          <CIcon icon={paymentMethodIcons[method] || cilCash} />
+                          {method}
+                        </span>
+                        <span className="sales-breakdown-value">
+                          <span className="sales-breakdown-amount">{amount.toFixed(2)} TND</span>
+                          <span className="sales-breakdown-pct">{pct.toFixed(1)}%</span>
+                        </span>
                       </div>
-                    </CCol>
-
-                    {Object.entries(revenueByMethod).map(([method, amount], index) => {
-                      const percentage = (amount / totalRevenue) * 100
-                      return (
-                        <CCol key={method} xs={12} sm={6} lg={3} className="mb-4">
-                          <div className="payment-method-card">
-                            <div className="method-icon">
-                              <CIcon icon={paymentMethodIcons[method] || cilCash} size="xl" />
-                            </div>
-                            <div className="method-info">
-                              <h5 className="method-name">{method}</h5>
-                              <h3 className="method-amount">{amount.toFixed(2)} TND</h3>
-                              <div className="method-percentage">
-                                <span className="text-muted">{percentage.toFixed(1)}%</span>
-                              </div>
-                              <CProgress
-                                color={
-                                  ['success', 'primary', 'warning', 'info', 'secondary', 'danger'][
-                                    index
-                                  ]
-                                }
-                                value={percentage}
-                                className="mt-2"
-                                height={8}
-                              />
-                            </div>
-                          </div>
-                        </CCol>
-                      )
-                    })}
-                  </CRow>
-
-                  {pieLabels.length > 0 && (
-                    <CRow className="mt-4" style={{ minWidth: '100%' }}>
-                      <CCol xs={12} className="text-center">
-                        <h4 className="section-title mb-4">{Language.RevenueDistribution}</h4>
-                      </CCol>
-                      <CCol xs={12} md={6} className="mb-4">
-                        <div className="chart-container">
-                          <CChartPie
-                            data={{
-                              labels: pieLabels,
-                              datasets: [
-                                {
-                                  data: pieData,
-                                  backgroundColor: [
-                                    '#4e73df',
-                                    '#1cc88a',
-                                    '#36b9cc',
-                                    '#f6c23e',
-                                    '#e74a3b',
-                                    '#858796',
-                                  ],
-                                  hoverBackgroundColor: [
-                                    '#2e59d9',
-                                    '#17a673',
-                                    '#2c9faf',
-                                    '#dda20a',
-                                    '#be2617',
-                                    '#6c757d',
-                                  ],
-                                  hoverBorderColor: 'rgba(234, 236, 244, 1)',
-                                },
-                              ],
-                            }}
-                            options={{
-                              maintainAspectRatio: false,
-                              responsive: true,
-                              plugins: {
-                                legend: {
-                                  position: 'right',
-                                  labels: {
-                                    font: {
-                                      size: 14,
-                                      family: "'Nunito', sans-serif",
-                                    },
-                                    padding: 20,
-                                    usePointStyle: true,
-                                  },
-                                },
-                                tooltip: {
-                                  backgroundColor: 'rgb(255,255,255)',
-                                  bodyFontColor: '#858796',
-                                  borderColor: '#dddfeb',
-                                  borderWidth: 1,
-                                  xPadding: 15,
-                                  yPadding: 15,
-                                  displayColors: false,
-                                  caretPadding: 10,
-                                  callbacks: {
-                                    label: function (context) {
-                                      const label = context.label || ''
-                                      const value = context.raw || 0
-                                      const percentage = ((value / totalRevenue) * 100).toFixed(1)
-                                      return `${label}: ${value.toFixed(2)} TND (${percentage}%)`
-                                    },
-                                  },
-                                },
-                              },
-                              cutout: '70%',
-                            }}
-                          />
-                        </div>
-                      </CCol>
-                      <CCol xs={12} md={6} className="mb-4 d-flex align-items-center">
-                        <div className="method-breakdown" style={{ minWidth: '100%' }}>
-                          <h5 className="mb-3">{Language.PaymentMethodBreakdown}</h5>
-                          <ul className="list-unstyled">
-                            {pieLabels.map((label, index) => {
-                              const percentage = (pieData[index] / totalRevenue) * 100
-                              return (
-                                <li key={label} className="mb-3">
-                                  <div className="d-flex justify-content-between align-items-center mb-1">
-                                    <span className="d-flex align-items-center">
-                                      <CIcon
-                                        icon={paymentMethodIcons[label] || cilCash}
-                                        className="me-2"
-                                        style={{ width: '16px', height: '16px' }}
-                                      />
-                                      <span className="text-truncate" style={{ maxWidth: '120px' }}>
-                                        {label}
-                                      </span>
-                                    </span>
-                                    <span className="fw-medium">{percentage.toFixed(1)}%</span>
-                                  </div>
-                                  <CProgress
-                                    color={getProgressColor(percentage)}
-                                    value={percentage}
-                                    className="mt-1"
-                                    height={8}
-                                    animated
-                                  />
-                                </li>
-                              )
-                            })}
-                          </ul>
-                        </div>
-                      </CCol>
-                    </CRow>
-                  )}
-                </>
-              )}
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
-
-      <style>{`
-        .dashboard-card {
-          border-radius: 15px;
-          box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-          border: none;
-          overflow: hidden;
-          margin-bottom: 20px;
-          min-width: 100%;
-        }
-
-        .dashboard-card-header {
-          background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-          color: white;
-          border-bottom: none;
-          padding: 1.5rem;
-          min-width: 100%;
-        }
-
-        .dashboard-title {
-          margin: 0;
-          font-weight: 600;
-          color: white;
-        }
-
-        .total-revenue-card {
-          background: white;
-          border-radius: 10px;
-          padding: 1rem;
-          text-align: center;
-          box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-          border: 1px solid #e3e6f0;
-          min-width: 100%;
-        }
-
-        .payment-method-card {
-          background: white;
-          border-radius: 10px;
-          padding: 1.5rem;
-          display: flex;
-          align-items: center;
-          box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-          border: 1px solid #e3e6f0;
-          height: 100%;
-          min-width: 100%;
-        }
-
-        .method-icon {
-          background: #f8f9fc;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-right: 1rem;
-          color: #4e73df;
-        }
-
-        .method-info {
-          flex: 1;
-          min-width: 0;
-        }
-
-        .method-name {
-          color: #5a5c69;
-          font-size: 0.9rem;
-          margin-bottom: 0.5rem;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .method-amount {
-          color: #2e59d9;
-          font-weight: 100;
-          margin-bottom: 0.25rem;
-        }
-
-        .chart-container {
-          height: 300px;
-          position: relative;
-          min-width: 100%;
-        }
-
-        .section-title {
-          color: #4e73df;
-          font-weight: 600;
-          position: relative;
-          display: inline-block;
-        }
-
-        .section-title:after {
-          content: '';
-          position: absolute;
-          width: 50%;
-          height: 3px;
-          background: linear-gradient(to right, #4e73df, transparent);
-          bottom: -5px;
-          left: 0;
-        }
-
-        .method-breakdown {
-          background: white;
-          border-radius: 10px;
-          padding: 1.5rem;
-          box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-          border: 1px solid #e3e6f0;
-          min-width: 100%;
-        }
-
-        .list-unstyled {
-          min-width: 100%;
-        }
-      `}</style>
-    </div>
+                      <div className="sales-bar-track">
+                        <div
+                          className="sales-bar-fill"
+                          style={{ width: `${pct}%`, background: color }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </CCardBody>
+    </CCard>
   )
 }
 
 DailyRevenue.propTypes = {
   className: PropTypes.string,
-  withCharts: PropTypes.bool,
 }
 
 export default DailyRevenue

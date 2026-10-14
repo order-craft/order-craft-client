@@ -1,374 +1,301 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
-import {
-  CRow,
-  CCol,
-  CSpinner,
-  CButton,
-  CDropdown,
-  CDropdownToggle,
-  CDropdownMenu,
-  CDropdownItem,
-  CModal,
-  CModalHeader,
-  CModalTitle,
-  CModalBody,
-  CModalFooter,
-  CTable,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableBody,
-  CTableDataCell,
-  CBadge,
-  CProgress,
-  CCardHeader,
-  CCard,
-  CCardBody,
-} from '@coreui/react'
+import { CCard, CCardBody, CButton } from '@coreui/react'
 import { CChartLine } from '@coreui/react-chartjs'
+import CIcon from '@coreui/icons-react'
+import { cilChart, cilCloudDownload, cilCalendar } from '@coreui/icons'
 import axios from 'axios'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
-import * as XLSX from 'xlsx'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
-import CIcon from '@coreui/icons-react'
-import { cilChart, cilCloudDownload, cilInfo } from '@coreui/icons'
+import './sales.css'
+
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+
+const SLICE_COLORS = [
+  '#0d6efd',
+  '#198754',
+  '#0dcaf0',
+  '#ffc107',
+  '#e83e8c',
+  '#6f42c1',
+  '#fd7e14',
+  '#20c997',
+]
 
 const YearlyRevenue = ({ className }) => {
-  // Language setup
   const t = useSelector((state) => state.language)
   const Language = translations[t]
-  const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ]
-
-  // Export functions
-  const exportToPDF = (yearlyRevenue) => {
-    const doc = new jsPDF()
-    doc.setFontSize(16)
-    doc.text('Yearly Revenue Report', 14, 16)
-    doc.setFontSize(12)
-    doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 24)
-    doc.autoTable({
-      startY: 30,
-      head: [['Month', 'Revenue (TND)']],
-      body: yearlyRevenue.map((item, index) => [months[index], item.revenue.toFixed(2)]),
-      styles: { cellPadding: 5, fontSize: 10 },
-      headStyles: { fillColor: [79, 115, 223] },
-    })
-    doc.save(`yearly-revenue-${new Date().getFullYear()}.pdf`)
-  }
-
-  const exportToExcel = (yearlyRevenue) => {
-    const worksheet = XLSX.utils.json_to_sheet(
-      yearlyRevenue.map((item, index) => ({
-        Month: months[index],
-        'Revenue (TND)': item.revenue.toFixed(2),
-      })),
-    )
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Yearly Revenue')
-    XLSX.writeFile(workbook, `yearly-revenue-${new Date().getFullYear()}.xlsx`)
-  }
-
   const token = GetToken()
-  const [loading, setLoading] = useState(false)
+
+  const [loading, setLoading] = useState(true)
   const [yearlyRevenue, setYearlyRevenue] = useState([])
-  const [modalVisible, setModalVisible] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState(null)
 
-  const getYearlyRevenue = async () => {
-    setLoading(true)
-    try {
-      const response = await axios.get(`${BaseUrl}/dashboard/revenue-year`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      setYearlyRevenue(response.data)
-    } catch (err) {
-      console.error('Error fetching yearly revenue:', err)
-    }
-    setLoading(false)
-  }
+  const currentYear = new Date().getFullYear()
 
+  /* ---------- derived ---------- */
+  const rows = useMemo(() => {
+    return yearlyRevenue.map((item, index) => ({
+      index,
+      month: MONTHS[index] || item.month || '',
+      shortMonth: (MONTHS[index] || '').substring(0, 3),
+      revenue: Number(item.revenue) || 0,
+    }))
+  }, [yearlyRevenue])
+
+  const totalRevenue = useMemo(() => rows.reduce((sum, r) => sum + r.revenue, 0), [rows])
+
+  const bestMonth = useMemo(() => {
+    if (rows.length === 0) return null
+    return rows.reduce((best, r) => (r.revenue > best.revenue ? r : best), rows[0])
+  }, [rows])
+
+  const isEmpty = !loading && totalRevenue === 0
+
+  /* ---------- fetch ---------- */
   useEffect(() => {
-    getYearlyRevenue()
+    const load = async () => {
+      setLoading(true)
+      try {
+        const response = await axios.get(`${BaseUrl}/dashboard/revenue-year`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setYearlyRevenue(response.data || [])
+      } catch (err) {
+        console.error('Error fetching yearly revenue:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const totalRevenue = yearlyRevenue.reduce((sum, item) => sum + item.revenue, 0)
+  /* ---------- PDF ---------- */
+  const exportToPDF = () => {
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.width
 
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Yearly Revenue Report', 14, 18)
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(120)
+    doc.text(String(currentYear), 14, 25)
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 31)
+
+    doc.setTextColor(0)
+    doc.setFontSize(11)
+    doc.text(`Total: ${totalRevenue.toFixed(2)} TND`, pageWidth - 15, 18, { align: 'right' })
+
+    doc.autoTable({
+      head: [['Month', 'Revenue (TND)']],
+      body: rows.map((r) => [r.month, r.revenue.toFixed(2)]),
+      startY: 40,
+      headStyles: {
+        fillColor: [41, 128, 185],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 10,
+      },
+      bodyStyles: { fontSize: 9 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      margin: { top: 40, left: 14, right: 14 },
+    })
+
+    doc.save(`yearly-revenue-${currentYear}.pdf`)
+  }
+
+  /* ---------- render ---------- */
   return (
-    <div style={{ minWidth: '100%' }}>
-      <CCard className="dashboard-card" style={{ minWidth: '100%' }}>
-        <CCardHeader className="dashboard-card-header">
-          <div className="d-flex justify-content-between align-items-center">
-            <h3 className="dashboard-title">
-              <CIcon icon={cilChart} className="me-2" />
-              {Language.YearlyRevenue}
-            </h3>
-            <CBadge color="primary">{new Date().getFullYear()}</CBadge>
-          </div>
-        </CCardHeader>
-        <CCardBody className="dashboard-card-body">
-          {loading ? (
-            <div className="text-center py-5">
-              <CSpinner color="primary" style={{ width: '3rem', height: '3rem' }} />
-              <p className="mt-3">{Language.Loading}...</p>
-            </div>
-          ) : (
-            <>
-              <CRow className="mb-4">
-                <CCol xs={12} className="mb-4">
-                  <div className="total-revenue-card">
-                    <h4 className="text-muted">{Language.TotalYearlyRevenue}</h4>
-                    <h1 className="display-4 fw-bold text-primary">
-                      {totalRevenue.toFixed(2)} TND
-                    </h1>
-                  </div>
-                </CCol>
-              </CRow>
+    <CCard className={`sales-card ${className || ''}`}>
+      {/* ---- Header ---- */}
+      <div className="sales-card-header">
+        <div className="sales-card-header-left">
+          <h5 className="sales-card-title">
+            <CIcon icon={cilChart} />
+            {Language.YearlyRevenue || 'This year'}
+          </h5>
+          <div className="sales-card-subtitle">{currentYear}</div>
+        </div>
 
-              <CRow>
-                <CCol xs={12} lg={8}>
-                  <div className="chart-container" style={{ height: '300px' }}>
-                    <CChartLine
-                      data={{
-                        labels: months.map((month) => month.substring(0, 3)),
-                        datasets: [
-                          {
-                            label: 'Monthly Revenue',
-                            backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                            borderColor: 'rgba(78, 115, 223, 1)',
-                            pointBackgroundColor: 'rgba(78, 115, 223, 1)',
-                            pointBorderColor: '#fff',
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: 'rgba(78, 115, 223, 1)',
-                            data: yearlyRevenue.map((item) => item.revenue),
-                          },
-                        ],
-                      }}
-                      options={{
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: { display: false },
-                          tooltip: {
-                            callbacks: {
-                              label: (context) => `${context.parsed.y.toFixed(2)} TND`,
-                            },
-                          },
-                        },
-                        scales: {
-                          x: { grid: { display: false } },
-                          y: {
-                            beginAtZero: true,
-                            grid: { color: 'rgba(0, 0, 0, 0.05)' },
-                            ticks: { callback: (value) => `${value} TND` },
-                          },
-                        },
-                        elements: {
-                          line: { tension: 0.4, borderWidth: 2 },
-                          point: { radius: 4, hoverRadius: 6 },
-                        },
-                      }}
-                    />
-                  </div>
-                </CCol>
-                <CCol xs={12} lg={4} className="d-flex align-items-center">
-                  <div className="method-breakdown">
-                    <h5 className="mb-3">{Language.MonthlyBreakdown}</h5>
-                    <ul className="list-unstyled">
-                      {yearlyRevenue.map((item, index) => {
-                        const percentage = (item.revenue / totalRevenue) * 100
-                        return (
-                          <li
-                            key={index}
-                            className={`mb-2 ${selectedMonth === index ? 'active-month' : ''}`}
-                            onClick={() => setSelectedMonth(index)}
-                          >
-                            <div className="d-flex justify-content-between">
-                              <span>{months[index]}</span>
-                              <span>{percentage.toFixed(1)}%</span>
-                            </div>
-                            <CProgress
-                              color={getProgressColor(percentage)}
-                              value={percentage}
-                              className="mt-1"
-                              height={8}
-                              animated
-                            />
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                </CCol>
-              </CRow>
-
-              <div className="d-flex justify-content-end mt-4">
-                <CButton color="primary" onClick={() => setModalVisible(true)} className="me-2">
-                  <CIcon icon={cilInfo} className="me-1" />
-                  {Language.details}
-                </CButton>
-                <CDropdown>
-                  <CDropdownToggle color="secondary">
-                    <CIcon icon={cilCloudDownload} className="me-1" />
-                    {Language.Export}
-                  </CDropdownToggle>
-                  <CDropdownMenu>
-                    <CDropdownItem onClick={() => exportToPDF(yearlyRevenue)}>
-                      {Language.ExporttoPDF}
-                    </CDropdownItem>
-                    <CDropdownItem onClick={() => exportToExcel(yearlyRevenue)}>
-                      {Language.ExporttoExel}
-                    </CDropdownItem>
-                  </CDropdownMenu>
-                </CDropdown>
-              </div>
-            </>
-          )}
-        </CCardBody>
-      </CCard>
-
-      {/* Enhanced Modal */}
-      <CModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        size="xl"
-        backdrop="static"
-      >
-        <CModalHeader closeButton>
-          <CModalTitle>
-            <CIcon icon={cilChart} className="me-2" />
-            {Language.YearlyRevenueDetails} - {new Date().getFullYear()}
-          </CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <CTable striped hover responsive>
-            <CTableHead>
-              <CTableRow>
-                <CTableHeaderCell>{Language.month}</CTableHeaderCell>
-                <CTableHeaderCell className="text-end">{Language.revenue} (TND)</CTableHeaderCell>
-                <CTableHeaderCell className="text-end">% of Total</CTableHeaderCell>
-                <CTableHeaderCell>{Language.Progress}</CTableHeaderCell>
-              </CTableRow>
-            </CTableHead>
-            <CTableBody>
-              {yearlyRevenue.map((item, index) => {
-                const percentage = (item.revenue / totalRevenue) * 100
-                return (
-                  <CTableRow key={index}>
-                    <CTableDataCell>{months[index]}</CTableDataCell>
-                    <CTableDataCell className="text-end fw-medium">
-                      {item.revenue.toFixed(2)}
-                    </CTableDataCell>
-                    <CTableDataCell className="text-end">{percentage.toFixed(1)}%</CTableDataCell>
-                    <CTableDataCell>
-                      <CProgress
-                        height={20}
-                        value={percentage}
-                        color={getProgressColor(percentage)}
-                        animated
-                      />
-                    </CTableDataCell>
-                  </CTableRow>
-                )
-              })}
-              <CTableRow className="fw-bold">
-                <CTableDataCell colSpan="2">Total</CTableDataCell>
-                <CTableDataCell className="text-end">{totalRevenue.toFixed(2)}</CTableDataCell>
-                <CTableDataCell>
-                  <CProgress height={20} value={100} color="success" />
-                </CTableDataCell>
-              </CTableRow>
-            </CTableBody>
-          </CTable>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setModalVisible(false)}>
-            {Language.close}
+        <div className="sales-card-header-right">
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={exportToPDF}
+            disabled={totalRevenue === 0}
+          >
+            <CIcon icon={cilCloudDownload} className="me-2" />
+            {Language.ExporttoPDF || 'Export PDF'}
           </CButton>
-        </CModalFooter>
-      </CModal>
+        </div>
+      </div>
 
-      <style>{`
-        .dashboard-card {
-          border-radius: 15px;
-          box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-          border: none;
-          overflow: hidden;
-        }
-        .dashboard-card-header {
-          background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-          color: white;
-          border-bottom: none;
-          padding: 1.5rem;
-        }
-        .dashboard-title {
-          margin: 0;
-          font-weight: 600;
-          color: white;
-        }
-        .total-revenue-card {
-          background: white;
-          border-radius: 10px;
-          padding: 1.5rem;
-          text-align: center;
-          box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-          border: 1px solid #e3e6f0;
-        }
-        .chart-container {
-          background: white;
-          border-radius: 10px;
-          padding: 1.5rem;
-          box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-          border: 1px solid #e3e6f0;
-        }
-        .method-breakdown {
-          background: white;
-          border-radius: 10px;
-          padding: 1.5rem;
-          box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-          border: 1px solid #e3e6f0;
-          height: 100%;
-        }
-        .list-unstyled li {
-          padding: 0.5rem;
-          border-radius: 5px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .list-unstyled li:hover {
-          background-color: #f8f9fa;
-        }
-        .active-month {
-          background-color: #f0f7ff;
-          border-left: 3px solid #4e73df;
-        }
-      `}</style>
-    </div>
+      <CCardBody className="p-0">
+        {loading ? (
+          <div className="sales-skeleton">
+            <div>
+              <div className="sales-skeleton-line" style={{ width: '40%' }} />
+              <div className="sales-skeleton-line" style={{ width: '30%' }} />
+              <div style={{ height: 220, marginTop: 12 }}>
+                <div className="sales-skeleton-line" style={{ height: 220 }} />
+              </div>
+            </div>
+            <div>
+              <div className="sales-skeleton-line" style={{ width: '70%' }} />
+              <div className="sales-skeleton-line" style={{ width: '50%' }} />
+              <div className="sales-skeleton-line" style={{ width: '85%' }} />
+              <div className="sales-skeleton-line" style={{ width: '60%' }} />
+            </div>
+          </div>
+        ) : isEmpty ? (
+          <div className="sales-empty">
+            <CIcon icon={cilCalendar} size="xl" />
+            <div className="sales-empty-title">
+              {Language.noRevenueThisYear || 'No revenue this year yet'}
+            </div>
+            <div className="sales-empty-body">
+              {Language.noRevenueThisYearHint ||
+                'Paid orders will appear here as the year goes on.'}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Total + best month */}
+            <div style={{ padding: '20px 20px 0 20px' }}>
+              <div className="sales-big-number">
+                {totalRevenue.toFixed(2)}
+                <span className="unit">TND</span>
+              </div>
+              {bestMonth && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: '0.8rem',
+                    color: '#6c757d',
+                  }}
+                >
+                  {Language.bestMonth || 'Best month'}:{' '}
+                  <strong style={{ color: '#198754' }}>{bestMonth.month}</strong> ·{' '}
+                  {bestMonth.revenue.toFixed(2)} TND
+                </div>
+              )}
+            </div>
+
+            {/* Line chart */}
+            <div
+              style={{
+                padding: '16px 20px 0 20px',
+                height: 260,
+                position: 'relative',
+              }}
+            >
+              <CChartLine
+                data={{
+                  labels: rows.map((r) => r.shortMonth),
+                  datasets: [
+                    {
+                      label: 'Monthly revenue',
+                      backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                      borderColor: 'rgba(13, 110, 253, 0.9)',
+                      borderWidth: 2,
+                      tension: 0.35,
+                      pointBackgroundColor: '#fff',
+                      pointBorderColor: '#0d6efd',
+                      pointBorderWidth: 2,
+                      pointRadius: 4,
+                      pointHoverRadius: 6,
+                      data: rows.map((r) => r.revenue),
+                    },
+                  ],
+                }}
+                options={{
+                  maintainAspectRatio: false,
+                  responsive: true,
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        title: (items) => {
+                          const idx = items[0].dataIndex
+                          return rows[idx]?.month || ''
+                        },
+                        label: (context) => `${context.parsed.y.toFixed(2)} TND`,
+                      },
+                    },
+                  },
+                  scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                      beginAtZero: true,
+                      grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                      ticks: { callback: (v) => `${v}` },
+                    },
+                  },
+                }}
+              />
+            </div>
+
+            {/* Breakdown */}
+            <div className="sales-split" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="sales-breakdown">
+                {rows.map((r, i) => {
+                  const pct = totalRevenue > 0 ? (r.revenue / totalRevenue) * 100 : 0
+                  const color = SLICE_COLORS[i % SLICE_COLORS.length]
+                  const isBest = bestMonth && r.index === bestMonth.index
+                  return (
+                    <div className="sales-breakdown-row" key={r.index}>
+                      <div className="sales-breakdown-top">
+                        <span className="sales-breakdown-name">
+                          {isBest ? (
+                            <strong style={{ color: '#198754' }}>{r.month}</strong>
+                          ) : (
+                            r.month
+                          )}
+                        </span>
+                        <span className="sales-breakdown-value">
+                          <span className="sales-breakdown-amount">{r.revenue.toFixed(2)} TND</span>
+                          <span className="sales-breakdown-pct">{pct.toFixed(1)}%</span>
+                        </span>
+                      </div>
+                      <div className="sales-bar-track">
+                        <div
+                          className="sales-bar-fill"
+                          style={{
+                            width: `${pct}%`,
+                            background: isBest ? '#198754' : color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </CCardBody>
+    </CCard>
   )
-}
-
-// Helper function for progress colors
-const getProgressColor = (value) => {
-  if (value > 15) return 'success'
-  if (value > 10) return 'info'
-  if (value > 5) return 'warning'
-  return 'danger'
 }
 
 YearlyRevenue.propTypes = {
