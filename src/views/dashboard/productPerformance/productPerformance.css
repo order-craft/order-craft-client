@@ -444,3 +444,45 @@
     width: 100%;
   }
 }
+/* ---------- Weekly revenue table (RevenuePerProductPerDay) ---------- */
+.pp-week-wrap {
+  padding: 12px 0;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* The inner grid table needs a minimum width so it can actually scroll
+   horizontally on a phone instead of squeezing columns to nothing */
+.pp-week-wrap > div {
+  min-width: 620px;
+}
+
+/* On desktop, no min-width — the grid fits naturally */
+@media (min-width: 768px) {
+  .pp-week-wrap > div {
+    min-width: 0;
+  }
+}
+
+/* Also make sure the parent card doesn't grow past the viewport */
+.pp-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+@media (max-width: 767.98px) {
+  .pp-week-wrap {
+    position: relative;
+  }
+
+  .pp-week-wrap::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    pointer-events: none;
+    background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+  }
+}

@@ -51,7 +51,9 @@
   border-radius: 6px;
   margin: 2px 8px;
   padding: 8px 12px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .sidebar .nav-link:hover {
@@ -114,4 +116,52 @@
 .sidebar.sidebar-narrow .nav-section-label:first-child {
   border-top: none;
   margin-top: 0;
+}
+/* =========================================================================
+   Mobile safety net — no horizontal overflow anywhere
+   ========================================================================= */
+
+@media (max-width: 767.98px) {
+  /* The whole app never exceeds the viewport */
+  html,
+  body,
+  #root {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Cards, containers and rows shrink to fit */
+  .card,
+  .container,
+  .container-fluid,
+  .row,
+  .col,
+  [class*='col-'] {
+    max-width: 100%;
+  }
+
+  /* Any table inside a card should be scrollable, not overflowing */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-responsive > .table {
+    min-width: 620px;
+  }
+
+  /* Force long words/numbers not to break the layout */
+  .card,
+  .card-body,
+  .card-header {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* CoreUI widgets stretch across the phone width */
+  .c-widget-stats,
+  .c-widget-stats-a,
+  .c-widget-stats-f {
+    width: 100%;
+  }
 }

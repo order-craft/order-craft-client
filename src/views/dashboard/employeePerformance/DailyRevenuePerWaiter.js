@@ -1,258 +1,233 @@
-import React, { useEffect, useState } from 'react'
-import {
-  CCard,
-  CCardHeader,
-  CCardBody,
-  CFormInput,
-  CButton,
-  CTable,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableBody,
-  CTableDataCell,
-  CSpinner,
-  CAlert,
-  CProgress,
-  CProgressBar,
-  CRow,
-  CCol,
-  CWidgetStatsF,
-  CBadge,
-  CCallout,
-} from '@coreui/react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { CButton, CSpinner } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilUser, cilCalendar, cilDollar, cilChart, cilWarning, cilReload } from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
-import CIcon from '@coreui/icons-react'
-import { cilUser, cilCalendar, cilDollar, cilChart } from '@coreui/icons'
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
+import './employeePerformance.css'
+
+const toLocalISO = (d) => {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+const todayISO = () => toLocalISO(new Date())
 
 const DailyRevenuePerWaiter = () => {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
-  const [revenueData, setRevenueData] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
   const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
 
-  // Calculate metrics
-  const totalRevenue = revenueData.reduce((sum, waiter) => sum + waiter.totalRevenue, 0)
-  const averageRevenue = revenueData.length > 0 ? totalRevenue / revenueData.length : 0
-  const topWaiter =
-    revenueData.length > 0
-      ? revenueData.reduce((max, waiter) => (waiter.totalRevenue > max.totalRevenue ? waiter : max))
-      : null
+  const [date, setDate] = useState(todayISO())
+  const [revenueData, setRevenueData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // Fetch daily revenue per waiter
-  const fetchDailyRevenue = async () => {
+  /* ---------- fetch ---------- */
+  const fetchDailyRevenue = useCallback(async () => {
     setLoading(true)
     setError(null)
-
     try {
       const response = await axios.post(
         `${BaseUrl}/dashboard/daily-revenue-per-waiter`,
         { date },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        { headers: { Authorization: `Bearer ${token}` } },
       )
-      setRevenueData(response.data)
-    } catch (error) {
-      console.error('Error fetching daily revenue:', error)
-      setError('Failed to fetch daily revenue. Please try again.')
+      const list = (response.data || []).map((w) => ({
+        name: w.name || 'Unknown',
+        totalRevenue: Number(w.totalRevenue) || 0,
+      }))
+      list.sort((a, b) => b.totalRevenue - a.totalRevenue)
+      setRevenueData(list)
+    } catch (err) {
+      console.error('Error fetching daily revenue:', err)
+      setError(Language.fetchError || 'Failed to fetch daily revenue. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, date, Language])
 
-  // Format currency
-  const formatCurrency = (value) => {
-    return (
-      new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-      }).format(value) + ' TND'
-    )
-  }
+  useEffect(() => {
+    fetchDailyRevenue()
+  }, [fetchDailyRevenue])
 
-  // Get color based on performance
-  const getPerformanceColor = (revenue) => {
+  /* ---------- derived ---------- */
+  const totalRevenue = useMemo(
+    () => revenueData.reduce((sum, w) => sum + w.totalRevenue, 0),
+    [revenueData],
+  )
+  const averageRevenue = revenueData.length > 0 ? totalRevenue / revenueData.length : 0
+  const topWaiter = revenueData[0] || null
+  const maxRevenue = topWaiter?.totalRevenue || 0
+
+  const fmtTND = (v) =>
+    new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+    }).format(Number(v) || 0)
+
+  const tone = (revenue) => {
+    if (averageRevenue === 0) return 'default'
     if (revenue >= averageRevenue * 1.5) return 'success'
     if (revenue >= averageRevenue) return 'info'
     if (revenue >= averageRevenue * 0.5) return 'warning'
     return 'danger'
   }
 
-  // Calculate progress value (scaled to the top performer)
-  const calculateProgressValue = (revenue) => {
-    if (!topWaiter || topWaiter.totalRevenue === 0) return 0
-    return (revenue / topWaiter.totalRevenue) * 100
+  const barColor = {
+    success: '#198754',
+    info: '#0dcaf0',
+    warning: '#ffc107',
+    danger: '#dc3545',
+    default: '#6c757d',
   }
 
-  // Fetch data on component mount or when date changes
-  useEffect(() => {
-    fetchDailyRevenue()
-  }, [date])
+  /* ---------- render ---------- */
+  const isEmpty = !loading && !error && revenueData.length === 0
 
   return (
-    <CCard className="mb-4">
-      <CCardHeader className="d-flex justify-content-between align-items-center">
-        <div>
-          <h5 className="mb-0">Daily Revenue per Waiter</h5>
-          <small className="text-medium-emphasis">Performance breakdown by day</small>
-        </div>
-        <CBadge color="primary" shape="rounded-pill">
-          <CIcon icon={cilCalendar} className="me-1" />
-          {new Date(date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </CBadge>
-      </CCardHeader>
-
-      <CCardBody>
-        <div className="mb-4">
-          <CRow className="g-3 align-items-end">
-            <CCol md={4}>
-              <label htmlFor="date" className="form-label">
-                Select Date:
-              </label>
-              <CFormInput
-                type="date"
-                id="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </CCol>
-            <CCol md={2}>
-              <CButton
-                color="primary"
-                onClick={fetchDailyRevenue}
-                disabled={loading}
-                className="w-100"
-              >
-                {loading ? <CSpinner size="sm" /> : 'Refresh'}
-              </CButton>
-            </CCol>
-          </CRow>
-        </div>
-
-        {error && (
-          <CAlert color="danger" className="d-flex align-items-center">
-            <CIcon icon={cilDollar} className="flex-shrink-0 me-2" />
-            <div>{error}</div>
-          </CAlert>
-        )}
-
-        <CRow className="mb-4">
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="primary"
-              icon={<CIcon icon={cilUser} height={24} />}
-              title="Total Waiters"
-              value={revenueData.length}
-            />
-          </CCol>
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="info"
-              icon={<CIcon icon={cilDollar} height={24} />}
-              title="Total Revenue"
-              value={formatCurrency(totalRevenue)}
-            />
-          </CCol>
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="warning"
-              icon={<CIcon icon={cilChart} height={24} />}
-              title="Average"
-              value={formatCurrency(averageRevenue)}
-            />
-          </CCol>
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="success"
-              icon={<CIcon icon={cilUser} height={24} />}
-              title="Top Waiter"
-              value={
-                topWaiter ? `${topWaiter.name} (${formatCurrency(topWaiter.totalRevenue)})` : 'N/A'
-              }
-            />
-          </CCol>
-        </CRow>
-
-        {loading ? (
-          <div className="text-center py-4">
-            <CSpinner color="primary" size="sm" />
-            <p className="mt-2">Loading revenue data...</p>
+    <div className="em-card">
+      {/* ---------- Header ---------- */}
+      <div className="em-card-header">
+        <div className="em-card-header-left">
+          <h5 className="em-card-title">
+            <CIcon icon={cilUser} />
+            {Language.DailyRevenuePerWaiter || 'Daily revenue per waiter'}
+          </h5>
+          <div className="em-card-subtitle">
+            {Language.performanceBreakdown || 'Revenue performance for a single day'}
           </div>
-        ) : revenueData.length > 0 ? (
-          <>
-            <CCallout color="info" className="mb-4">
-              Showing revenue for <strong>{new Date(date).toLocaleDateString()}</strong>.
-              {topWaiter &&
-                ` Top performer: ${topWaiter.name} with ${formatCurrency(topWaiter.totalRevenue)}`}
-            </CCallout>
+        </div>
 
-            <CTable striped hover responsive className="align-middle">
-              <CTableHead color="dark">
-                <CTableRow>
-                  <CTableHeaderCell>Waiter</CTableHeaderCell>
-                  <CTableHeaderCell className="text-end">Revenue</CTableHeaderCell>
-                  <CTableHeaderCell>Performance</CTableHeaderCell>
-                </CTableRow>
-              </CTableHead>
-              <CTableBody>
-                {revenueData.map((waiter, index) => (
-                  <CTableRow key={index}>
-                    <CTableDataCell>
-                      <div className="fw-semibold">{waiter.name}</div>
-                      {waiter.totalRevenue === topWaiter?.totalRevenue && (
-                        <CBadge color="success" shape="rounded-pill" className="ms-2">
-                          Top Performer
-                        </CBadge>
-                      )}
-                    </CTableDataCell>
-                    <CTableDataCell className="text-end fw-bold">
-                      {formatCurrency(waiter.totalRevenue)}
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      <CProgress className="mb-1" height={20}>
-                        <CProgressBar
-                          value={calculateProgressValue(waiter.totalRevenue)}
-                          color={getPerformanceColor(waiter.totalRevenue)}
-                        />
-                      </CProgress>
-                      <small>
-                        {calculateProgressValue(waiter.totalRevenue).toFixed(1)}% of top performer
-                      </small>
-                    </CTableDataCell>
-                  </CTableRow>
-                ))}
-              </CTableBody>
-            </CTable>
-          </>
-        ) : (
-          <CAlert color="info" className="d-flex align-items-center">
-            <CIcon icon={cilDollar} className="flex-shrink-0 me-2" />
-            <div>
-              No revenue data available for {new Date(date).toLocaleDateString()}.
-              {!loading && (
-                <CButton color="link" size="sm" onClick={fetchDailyRevenue} className="p-0 ms-2">
-                  Try again
-                </CButton>
+        <div className="em-card-header-right">
+          <div className="em-date">
+            <CIcon icon={cilCalendar} style={{ color: '#6c757d' }} />
+            <input
+              type="date"
+              value={date}
+              max={todayISO()}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={fetchDailyRevenue}
+            disabled={loading}
+            aria-label={Language.Refresh || 'Refresh'}
+          >
+            <CIcon icon={cilReload} />
+          </CButton>
+        </div>
+      </div>
+
+      {/* ---------- Body ---------- */}
+      {loading ? (
+        <div className="em-skeleton">
+          <div className="em-skeleton-line" style={{ width: '40%' }} />
+          <div className="em-skeleton-block" />
+        </div>
+      ) : error ? (
+        <div className="em-info em-info-danger">
+          <CIcon icon={cilWarning} />
+          <div style={{ flex: 1 }}>{error}</div>
+          <CButton size="sm" color="danger" onClick={fetchDailyRevenue}>
+            {Language.Retry || 'Retry'}
+          </CButton>
+        </div>
+      ) : isEmpty ? (
+        <div className="em-empty">
+          <CIcon icon={cilDollar} size="xl" />
+          <div className="em-empty-title">
+            {Language.noRevenueThisDay || 'No revenue for this day'}
+          </div>
+          <div className="em-empty-body">
+            {Language.noRevenueThisDayHint ||
+              'Try another date — waiting staff with archived orders will show up here.'}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ---------- Stats ---------- */}
+          <div className="em-stats em-stats-4">
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilUser} /> {Language.TotalWaiters || 'Waiters'}
+              </div>
+              <div className="em-stat-value">{revenueData.length}</div>
+            </div>
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilDollar} /> {Language.TotalRevenue || 'Total revenue'}
+              </div>
+              <div className="em-stat-value is-primary">
+                {fmtTND(totalRevenue)}
+                <span className="unit">TND</span>
+              </div>
+            </div>
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilChart} /> {Language.Average || 'Average'}
+              </div>
+              <div className="em-stat-value">
+                {fmtTND(averageRevenue)}
+                <span className="unit">TND</span>
+              </div>
+            </div>
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilUser} /> {Language.TopWaiter || 'Top waiter'}
+              </div>
+              <div className="em-stat-value is-success" style={{ fontSize: '1rem' }}>
+                {topWaiter ? topWaiter.name : '—'}
+              </div>
+              {topWaiter && (
+                <div className="em-stat-hint">{fmtTND(topWaiter.totalRevenue)} TND</div>
               )}
             </div>
-          </CAlert>
-        )}
-      </CCardBody>
-    </CCard>
+          </div>
+
+          {/* ---------- Leaderboard ---------- */}
+          <div className="em-list">
+            {revenueData.map((waiter, index) => {
+              const pct = maxRevenue > 0 ? (waiter.totalRevenue / maxRevenue) * 100 : 0
+              const share = totalRevenue > 0 ? (waiter.totalRevenue / totalRevenue) * 100 : 0
+              const t = tone(waiter.totalRevenue)
+              const isTop = index === 0
+              return (
+                <div className="em-row" key={`${waiter.name}-${index}`}>
+                  <div className={`em-rank ${isTop ? 'is-top' : ''}`}>{index + 1}</div>
+                  <div className="em-row-main">
+                    <div className="em-row-top">
+                      <span className="em-row-name">
+                        {waiter.name}
+                        {isTop && <span className="em-top-pill">{Language.Top || 'Top'}</span>}
+                      </span>
+                      <span className="em-row-amount">{fmtTND(waiter.totalRevenue)} TND</span>
+                    </div>
+                    <div className="em-bar-track">
+                      <div
+                        className="em-bar-fill"
+                        style={{
+                          width: `${pct}%`,
+                          background: barColor[t],
+                        }}
+                      />
+                    </div>
+                    <div className="em-row-hint">
+                      {share.toFixed(1)}% {Language.ofTotal || 'of total'}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

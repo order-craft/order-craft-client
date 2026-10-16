@@ -358,3 +358,77 @@
     grid-template-columns: 1fr;
   }
 }
+/* Mobile safety for sales */
+
+@media (max-width: 767.98px) {
+  /* Every sales card fills the container width without spilling */
+  .sales-card {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  /* Split grid stacks — already done, but tighten gaps */
+  .sales-split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px;
+  }
+
+  /* Charts shrink with the card */
+  .sales-chart {
+    min-height: 220px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* KPI grid: 2 columns then 1 */
+  .sales-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 14px;
+  }
+
+  /* Big number scales down and never overflows */
+  .sales-big-number {
+    font-size: 1.6rem;
+    word-break: break-word;
+  }
+
+  /* Date pills stack full-width */
+  .sales-date-group {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .sales-date {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+    width: auto;
+  }
+
+  .sales-date input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Breakdown rows: shrink the label so the amount isn't pushed off */
+  .sales-breakdown-name {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .sales-breakdown-value {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .sales-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-big-number {
+    font-size: 1.4rem;
+  }
+}

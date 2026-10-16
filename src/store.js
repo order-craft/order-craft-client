@@ -6,8 +6,7 @@ const initialLanguage = localStorage.getItem('language') || 'English'
 // Initial state
 const initialState = {
   sidebarShow: true,
-  theme: 'light',
-  language: initialLanguage, // Default language
+  language: initialLanguage,
 }
 
 // Reducer

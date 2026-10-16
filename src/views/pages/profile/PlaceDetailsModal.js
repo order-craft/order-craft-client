@@ -1,26 +1,29 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import {
-  CModal,
-  CModalHeader,
-  CModalBody,
-  CModalFooter,
-  CForm,
-  CFormLabel,
-  CFormInput,
-  CButton,
-  CImage,
-  CRow,
-  CCol,
-  CCard,
-  CCardBody,
-  CFormText,
-  CFormSwitch,
-} from '@coreui/react'
+import { CButton, CFormInput, CFormSwitch, CModal, CModalBody, CModalFooter } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilLocationPin, cilBuilding, cilImage, cilSave, cilX } from '@coreui/icons'
+import { cilBuilding, cilLocationPin, cilImage, cilSave, cilX, cilCheck } from '@coreui/icons'
+import './profile.css'
 
 const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onSave }) => {
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (visible) setSaving(false)
+  }, [visible])
+
+  const brandColor = data?.brandColor || '#8B5A2B'
+  const statusFlow = data?.statusFlowEnabled === undefined ? true : data.statusFlowEnabled
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      await onSave()
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <CModal
       visible={visible}
@@ -28,217 +31,248 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
       alignment="center"
       size="lg"
       backdrop="static"
-      className="modal-styled"
+      className="pf-modal"
     >
-      <CModalHeader className="bg-gradient-info text-white">
-        <CIcon icon={cilBuilding} className="me-2" />
-        {data?.placeName ? `Edit ${data.placeName}` : 'Add New Place'}
-      </CModalHeader>
-      <CModalBody className="p-4">
-        <CCard className="shadow-sm mb-4">
-          <CCardBody>
-            <h5 className="mb-4 text-info">
-              <CIcon icon={cilBuilding} className="me-2" />
-              Basic Information
-            </h5>
+      {/* ---------- Header ---------- */}
+      <div className="pf-modal-header">
+        <h5 className="pf-modal-title">
+          <CIcon icon={cilBuilding} />
+          {data?.placeName ? `Edit ${data.placeName}` : 'Business details'}
+        </h5>
+        <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
+          &times;
+        </button>
+      </div>
 
-            <CRow className="mb-3">
-              <CCol md={6}>
-                <CFormLabel className="fw-bold">Place Name</CFormLabel>
-                <CFormInput
-                  type="text"
-                  name="placeName"
-                  placeholder="Enter place name"
-                  value={data?.placeName || ''}
-                  onChange={onChange}
-                />
-              </CCol>
-              <CCol md={6}>
-                <CFormLabel className="fw-bold">Phone Number</CFormLabel>
-                <CFormInput
-                  type="text"
-                  name="phoneNumber"
-                  placeholder="Enter phone number"
-                  value={data?.phoneNumber || ''}
-                  onChange={onChange}
-                />
-              </CCol>
-            </CRow>
+      {/* ---------- Body ---------- */}
+      <CModalBody className="pf-modal-body">
+        {/* Basic info */}
+        <div className="pf-section">
+          <div className="pf-section-title">Basic information</div>
 
-            <CRow className="mb-3">
-              <CCol md={12}>
-                <CFormLabel className="fw-bold">Address</CFormLabel>
-                <CFormInput
-                  type="text"
-                  name="PlaceAddress"
-                  placeholder="Enter full address"
-                  value={data?.PlaceAddress || ''}
-                  onChange={onChange}
-                />
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
-        <CCard className="shadow-sm mb-4">
-          <CCardBody>
-            <h5 className="mb-4 text-info">Brand color</h5>
-            <CRow className="align-items-center">
-              <CCol md={4}>
-                <CFormInput
-                  type="color"
-                  name="brandColor"
-                  value={data?.brandColor || '#8B5A2B'}
-                  onChange={onChange}
-                  style={{ height: 48, padding: 4, cursor: 'pointer' }}
-                />
-              </CCol>
-              <CCol md={8}>
-                <CFormText>
-                  This is the accent color shown to your customers in the ordering app (section
-                  tiles, highlights). Pick something that matches your brand.
-                </CFormText>
-                <div
-                  style={{
-                    marginTop: 8,
-                    fontSize: '0.85rem',
-                    color: '#6c757d',
-                  }}
-                >
-                  Current: <strong>{data?.brandColor || '#8B5A2B'}</strong>
-                </div>
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
-        <CCard className="shadow-sm mb-4">
-          <CCardBody>
-            <h5 className="mb-4 text-info">
-              <CIcon icon={cilImage} className="me-2" />
-              Media
-            </h5>
-
-            <CRow className="mb-3">
-              <CCol md={6}>
-                <CFormLabel className="fw-bold">Place Logo</CFormLabel>
-                <CFormInput
-                  type="file"
-                  name="placeLogo"
-                  onChange={(e) => onFileChange(e, 'logo')}
-                  className="mb-2"
-                />
-                <CFormText>Recommended size: 200x200px</CFormText>
-                {data?.logoPreview && (
-                  <div className="mt-2 text-center">
-                    <CImage
-                      src={data.logoPreview}
-                      alt="Logo preview"
-                      height={100}
-                      className="rounded border p-1 bg-light"
-                    />
-                  </div>
-                )}
-              </CCol>
-              <CCol md={6}>
-                <CFormLabel className="fw-bold">Place Picture</CFormLabel>
-                <CFormInput
-                  type="file"
-                  name="placePicture"
-                  onChange={(e) => onFileChange(e, 'place')}
-                  className="mb-2"
-                />
-                <CFormText>Recommended size: 800x600px</CFormText>
-                {data?.picturePreview && (
-                  <div className="mt-2 text-center">
-                    <CImage
-                      src={data.picturePreview}
-                      alt="Picture preview"
-                      height={100}
-                      className="rounded border p-1 bg-light"
-                    />
-                  </div>
-                )}
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
-
-        <CCard className="shadow-sm">
-          <CCardBody>
-            <h5 className="mb-4 text-info">
-              <CIcon icon={cilLocationPin} className="me-2" />
-              Location Details
-            </h5>
-
-            <CRow className="mb-3">
-              <CCol md={4}>
-                <CFormLabel className="fw-bold">Distance (m)</CFormLabel>
-                <CFormInput
-                  type="number"
-                  name="distance"
-                  placeholder="Enter distance"
-                  value={data?.distance || ''}
-                  onChange={onChange}
-                />
-              </CCol>
-              <CCol md={4}>
-                <CFormLabel className="fw-bold">Latitude</CFormLabel>
-                <CFormInput
-                  type="text"
-                  name="lat"
-                  placeholder="Enter latitude"
-                  value={data?.lat || ''}
-                  onChange={onChange}
-                />
-              </CCol>
-              <CCol md={4}>
-                <CFormLabel className="fw-bold">Longitude</CFormLabel>
-                <CFormInput
-                  type="text"
-                  name="long"
-                  placeholder="Enter longitude"
-                  value={data?.long || ''}
-                  onChange={onChange}
-                />
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
-        <CCard className="shadow-sm mt-4">
-          <CCardBody>
-            <h5 className="mb-3 text-info">Order Workflow</h5>
-            <div className="d-flex justify-content-between align-items-center">
-              <div className="pe-3">
-                <div className="fw-bold">Enable order status tracking</div>
-                <CFormText>
-                  When on, orders go through Pending → Preparing → Completed. When off, orders are
-                  placed directly as &quot;Placed&quot; and the staff only handle payment.
-                </CFormText>
-              </div>
-              <CFormSwitch
-                id="statusFlowEnabledSwitch"
-                checked={data?.statusFlowEnabled === undefined ? true : data.statusFlowEnabled}
-                onChange={(e) =>
-                  onChange({
-                    target: {
-                      name: 'statusFlowEnabled',
-                      value: e.target.checked,
-                    },
-                  })
-                }
+          <div className="pf-grid-2">
+            <div>
+              <label className="pf-field-label" htmlFor="pf-place-name">
+                Place name
+              </label>
+              <CFormInput
+                id="pf-place-name"
+                type="text"
+                name="placeName"
+                placeholder="e.g. The Corner Cafe"
+                value={data?.placeName || ''}
+                onChange={onChange}
               />
             </div>
-          </CCardBody>
-        </CCard>
+            <div>
+              <label className="pf-field-label" htmlFor="pf-place-phone">
+                Phone number
+              </label>
+              <CFormInput
+                id="pf-place-phone"
+                type="text"
+                name="phoneNumber"
+                placeholder="e.g. +216 71 123 456"
+                value={data?.phoneNumber || ''}
+                onChange={onChange}
+              />
+            </div>
+          </div>
+
+          <label className="pf-field-label" htmlFor="pf-place-address" style={{ marginTop: 14 }}>
+            Address
+          </label>
+          <CFormInput
+            id="pf-place-address"
+            type="text"
+            name="PlaceAddress"
+            placeholder="Street, city, postcode"
+            value={data?.PlaceAddress || ''}
+            onChange={onChange}
+          />
+        </div>
+
+        {/* Brand color */}
+        <div className="pf-section">
+          <div className="pf-section-title">Brand color</div>
+          <div className="pf-color-row">
+            <div className="pf-color-preview-wrap">
+              <div className="pf-color-preview" style={{ background: brandColor }} />
+              <div className="pf-color-hex">{brandColor}</div>
+            </div>
+            <div className="pf-color-input-wrap">
+              <input
+                type="color"
+                name="brandColor"
+                value={brandColor}
+                onChange={onChange}
+                className="pf-color-input"
+                aria-label="Brand color"
+              />
+              <div className="pf-color-hint">
+                Shown to your customers in the ordering app — section tiles, price highlights,
+                buttons.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Media */}
+        <div className="pf-section">
+          <div className="pf-section-title">Media</div>
+          <div className="pf-grid-2">
+            <div className="pf-media-cell">
+              <label className="pf-field-label" htmlFor="pf-logo-upload">
+                Place logo
+              </label>
+              <input
+                id="pf-logo-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => onFileChange(e, 'logo')}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="pf-logo-upload" className="pf-upload-area">
+                {data?.logoPreview ? (
+                  <img
+                    src={data.logoPreview}
+                    alt="Logo preview"
+                    className="pf-upload-preview is-square"
+                  />
+                ) : (
+                  <>
+                    <CIcon icon={cilImage} className="pf-upload-icon" />
+                    <span className="pf-upload-text">Click to upload</span>
+                  </>
+                )}
+              </label>
+              <div className="pf-upload-hint">Square, ideally 200×200px.</div>
+            </div>
+
+            <div className="pf-media-cell">
+              <label className="pf-field-label" htmlFor="pf-picture-upload">
+                Place picture
+              </label>
+              <input
+                id="pf-picture-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => onFileChange(e, 'place')}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="pf-picture-upload" className="pf-upload-area">
+                {data?.picturePreview ? (
+                  <img
+                    src={data.picturePreview}
+                    alt="Place preview"
+                    className="pf-upload-preview"
+                  />
+                ) : (
+                  <>
+                    <CIcon icon={cilImage} className="pf-upload-icon" />
+                    <span className="pf-upload-text">Click to upload</span>
+                  </>
+                )}
+              </label>
+              <div className="pf-upload-hint">Wide landscape, ideally 800×600px.</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Location */}
+        <div className="pf-section">
+          <div className="pf-section-title">
+            <CIcon icon={cilLocationPin} /> Location
+          </div>
+          <div className="pf-grid-3">
+            <div>
+              <label className="pf-field-label" htmlFor="pf-distance">
+                Distance (m)
+              </label>
+              <CFormInput
+                id="pf-distance"
+                type="number"
+                name="distance"
+                placeholder="e.g. 300"
+                value={data?.distance || ''}
+                onChange={onChange}
+              />
+            </div>
+            <div>
+              <label className="pf-field-label" htmlFor="pf-lat">
+                Latitude
+              </label>
+              <CFormInput
+                id="pf-lat"
+                type="text"
+                name="lat"
+                placeholder="e.g. 36.8310"
+                value={data?.lat || ''}
+                onChange={onChange}
+              />
+            </div>
+            <div>
+              <label className="pf-field-label" htmlFor="pf-long">
+                Longitude
+              </label>
+              <CFormInput
+                id="pf-long"
+                type="text"
+                name="long"
+                placeholder="e.g. 10.2304"
+                value={data?.long || ''}
+                onChange={onChange}
+              />
+            </div>
+          </div>
+          <p className="pf-modal-note" style={{ textAlign: 'left' }}>
+            Distance is the maximum allowed radius (in meters) between a guest's device and your
+            café when they scan the QR code.
+          </p>
+        </div>
+
+        {/* Order workflow */}
+        <div className="pf-section">
+          <div className="pf-section-title">Order workflow</div>
+          <div className="pf-switch-row">
+            <div className="pf-switch-text">
+              <div className="pf-switch-title">Enable order status tracking</div>
+              <div className="pf-switch-hint">
+                On: orders flow through Pending → Preparing → Completed. Off: new orders are marked
+                as "Placed" directly and staff only handle payment.
+              </div>
+            </div>
+            <CFormSwitch
+              id="statusFlowEnabledSwitch"
+              checked={statusFlow}
+              onChange={(e) =>
+                onChange({
+                  target: {
+                    name: 'statusFlowEnabled',
+                    value: e.target.checked,
+                  },
+                })
+              }
+            />
+          </div>
+        </div>
       </CModalBody>
 
-      <CModalFooter className="border-top-0">
-        <CButton color="secondary" onClick={onClose} variant="outline" shape="rounded-pill">
+      {/* ---------- Footer ---------- */}
+      <CModalFooter className="pf-modal-footer">
+        <CButton color="secondary" variant="outline" onClick={onClose} disabled={saving}>
           <CIcon icon={cilX} className="me-2" />
           Cancel
         </CButton>
-        <CButton color="info" onClick={onSave} shape="rounded-pill">
-          <CIcon icon={cilSave} className="me-2" />
-          Save Place
+        <CButton color="primary" onClick={handleSave} disabled={saving}>
+          {saving ? (
+            <>Saving…</>
+          ) : (
+            <>
+              <CIcon icon={cilCheck} className="me-2" />
+              Save changes
+            </>
+          )}
         </CButton>
       </CModalFooter>
     </CModal>

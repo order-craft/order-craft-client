@@ -1,20 +1,16 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import {
-  CModal,
-  CModalHeader,
-  CModalBody,
-  CModalFooter,
-  CForm,
-  CFormInput,
-  CButton,
-  CCard,
-  CCardBody,
-  CFormLabel,
-  CAlert,
-} from '@coreui/react'
+import { CButton, CFormInput, CModal, CModalBody, CModalFooter } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilEnvelopeOpen, cilLockLocked, cilArrowLeft, cilX, cilSettings } from '@coreui/icons'
+import {
+  cilEnvelopeOpen,
+  cilLockLocked,
+  cilArrowLeft,
+  cilX,
+  cilCheck,
+  cilWarning,
+} from '@coreui/icons'
+import './profile.css'
 
 const SettingsModal = ({
   visible,
@@ -32,117 +28,215 @@ const SettingsModal = ({
   sendPwdVerificationCode,
   changePassword,
 }) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (visible) {
+      setSubmitting(false)
+      setError('')
+    }
+  }, [visible])
+
+  /* ---------- step 1: request a code ---------- */
+  const handleSendCode = async () => {
+    if (!oldPassword) {
+      setError('Enter your current password first.')
+      return
+    }
+    setError('')
+    setSubmitting(true)
+    try {
+      await sendPwdVerificationCode(oldPassword)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  /* ---------- step 2: submit new password ---------- */
+  const handleChangePassword = async () => {
+    if (!confirmationCode || confirmationCode.length < 6) {
+      setError('Enter the 6-digit code from your email.')
+      return
+    }
+    if (!newPassword || newPassword.length < 6) {
+      setError('Your new password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError("The two passwords don't match.")
+      return
+    }
+    setError('')
+    setSubmitting(true)
+    try {
+      await changePassword(confirmationCode, newPassword, confirmPassword)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <CModal
       visible={visible}
       onClose={onClose}
       alignment="center"
       backdrop="static"
-      className="modal-styled"
+      size="lg"
+      className="pf-modal"
     >
-      <CModalHeader className="bg-gradient-dark text-white">
-        <CIcon icon={cilSettings} className="me-2" />
-        Account Security Settings
-      </CModalHeader>
-      <CModalBody className="p-4">
-        <CCard className="shadow-sm">
-          <CCardBody>
-            <h5 className="mb-4 text-dark">
-              <CIcon icon={cilLockLocked} className="me-2" />
-              Change Password
-            </h5>
+      {/* ---------- Header ---------- */}
+      <div className="pf-modal-header">
+        <h5 className="pf-modal-title">
+          <CIcon icon={cilLockLocked} />
+          Account security
+        </h5>
+        <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
+          &times;
+        </button>
+      </div>
 
-            {!emailSent ? (
-              <>
-                <CAlert color="info" className="mb-4">
-                  For security reasons, we need to verify your identity before changing your
-                  password.
-                </CAlert>
+      {/* ---------- Body ---------- */}
+      <CModalBody className="pf-modal-body">
+        {error && (
+          <div className="pf-modal-error">
+            <CIcon icon={cilWarning} />
+            <span>{error}</span>
+          </div>
+        )}
 
-                <div className="mb-4">
-                  <CFormLabel className="fw-bold">Current Password</CFormLabel>
-                  <CFormInput
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    type="password"
-                    placeholder="Enter your current password"
-                    className="mb-3"
-                    value={oldPassword}
-                  />
-                </div>
+        {!emailSent ? (
+          /* ----- Step 1: current password ----- */
+          <div className="pf-section">
+            <div className="pf-section-title">Step 1 · Verify your identity</div>
+            <p className="pf-modal-hint">
+              For security, we'll send a 6-digit code to the email address on your account before
+              you can change your password.
+            </p>
 
-                <div className="d-grid">
-                  <CButton
-                    color="warning"
-                    onClick={() => sendPwdVerificationCode(oldPassword)}
-                    className="text-white"
-                  >
-                    <CIcon icon={cilEnvelopeOpen} className="me-2" />
-                    Send Verification Email
-                  </CButton>
-                </div>
-              </>
-            ) : (
-              <>
-                <CAlert color="success" className="mb-4">
-                  We have sent a verification code to your email. Please enter it below along with
-                  your new password.
-                </CAlert>
+            <label className="pf-field-label" htmlFor="pf-old-password">
+              Current password
+            </label>
+            <CFormInput
+              id="pf-old-password"
+              type="password"
+              placeholder="Enter your current password"
+              value={oldPassword}
+              autoFocus
+              autoComplete="current-password"
+              onChange={(e) => {
+                setOldPassword(e.target.value)
+                if (error) setError('')
+              }}
+            />
+          </div>
+        ) : (
+          /* ----- Step 2: code + new password ----- */
+          <div className="pf-section">
+            <div className="pf-section-title">Step 2 · Set a new password</div>
+            <p className="pf-modal-hint">
+              We've emailed a code to you. Enter it below along with your new password.
+            </p>
 
-                <div className="mb-3">
-                  <CFormLabel className="fw-bold">Verification Code</CFormLabel>
-                  <CFormInput
-                    type="text"
-                    placeholder="Enter 6-digit code"
-                    value={confirmationCode}
-                    onChange={(e) => setConfirmationCode(e.target.value)}
-                    className="mb-3"
-                  />
-                </div>
+            <label className="pf-field-label" htmlFor="pf-code">
+              Verification code
+            </label>
+            <CFormInput
+              id="pf-code"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              placeholder="000000"
+              value={confirmationCode}
+              autoFocus
+              onChange={(e) => {
+                setConfirmationCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                if (error) setError('')
+              }}
+              className="pf-code-input"
+            />
 
-                <div className="mb-3">
-                  <CFormLabel className="fw-bold">New Password</CFormLabel>
-                  <CFormInput
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    type="password"
-                    placeholder="Enter new password"
-                    className="mb-3"
-                  />
-                </div>
+            <label className="pf-field-label" htmlFor="pf-new-password" style={{ marginTop: 14 }}>
+              New password
+            </label>
+            <CFormInput
+              id="pf-new-password"
+              type="password"
+              placeholder="At least 6 characters"
+              value={newPassword}
+              autoComplete="new-password"
+              onChange={(e) => {
+                setNewPassword(e.target.value)
+                if (error) setError('')
+              }}
+            />
 
-                <div className="mb-4">
-                  <CFormLabel className="fw-bold">Confirm New Password</CFormLabel>
-                  <CFormInput
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    type="password"
-                    placeholder="Confirm new password"
-                  />
-                </div>
-
-                <div className="d-flex justify-content-between">
-                  <CButton color="secondary" onClick={() => setEmailSent(false)} variant="outline">
-                    <CIcon icon={cilArrowLeft} className="me-2" />
-                    Back
-                  </CButton>
-                  <CButton
-                    color="success"
-                    onClick={() => changePassword(confirmationCode, newPassword, confirmPassword)}
-                  >
-                    <CIcon icon={cilLockLocked} className="me-2" />
-                    Update Password
-                  </CButton>
-                </div>
-              </>
-            )}
-          </CCardBody>
-        </CCard>
+            <label
+              className="pf-field-label"
+              htmlFor="pf-confirm-password"
+              style={{ marginTop: 14 }}
+            >
+              Confirm new password
+            </label>
+            <CFormInput
+              id="pf-confirm-password"
+              type="password"
+              placeholder="Repeat the new password"
+              value={confirmPassword}
+              autoComplete="new-password"
+              onChange={(e) => {
+                setConfirmPassword(e.target.value)
+                if (error) setError('')
+              }}
+            />
+          </div>
+        )}
       </CModalBody>
-      <CModalFooter className="border-top-0">
-        <CButton color="secondary" onClick={onClose} variant="outline">
-          <CIcon icon={cilX} className="me-2" />
-          Close
-        </CButton>
+
+      {/* ---------- Footer ---------- */}
+      <CModalFooter className="pf-modal-footer">
+        {!emailSent ? (
+          <>
+            <CButton color="secondary" variant="outline" onClick={onClose} disabled={submitting}>
+              <CIcon icon={cilX} className="me-2" />
+              Cancel
+            </CButton>
+            <CButton color="primary" onClick={handleSendCode} disabled={submitting || !oldPassword}>
+              <CIcon icon={cilEnvelopeOpen} className="me-2" />
+              {submitting ? 'Sending…' : 'Send verification code'}
+            </CButton>
+          </>
+        ) : (
+          <>
+            <CButton
+              color="secondary"
+              variant="outline"
+              onClick={() => {
+                setEmailSent(false)
+                setError('')
+              }}
+              disabled={submitting}
+            >
+              <CIcon icon={cilArrowLeft} className="me-2" />
+              Back
+            </CButton>
+            <CButton
+              color="success"
+              onClick={handleChangePassword}
+              disabled={
+                submitting ||
+                !confirmationCode ||
+                confirmationCode.length < 6 ||
+                !newPassword ||
+                !confirmPassword
+              }
+            >
+              <CIcon icon={cilCheck} className="me-2" />
+              {submitting ? 'Updating…' : 'Update password'}
+            </CButton>
+          </>
+        )}
       </CModalFooter>
     </CModal>
   )

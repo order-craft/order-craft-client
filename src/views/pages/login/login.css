@@ -1,0 +1,172 @@
+/* =========================================================================
+   Login page
+   ========================================================================= */
+
+.lg-page {
+  min-height: 100vh;
+  background: #f4f6f8;
+  display: flex;
+  align-items: center;
+  padding: 32px 0;
+}
+
+.lg-card {
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+}
+
+/* ---------- Brand panel ---------- */
+.lg-brand {
+  background: linear-gradient(160deg, #1f2b6c 0%, #0d47a1 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.lg-brand-inner {
+  text-align: center;
+  max-width: 240px;
+}
+
+.lg-brand-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 14px;
+}
+
+.lg-brand-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.02em;
+}
+
+.lg-brand-text {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.85;
+  margin: 0;
+}
+
+/* ---------- Form panel ---------- */
+.lg-form-body {
+  padding: 40px 32px;
+}
+
+.lg-form-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 4px 0;
+}
+
+.lg-form-sub {
+  font-size: 0.85rem;
+  color: var(--cui-secondary-color, #6c757d);
+  margin: 0 0 22px 0;
+}
+
+/* Inline error banner */
+.lg-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.lg-error svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.lg-field {
+  margin-bottom: 16px;
+}
+
+.lg-field label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lg-actions {
+  margin-top: 8px;
+}
+
+.lg-submit {
+  width: 100%;
+  padding: 12px 16px;
+  font-weight: 700;
+  border-radius: 10px;
+}
+
+.lg-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 18px;
+  font-size: 0.8rem;
+  color: var(--cui-secondary-color, #6c757d);
+}
+
+.lg-foot-link {
+  color: var(--cui-primary, #0d6efd);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.lg-foot-link:hover {
+  text-decoration: underline;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 767.98px) {
+  .lg-page {
+    padding: 20px 0;
+  }
+  .lg-brand {
+    padding: 28px 20px;
+  }
+  .lg-brand-logo {
+    width: 48px;
+    height: 48px;
+    font-size: 1rem;
+  }
+  .lg-brand-title {
+    font-size: 1.1rem;
+  }
+  .lg-form-body {
+    padding: 28px 22px;
+  }
+  .lg-form-title {
+    font-size: 1.2rem;
+  }
+  .lg-foot {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}

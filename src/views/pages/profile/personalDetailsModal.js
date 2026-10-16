@@ -1,22 +1,9 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import {
-  CModal,
-  CModalHeader,
-  CModalBody,
-  CModalFooter,
-  CForm,
-  CFormLabel,
-  CFormInput,
-  CButton,
-  CImage,
-  CRow,
-  CCol,
-  CCard,
-  CCardBody,
-} from '@coreui/react'
+import { CButton, CFormInput, CModal, CModalBody, CModalFooter } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilEnvelopeOpen, cilUser, cilPhone, cilCamera } from '@coreui/icons'
+import { cilEnvelopeOpen, cilUser, cilCamera, cilX } from '@coreui/icons'
+import './profile.css'
 
 const PersonalDetailsModal = ({
   visible,
@@ -31,108 +18,123 @@ const PersonalDetailsModal = ({
   profileChange,
   data,
 }) => {
+  const [savingPhoto, setSavingPhoto] = useState(false)
+
+  // reset the saving flag whenever the modal opens
+  useEffect(() => {
+    if (visible) setSavingPhoto(false)
+  }, [visible])
+
+  const initials = (data?.fullName || 'U').charAt(0).toUpperCase()
+  const previewSrc = tempSrcProfile || data?.profilePicture
+
+  const handleApplyPhoto = async () => {
+    setSavingPhoto(true)
+    try {
+      await profileChange()
+    } finally {
+      setSavingPhoto(false)
+    }
+  }
+
   return (
     <CModal
       visible={visible}
       onClose={onClose}
       alignment="center"
       backdrop="static"
-      className="modal-styled"
+      size="lg"
+      className="pf-modal"
     >
-      <CModalHeader className="bg-gradient-primary text-white">
-        <CIcon icon={cilUser} className="me-2" />
-        <i style={{ color: 'black' }}>Personal Details</i>
-      </CModalHeader>
-      <CModalBody className="p-4">
-        <CCard className="shadow-sm">
-          <CCardBody>
-            <h5 className="mb-4 text-primary">Profile Picture</h5>
+      {/* ---------- Header ---------- */}
+      <div className="pf-modal-header">
+        <h5 className="pf-modal-title">
+          <CIcon icon={cilUser} />
+          Personal details
+        </h5>
+        <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
+          &times;
+        </button>
+      </div>
 
-            <CRow className="align-items-center">
-              <CCol md={4} className="text-center">
-                <div className="profile-pic-container mb-3">
-                  <CImage
-                    src={tempSrcProfile !== '' ? tempSrcProfile : data?.profilePicture}
-                    alt="Profile"
-                    height={120}
-                    width={120}
-                    className="rounded-circle shadow-lg border border-3 border-primary"
-                  />
-                </div>
-              </CCol>
+      {/* ---------- Body ---------- */}
+      <CModalBody className="pf-modal-body">
+        {/* Profile picture */}
+        <div className="pf-section">
+          <div className="pf-section-title">Profile picture</div>
+          <div className="pf-photo-row">
+            <div className="pf-photo-wrap">
+              {previewSrc ? (
+                <img src={previewSrc} alt="Profile" className="pf-photo" />
+              ) : (
+                <div className="pf-photo-fallback">{initials}</div>
+              )}
+            </div>
+            <div className="pf-photo-controls">
+              <input
+                id="pf-photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={(e) => changeProfilePic(e, 'profile')}
+                style={{ display: 'none' }}
+              />
+              <label htmlFor="pf-photo-upload" className="pf-photo-btn">
+                Choose photo
+              </label>
+              <CButton
+                color="primary"
+                onClick={handleApplyPhoto}
+                disabled={!tempSrcProfile || savingPhoto}
+              >
+                <CIcon icon={cilCamera} className="me-2" />
+                {savingPhoto ? 'Saving…' : 'Apply'}
+              </CButton>
+              <div className="pf-photo-hint">JPG, PNG or GIF. Max 2 MB.</div>
+            </div>
+          </div>
+        </div>
 
-              <CCol md={8}>
-                <CFormLabel className="fw-bold">Upload New Photo</CFormLabel>
-                <div className="d-flex align-items-center">
-                  <CFormInput
-                    onChange={(e) => changeProfilePic(e, 'profile')}
-                    type="file"
-                    className="me-2"
-                    id="profile-upload"
-                  />
-                  <CButton
-                    color="primary"
-                    onClick={profileChange}
-                    shape="rounded-pill"
-                    variant="outline"
-                  >
-                    <CIcon icon={cilCamera} className="me-2" />
-                    Apply
-                  </CButton>
-                </div>
-                <small className="text-muted">JPG, GIF or PNG. Max size 2MB</small>
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
-        <CCard className="shadow-sm mt-4">
-          <CCardBody>
-            <h5 className="mb-4 text-primary">Contact Information</h5>
+        {/* Contact info */}
+        <div className="pf-section">
+          <div className="pf-section-title">Contact information</div>
 
-            <CRow className="mb-3">
-              <CCol md={12}>
-                <CFormLabel className="fw-bold">Email Address</CFormLabel>
-                <CFormInput
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  placeholder="your.email@example.com"
-                  className="mb-3"
-                />
-              </CCol>
-            </CRow>
+          <label className="pf-field-label" htmlFor="pf-pd-email">
+            Email address
+          </label>
+          <CFormInput
+            id="pf-pd-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
 
-            <CRow className="mb-3">
-              <CCol md={12}>
-                <CFormLabel className="fw-bold">Phone Number</CFormLabel>
-                <CFormInput
-                  value={personalPhoneNumber}
-                  onChange={(e) => setPersonalPhoneNumber(e.target.value)}
-                  type="tel"
-                  placeholder="+1 (123) 456-7890"
-                />
-              </CCol>
-            </CRow>
+          <label className="pf-field-label" htmlFor="pf-pd-phone" style={{ marginTop: 14 }}>
+            Personal phone number
+          </label>
+          <CFormInput
+            id="pf-pd-phone"
+            type="tel"
+            value={personalPhoneNumber}
+            onChange={(e) => setPersonalPhoneNumber(e.target.value)}
+            placeholder="Your personal phone number"
+          />
 
-            <CRow>
-              <CCol md={12} className="text-end">
-                <CButton
-                  color="primary"
-                  onClick={sendEmailPDVerif}
-                  className="mt-2"
-                  shape="rounded-pill"
-                >
-                  <CIcon icon={cilEnvelopeOpen} className="me-2" />
-                  Update Credentials
-                </CButton>
-              </CCol>
-            </CRow>
-          </CCardBody>
-        </CCard>
+          <p className="pf-modal-note" style={{ textAlign: 'left' }}>
+            We'll send a verification code to your current email before saving changes.
+          </p>
+        </div>
       </CModalBody>
-      <CModalFooter className="border-top-0">
-        <CButton color="secondary" onClick={onClose} shape="rounded-pill">
+
+      {/* ---------- Footer ---------- */}
+      <CModalFooter className="pf-modal-footer">
+        <CButton color="secondary" variant="outline" onClick={onClose}>
+          <CIcon icon={cilX} className="me-2" />
           Close
+        </CButton>
+        <CButton color="primary" onClick={sendEmailPDVerif}>
+          <CIcon icon={cilEnvelopeOpen} className="me-2" />
+          Send verification code
         </CButton>
       </CModalFooter>
     </CModal>

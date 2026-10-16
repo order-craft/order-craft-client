@@ -1,296 +1,306 @@
-import React, { useEffect, useState } from 'react'
-import {
-  CCard,
-  CCardHeader,
-  CCardBody,
-  CFormSelect,
-  CFormInput,
-  CButton,
-  CTable,
-  CTableHead,
-  CTableRow,
-  CTableHeaderCell,
-  CTableBody,
-  CTableDataCell,
-  CSpinner,
-  CAlert,
-  CBadge,
-  CProgress,
-  CProgressBar,
-  CRow,
-  CCol,
-  CWidgetStatsF,
-  CCallout,
-} from '@coreui/react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { CButton, CSpinner } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilUser, cilCalendar, cilMoney, cilChart, cilWarning, cilFilter } from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
-import CIcon from '@coreui/icons-react'
-import { cilUser, cilCalendar, cilDollar, cilFilter } from '@coreui/icons'
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
+import './employeePerformance.css'
+
+const toLocalISO = (d) => {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+const todayISO = () => toLocalISO(new Date())
+const firstOfMonthISO = () => {
+  const d = new Date()
+  return toLocalISO(new Date(d.getFullYear(), d.getMonth(), 1))
+}
+const lastOfMonthISO = () => {
+  const d = new Date()
+  return toLocalISO(new Date(d.getFullYear(), d.getMonth() + 1, 0))
+}
 
 const RevenueByWaiterAndPeriod = () => {
+  const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+
   const [waiters, setWaiters] = useState([])
   const [selectedWaiter, setSelectedWaiter] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [startDate, setStartDate] = useState(firstOfMonthISO())
+  const [endDate, setEndDate] = useState(lastOfMonthISO())
   const [revenueData, setRevenueData] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const token = GetToken()
 
-  // Calculate totals
-  const totalRevenue = revenueData.reduce((sum, waiter) => sum + waiter.totalRevenue, 0)
-  const waiterCount = revenueData.length
-
-  // Set default dates to the current month
+  /* ---------- fetch waiters ---------- */
   useEffect(() => {
-    const today = new Date()
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-
-    const formatDate = (date) => date.toISOString().split('T')[0]
-    setStartDate(formatDate(firstDayOfMonth))
-    setEndDate(formatDate(lastDayOfMonth))
-  }, [])
-
-  // Fetch all waiters (clients) for the superClient
-  const fetchWaiters = async () => {
-    try {
-      const response = await axios.get(`${BaseUrl}/auth/superClient/getUsers`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      setWaiters(response.data)
-    } catch (error) {
-      console.error('Error fetching waiters:', error)
-      setError('Failed to fetch waiters. Please try again.')
+    const loadWaiters = async () => {
+      try {
+        const response = await axios.get(`${BaseUrl}/auth/superClient/getUsers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setWaiters(response.data || [])
+      } catch (err) {
+        console.error('Error fetching waiters:', err)
+      }
     }
-  }
+    loadWaiters()
+  }, [token])
 
-  // Fetch revenue data
-  const fetchRevenue = async () => {
+  /* ---------- fetch revenue ---------- */
+  const fetchRevenue = useCallback(async () => {
+    if (!startDate || !endDate) {
+      setError(Language.selectBothDates || 'Select both start and end dates')
+      return
+    }
     setLoading(true)
     setError(null)
-
     try {
       const response = await axios.post(
         `${BaseUrl}/dashboard/revenue-by-waiter-and-period`,
-        { clientId: selectedWaiter, startDate, endDate },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        { clientId: selectedWaiter || undefined, startDate, endDate },
+        { headers: { Authorization: `Bearer ${token}` } },
       )
-      setRevenueData(response.data)
-    } catch (error) {
-      console.error('Error fetching revenue:', error)
-      setError('Failed to fetch revenue data. Please try again.')
+      const normalized = (response.data || [])
+        .map((w) => ({
+          clientId: w.clientId,
+          clientName: w.clientName || 'Unknown',
+          totalRevenue: Number(w.totalRevenue) || 0,
+        }))
+        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      setRevenueData(normalized)
+    } catch (err) {
+      console.error('Error fetching revenue:', err)
+      setError(Language.fetchError || 'Failed to fetch revenue data. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, selectedWaiter, startDate, endDate, Language])
 
-  // Format currency
-  const formatCurrency = (value) => {
-    return (
-      new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-      }).format(value) + ' TND'
-    )
-  }
-
-  // Calculate percentage for progress bar
-  const calculatePercentage = (value) => {
-    return totalRevenue > 0 ? (value / totalRevenue) * 100 : 0
-  }
-
-  // Fetch waiters and revenue data on component mount
   useEffect(() => {
-    fetchWaiters()
     fetchRevenue()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, selectedWaiter])
 
+  /* ---------- derived ---------- */
+  const totalRevenue = useMemo(
+    () => revenueData.reduce((sum, w) => sum + w.totalRevenue, 0),
+    [revenueData],
+  )
+  const averageRevenue = revenueData.length > 0 ? totalRevenue / revenueData.length : 0
+  const maxRevenue = revenueData.length > 0 ? revenueData[0].totalRevenue : 0
+
+  const fmtTND = (v) =>
+    new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 2,
+    }).format(Number(v) || 0)
+
+  const barColor = (pct) => {
+    if (pct >= 30) return '#198754'
+    if (pct >= 10) return '#ffc107'
+    return '#dc3545'
+  }
+
+  const isEmpty = !loading && !error && revenueData.length === 0
+
+  const selectedWaiterName = selectedWaiter
+    ? waiters.find((w) => w._id === selectedWaiter)?.fullName
+    : null
+
+  /* ---------- render ---------- */
   return (
-    <CCard className="mb-4">
-      <CCardHeader className="d-flex justify-content-between align-items-center">
-        <div>
-          <h5 className="mb-0">Revenue by Waiter</h5>
-          <small className="text-medium-emphasis">Detailed breakdown by selected period</small>
+    <div className="em-card">
+      {/* ---------- Header ---------- */}
+      <div className="em-card-header">
+        <div className="em-card-header-left">
+          <h5 className="em-card-title">
+            <CIcon icon={cilFilter} />
+            {Language.RevenueByWaiterAndPeriod || 'Revenue by waiter · period'}
+          </h5>
+          <div className="em-card-subtitle">
+            {selectedWaiterName ? selectedWaiterName : Language.allWaiters || 'All waiters'} ·{' '}
+            {startDate} → {endDate}
+          </div>
         </div>
-        <CBadge color="primary" shape="rounded-pill">
-          <CIcon icon={cilFilter} className="me-1" />
-          Filter Results
-        </CBadge>
-      </CCardHeader>
 
-      <CCardBody>
-        <CRow className="mb-4 g-3">
-          <CCol md={3}>
-            <div className="mb-3">
-              <label htmlFor="waiter" className="form-label">
-                Select Waiter:
-              </label>
-              <CFormSelect
-                id="waiter"
-                value={selectedWaiter}
-                onChange={(e) => setSelectedWaiter(e.target.value)}
-              >
-                <option value="">All Waiters</option>
-                {waiters.map((waiter) => (
-                  <option key={waiter._id} value={waiter._id}>
-                    {waiter.fullName}
-                  </option>
-                ))}
-              </CFormSelect>
-            </div>
-          </CCol>
+        <div className="em-card-header-right">
+          <CButton
+            color="primary"
+            onClick={fetchRevenue}
+            disabled={loading || !startDate || !endDate}
+          >
+            {loading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.Loading || 'Loading…'}
+              </>
+            ) : (
+              <>
+                <CIcon icon={cilChart} className="me-2" />
+                {Language.Apply || 'Apply'}
+              </>
+            )}
+          </CButton>
+        </div>
+      </div>
 
-          <CCol md={3}>
-            <div className="mb-3">
-              <label htmlFor="startDate" className="form-label">
-                Start Date:
-              </label>
-              <CFormInput
-                type="date"
-                id="startDate"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-          </CCol>
+      {/* ---------- Filters row ---------- */}
+      <div className="em-filters">
+        <div className="em-date" style={{ minWidth: 200 }}>
+          <CIcon icon={cilUser} style={{ color: '#6c757d' }} />
+          <select
+            value={selectedWaiter}
+            onChange={(e) => setSelectedWaiter(e.target.value)}
+            aria-label="Select waiter"
+            style={{
+              border: 'none',
+              outline: 'none',
+              background: 'transparent',
+              fontSize: '0.88rem',
+              color: '#1a1a1a',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            <option value="">{Language.allWaiters || 'All waiters'}</option>
+            {waiters.map((w) => (
+              <option key={w._id} value={w._id}>
+                {w.fullName}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          <CCol md={3}>
-            <div className="mb-3">
-              <label htmlFor="endDate" className="form-label">
-                End Date:
-              </label>
-              <CFormInput
-                type="date"
-                id="endDate"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
-          </CCol>
-
-          <CCol md={3} className="d-flex align-items-end">
-            <CButton color="primary" onClick={fetchRevenue} disabled={loading} className="w-100">
-              {loading ? <CSpinner size="sm" /> : 'Apply Filters'}
-            </CButton>
-          </CCol>
-        </CRow>
-
-        {error && (
-          <CAlert color="danger" className="mt-3 d-flex align-items-center">
-            <CIcon icon={cilDollar} className="flex-shrink-0 me-2" />
-            <div>{error}</div>
-          </CAlert>
-        )}
-
-        <CRow className="mb-4">
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="primary"
-              icon={<CIcon icon={cilUser} height={24} />}
-              title="Waiters"
-              value={waiterCount}
+        <div className="em-date-group">
+          <div className="em-date">
+            <CIcon icon={cilCalendar} style={{ color: '#6c757d' }} />
+            <input
+              type="date"
+              value={startDate}
+              max={endDate || todayISO()}
+              onChange={(e) => setStartDate(e.target.value)}
             />
-          </CCol>
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="info"
-              icon={<CIcon icon={cilCalendar} height={24} />}
-              title="Period"
-              value={`${startDate} to ${endDate}`}
+          </div>
+          <span className="em-date-sep">→</span>
+          <div className="em-date">
+            <input
+              type="date"
+              value={endDate}
+              min={startDate}
+              max={todayISO()}
+              onChange={(e) => setEndDate(e.target.value)}
             />
-          </CCol>
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="success"
-              icon={<CIcon icon={cilDollar} height={24} />}
-              title="Total Revenue"
-              value={formatCurrency(totalRevenue)}
-            />
-          </CCol>
-          <CCol sm={6} lg={3}>
-            <CWidgetStatsF
-              className="mb-3"
-              color="warning"
-              icon={<CIcon icon={cilDollar} height={24} />}
-              title="Avg. per Waiter"
-              value={
-                waiterCount > 0 ? formatCurrency(totalRevenue / waiterCount) : formatCurrency(0)
-              }
-            />
-          </CCol>
-        </CRow>
+          </div>
+        </div>
+      </div>
 
-        {revenueData.length > 0 ? (
-          <>
-            <CCallout color="info" className="mb-4">
-              Showing revenue from <strong>{startDate}</strong> to <strong>{endDate}</strong> for{' '}
-              {selectedWaiter
-                ? waiters.find((w) => w._id === selectedWaiter)?.fullName
-                : 'all waiters'}
-            </CCallout>
-
-            <CTable striped hover responsive className="mt-4 align-middle">
-              <CTableHead color="dark">
-                <CTableRow>
-                  <CTableHeaderCell>Waiter</CTableHeaderCell>
-                  <CTableHeaderCell className="text-end">Revenue</CTableHeaderCell>
-                  <CTableHeaderCell>Contribution</CTableHeaderCell>
-                </CTableRow>
-              </CTableHead>
-              <CTableBody>
-                {revenueData.map((waiter) => (
-                  <CTableRow key={waiter.clientId}>
-                    <CTableDataCell>
-                      <div className="fw-semibold">{waiter.clientName}</div>
-                    </CTableDataCell>
-                    <CTableDataCell className="text-end fw-bold">
-                      {formatCurrency(waiter.totalRevenue)}
-                    </CTableDataCell>
-                    <CTableDataCell>
-                      <CProgress className="mb-1" height={10}>
-                        <CProgressBar
-                          value={calculatePercentage(waiter.totalRevenue)}
-                          color={
-                            calculatePercentage(waiter.totalRevenue) > 30
-                              ? 'success'
-                              : calculatePercentage(waiter.totalRevenue) > 10
-                                ? 'warning'
-                                : 'danger'
-                          }
-                        />
-                      </CProgress>
-                      <small>{calculatePercentage(waiter.totalRevenue).toFixed(1)}%</small>
-                    </CTableDataCell>
-                  </CTableRow>
-                ))}
-              </CTableBody>
-            </CTable>
-          </>
-        ) : (
-          <CAlert color="info" className="mt-3 d-flex align-items-center">
-            <CIcon icon={cilDollar} className="flex-shrink-0 me-2" />
-            <div>
-              There is no revenue data for the selected period or waiter.
-              {!loading && (
-                <CButton color="link" size="sm" onClick={fetchRevenue} className="p-0 ms-2">
-                  Try again
-                </CButton>
-              )}
+      {/* ---------- Body ---------- */}
+      {loading ? (
+        <div className="em-skeleton">
+          <div className="em-skeleton-line" style={{ width: '40%' }} />
+          <div className="em-skeleton-block" />
+        </div>
+      ) : error ? (
+        <div className="em-info em-info-danger">
+          <CIcon icon={cilWarning} />
+          <div style={{ flex: 1 }}>{error}</div>
+          <CButton size="sm" color="danger" onClick={fetchRevenue}>
+            {Language.Retry || 'Retry'}
+          </CButton>
+        </div>
+      ) : isEmpty ? (
+        <div className="em-empty">
+          <CIcon icon={cilMoney} size="xl" />
+          <div className="em-empty-title">
+            {Language.noRevenueInRange || 'No revenue in this range'}
+          </div>
+          <div className="em-empty-body">
+            {selectedWaiterName
+              ? `${selectedWaiterName} had no archived orders in this period.`
+              : Language.noRevenueInRangeHint || 'Try a wider range or a different waiter.'}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* ---------- Stats ---------- */}
+          <div className="em-stats em-stats-4">
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilUser} /> {Language.Waiters || 'Waiters'}
+              </div>
+              <div className="em-stat-value">{revenueData.length}</div>
             </div>
-          </CAlert>
-        )}
-      </CCardBody>
-    </CCard>
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilCalendar} /> {Language.Period || 'Period'}
+              </div>
+              <div className="em-stat-value" style={{ fontSize: '0.95rem' }}>
+                {startDate} → {endDate}
+              </div>
+            </div>
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilMoney} /> {Language.TotalRevenue || 'Total'}
+              </div>
+              <div className="em-stat-value is-primary">
+                {fmtTND(totalRevenue)}
+                <span className="unit">TND</span>
+              </div>
+            </div>
+            <div className="em-stat">
+              <div className="em-stat-label">
+                <CIcon icon={cilChart} /> {Language.Average || 'Avg / waiter'}
+              </div>
+              <div className="em-stat-value">
+                {fmtTND(averageRevenue)}
+                <span className="unit">TND</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ---------- Ranked list ---------- */}
+          <div className="em-list">
+            {revenueData.map((row, index) => {
+              const share = totalRevenue > 0 ? (row.totalRevenue / totalRevenue) * 100 : 0
+              const barPct = maxRevenue > 0 ? (row.totalRevenue / maxRevenue) * 100 : 0
+              const isTop = index === 0
+              return (
+                <div className="em-row" key={row.clientId}>
+                  <div className={`em-rank ${isTop ? 'is-top' : ''}`}>{index + 1}</div>
+                  <div className="em-row-main">
+                    <div className="em-row-top">
+                      <span className="em-row-name">
+                        {row.clientName}
+                        {isTop && <span className="em-top-pill">{Language.Top || 'Top'}</span>}
+                      </span>
+                      <span className="em-row-amount">{fmtTND(row.totalRevenue)} TND</span>
+                    </div>
+                    <div className="em-bar-track">
+                      <div
+                        className="em-bar-fill"
+                        style={{
+                          width: `${barPct}%`,
+                          background: barColor(share),
+                        }}
+                      />
+                    </div>
+                    <div className="em-row-hint">
+                      {share.toFixed(1)}% {Language.ofTotal || 'of total'}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 

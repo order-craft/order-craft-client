@@ -1,74 +1,82 @@
 import React from 'react'
 import PropTypes from 'prop-types'
-import {
-  CModal,
-  CModalHeader,
-  CModalBody,
-  CModalFooter,
-  CForm,
-  CFormLabel,
-  CFormInput,
-  CButton,
-  CCard,
-  CCardBody,
-  CAlert,
-} from '@coreui/react'
+import { CButton, CFormInput, CModal, CModalBody, CModalFooter } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilCheckCircle, cilEnvelopeOpen, cilX } from '@coreui/icons'
+import { cilCheckCircle, cilEnvelopeOpen, cilX, cilWarning } from '@coreui/icons'
+import './profile.css'
 
-const PDVerificationModal = ({ visible, onClose, PDVerifCode, setPDVerifCode, onConfirm }) => {
+const PDVerificationModal = ({
+  visible,
+  onClose,
+  PDVerifCode,
+  setPDVerifCode,
+  onConfirm,
+  loading = false,
+  error = '',
+}) => {
+  const code = String(PDVerifCode || '')
+  const canSubmit = code.length === 6 && !loading
+
   return (
     <CModal
       visible={visible}
       onClose={onClose}
       alignment="center"
       backdrop="static"
-      className="modal-styled"
       size="sm"
+      className="pf-modal"
     >
-      <CModalHeader className="bg-gradient-success text-white">
-        <CIcon icon={cilEnvelopeOpen} className="me-2" />
-        Email Verification
-      </CModalHeader>
-      <CModalBody className="p-4">
-        <CCard className="shadow-sm border-0">
-          <CCardBody>
-            <CAlert color="info" className="text-center mb-4">
-              We have sent a verification code to your email address. Please enter it below.
-            </CAlert>
+      {/* ---------- Header ---------- */}
+      <div className="pf-modal-header">
+        <h5 className="pf-modal-title">
+          <CIcon icon={cilEnvelopeOpen} />
+          Email verification
+        </h5>
+        <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
+          &times;
+        </button>
+      </div>
 
-            <div className="mb-4">
-              <CFormLabel className="fw-bold">Verification Code</CFormLabel>
-              <CFormInput
-                value={PDVerifCode}
-                onChange={(e) => setPDVerifCode(e.target.value)}
-                type="text"
-                placeholder="Enter 6-digit code"
-                className="text-center fw-bold fs-4 py-3"
-                maxLength="6"
-              />
-              <small className="text-muted d-block mt-1 text-center">
-                Check your email inbox for the code
-              </small>
-            </div>
+      {/* ---------- Body ---------- */}
+      <CModalBody className="pf-modal-body">
+        <p className="pf-modal-hint">
+          We've sent a 6-digit code to your email. Enter it below to confirm your new details.
+        </p>
 
-            <div className="d-grid gap-2">
-              <CButton
-                color="success"
-                onClick={onConfirm}
-                disabled={!PDVerifCode || PDVerifCode.length < 6}
-              >
-                <CIcon icon={cilCheckCircle} className="me-2" />
-                Verify & Continue
-              </CButton>
-            </div>
-          </CCardBody>
-        </CCard>
+        {error && (
+          <div className="pf-modal-error">
+            <CIcon icon={cilWarning} />
+            <span>{error}</span>
+          </div>
+        )}
+
+        <label className="pf-field-label" htmlFor="pf-code">
+          Verification code
+        </label>
+        <CFormInput
+          id="pf-code"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={code}
+          onChange={(e) => setPDVerifCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          placeholder="000000"
+          maxLength={6}
+          autoFocus
+          className="pf-code-input"
+        />
+        <p className="pf-modal-note">Check your email inbox. The code expires in a few minutes.</p>
       </CModalBody>
-      <CModalFooter className="border-top-0 justify-content-center">
-        <CButton color="secondary" onClick={onClose} variant="outline">
+
+      {/* ---------- Footer ---------- */}
+      <CModalFooter className="pf-modal-footer">
+        <CButton color="secondary" variant="outline" onClick={onClose} disabled={loading}>
           <CIcon icon={cilX} className="me-2" />
-          Cancel Verification
+          Cancel
+        </CButton>
+        <CButton color="success" onClick={onConfirm} disabled={!canSubmit}>
+          <CIcon icon={cilCheckCircle} className="me-2" />
+          {loading ? 'Verifying…' : 'Verify'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -81,6 +89,8 @@ PDVerificationModal.propTypes = {
   PDVerifCode: PropTypes.string.isRequired,
   setPDVerifCode: PropTypes.func.isRequired,
   onConfirm: PropTypes.func.isRequired,
+  loading: PropTypes.bool,
+  error: PropTypes.string,
 }
 
 export default PDVerificationModal

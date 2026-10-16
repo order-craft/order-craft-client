@@ -114,7 +114,7 @@ const RevenuePerProductPerDay = () => {
           </div>
         </div>
       ) : (
-        <div style={{ padding: '12px 0' }}>
+        <div className="pp-week-wrap">
           {/* Daily totals row */}
           <div
             style={{
@@ -141,7 +141,7 @@ const RevenuePerProductPerDay = () => {
 
           {/* Rows */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {rows.map((row,i) => (
+            {rows.map((row, i) => (
               <div
                 key={i}
                 style={{
