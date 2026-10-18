@@ -1,10 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CButton,
+  CCard,
+  CCardBody,
+  CCol,
+  CRow,
+  CModal,
+  CModalBody,
+  CModalFooter,
+  CModalHeader,
+  CModalTitle,
   CDropdown,
   CDropdownToggle,
   CDropdownMenu,
   CDropdownItem,
+  CToaster,
+  CToast,
+  CToastHeader,
+  CToastBody,
   CFormCheck,
   CBadge,
   CSpinner,
@@ -19,6 +32,8 @@ import {
   cilChevronBottom,
   cilChevronTop,
   cilInfo,
+  cilListRich,
+  cilOptions,
 } from '@coreui/icons'
 import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
@@ -50,6 +65,7 @@ const TableDetails = () => {
 
   const navigate = useNavigate()
   const token = GetToken()
+  const { showToast } = useToast()
 
   /* ---------- data fetching ---------- */
   const fetchTableDetails = async () => {
@@ -86,7 +102,12 @@ const TableDetails = () => {
           'Content-Type': 'application/json',
         },
       })
-      setMethods(res.data)
+      const list = res.data || []
+      setMethods(list)
+      // default to the first method if none selected yet
+      if (list.length > 0) {
+        setSelectedPaymentMethod((prev) => prev || list[0]._id)
+      }
     } catch (err) {
       console.error('Failed to fetch payment methods', err)
     }
@@ -96,6 +117,7 @@ const TableDetails = () => {
     fetchTableDetails()
     fetchPlaceDetails()
     fetchMethods()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableId])
 
   /* ---------- selection ---------- */
@@ -152,7 +174,6 @@ const TableDetails = () => {
       .toFixed(2)
   }, [selectedOrders, table])
 
-  const { showToast } = useToast()
   /* ---------- payment ---------- */
   const handleConfirmPayment = async (orderIds) => {
     if (!selectedPaymentMethod) {
@@ -212,12 +233,17 @@ const TableDetails = () => {
   }
 
   const handleConfirmAllPayments = () => {
-    const all = table.orders.map((o) => o._id)
+    const all = (table?.orders || []).filter((o) => !o.payed).map((o) => o._id)
+    if (all.length === 0) {
+      showToast('No unpaid orders on this table.', 'info')
+      return
+    }
     handleConfirmPayment(all)
   }
 
   const handleConfirmSelectedPayments = () => {
     const ids = selectedOrders.map((o) => o.orderId)
+    if (ids.length === 0) return
     handleConfirmPayment(ids)
   }
 
@@ -318,8 +344,8 @@ const TableDetails = () => {
       yPos += 10
     })
 
-    const totalAmount = table?.orders.reduce((sum, o) => sum + o.totalPrice, 0).toFixed(2)
-    const totalTips = table?.orders.reduce((sum, o) => sum + (o.tips || 0), 0).toFixed(2)
+    const totalAmount = (table?.orders || []).reduce((sum, o) => sum + o.totalPrice, 0).toFixed(2)
+    const totalTips = (table?.orders || []).reduce((sum, o) => sum + (o.tips || 0), 0).toFixed(2)
 
     doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
@@ -338,7 +364,7 @@ const TableDetails = () => {
     doc.save(`table_${table?.number}_receipt.pdf`)
   }
 
-  /* ---------- derived UI data ---------- */
+  /* ---------- derived ---------- */
   const orders = table?.orders || []
   const hasUnpaid = orders.some((o) => !o.payed)
   const planName = table?.plan?.name || ''
@@ -350,66 +376,55 @@ const TableDetails = () => {
     return { key: 'unpaid', label: 'Unpaid' }
   }
 
-  const selectedMethodLabel = selectedPaymentMethod
-    ? methods.find((m) => m._id === selectedPaymentMethod)?.name
-    : 'Payment Method'
+  const selectedMethod = methods.find((m) => m._id === selectedPaymentMethod)
 
   if (loading && !table) return <Loading />
   if (error) return <p className="text-danger p-4">{error}</p>
 
   return (
     <div className="td-page">
-      {/* Header card */}
-      <div className="td-header mb-4">
+      {/* ---------- Header ---------- */}
+      <div className="td-header mb-3">
         <div className="td-header-top">
-          <div>
-            <h2 className="td-title">
-              Table {table?.number}
-              {planName && <span className="td-title-sub">· {planName}</span>}
-            </h2>
-            <div className="td-row-meta mt-1">
-              <span>
+          <div className="td-header-left">
+            <CButton color="light" size="sm" onClick={() => navigate(-1)} className="td-back-btn">
+              <CIcon icon={cilArrowLeft} />
+              <span>Back</span>
+            </CButton>
+
+            <div>
+              <h2 className="td-title">
+                Table {table?.number}
+                {planName && <span className="td-title-sub">· {planName}</span>}
+              </h2>
+              <div className="td-subtitle">
                 {orders.length} {orders.length === 1 ? 'order' : 'orders'}
-              </span>
-              {hasUnpaid && (
-                <CBadge color="warning" shape="rounded-pill">
-                  Unpaid
-                </CBadge>
-              )}
+                {hasUnpaid && (
+                  <CBadge color="warning" shape="rounded-pill" className="ms-2">
+                    Unpaid
+                  </CBadge>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="td-header-actions">
-            <CButton
-              color="light"
-              size="sm"
-              onClick={() => navigate(-1)}
-              className="rounded-pill px-3 d-flex align-items-center"
-            >
-              <CIcon icon={cilArrowLeft} className="me-2" />
-              Back
-            </CButton>
-
-            {/* Payment method dropdown */}
-            <CDropdown variant="btn-group">
-              <CDropdownToggle
-                color="light"
-                size="sm"
-                className="rounded-3 px-3 d-flex align-items-center border"
-              >
-                <CIcon icon={cilCreditCard} className="me-2 text-primary" />
-                <span className="fw-medium">{selectedMethodLabel}</span>
+            {/* Payment method picker */}
+            <CDropdown>
+              <CDropdownToggle color="light" size="sm" className="td-method-toggle">
+                <CIcon icon={cilCreditCard} className="td-method-icon" />
+                <span className="td-method-label">{selectedMethod?.name || 'Payment method'}</span>
+                <CIcon icon={cilChevronBottom} className="td-method-caret" />
               </CDropdownToggle>
-              <CDropdownMenu className="shadow border-0 mt-2 py-2">
+              <CDropdownMenu className="td-method-menu">
                 {methods.length === 0 && (
                   <CDropdownItem disabled>No methods configured</CDropdownItem>
                 )}
                 {methods.map((m) => (
                   <CDropdownItem
                     key={m._id}
-                    onClick={() => setSelectedPaymentMethod(m._id)}
                     active={selectedPaymentMethod === m._id}
-                    className="py-2 px-3"
+                    onClick={() => setSelectedPaymentMethod(m._id)}
                   >
                     <strong>{m.name}</strong>
                     {m.description && <div className="text-muted small">{m.description}</div>}
@@ -418,97 +433,37 @@ const TableDetails = () => {
               </CDropdownMenu>
             </CDropdown>
 
-            {/* Desktop-only action buttons */}
-            <div className="d-none d-md-flex gap-2">
-              <CButton
-                color="success"
-                size="sm"
-                className="rounded-pill px-3"
-                onClick={handleConfirmAllPayments}
-                disabled={!hasUnpaid}
-              >
-                <CIcon icon={cilCheckCircle} className="me-2" />
-                Confirm All
-              </CButton>
-              <CButton
-                color="primary"
-                size="sm"
-                className="rounded-pill px-3"
-                onClick={handleConfirmSelectedPayments}
-                disabled={selectedOrders.length === 0}
-              >
-                <CIcon icon={cilCheckCircle} className="me-2" />
-                Confirm Selected ({selectedOrders.length})
-              </CButton>
-              <CButton
-                color="light"
-                size="sm"
-                variant="outline"
-                className="rounded-pill px-3"
-                onClick={handlePrintReceipt}
-              >
-                <CIcon icon={cilPrint} className="me-2" />
-                Print
-              </CButton>
-              <CButton
-                color="warning"
-                size="sm"
-                className="rounded-pill px-3"
-                onClick={() => setShowManualModal(true)}
-              >
-                <CIcon icon={cilPlus} className="me-2" />
-                Place Order
-              </CButton>
-            </div>
+            {/* Primary: New order */}
+            <CButton
+              color="primary"
+              size="sm"
+              onClick={() => setShowManualModal(true)}
+              className="td-primary-btn"
+            >
+              <CIcon icon={cilPlus} className="me-1" />
+              <span className="d-none d-sm-inline">New order</span>
+            </CButton>
 
-            {/* Mobile-only quick actions */}
-            <div className="d-flex d-md-none gap-2">
-              <CButton
-                color="success"
-                size="sm"
-                className="rounded-pill px-3"
-                onClick={handleConfirmAllPayments}
-                disabled={!hasUnpaid}
-              >
-                <CIcon icon={cilCheckCircle} />
-              </CButton>
-              <CButton
-                color="primary"
-                size="sm"
-                className="rounded-pill px-3"
-                onClick={handleConfirmSelectedPayments}
-                disabled={selectedOrders.length === 0}
-              >
-                <CIcon icon={cilCheckCircle} />
-              </CButton>
-              <CButton
-                color="light"
-                size="sm"
-                variant="outline"
-                className="rounded-pill px-3"
-                onClick={handlePrintReceipt}
-              >
-                <CIcon icon={cilPrint} />
-              </CButton>
-            </div>
+            {/* Overflow menu */}
+            <CDropdown>
+              <CDropdownToggle color="light" size="sm" caret={false} className="td-menu-btn">
+                <CIcon icon={cilOptions} />
+              </CDropdownToggle>
+              <CDropdownMenu placement="bottom-end" className="td-menu">
+                <CDropdownItem onClick={handlePrintReceipt}>
+                  <CIcon icon={cilPrint} className="me-2" />
+                  Print receipt
+                </CDropdownItem>
+              </CDropdownMenu>
+            </CDropdown>
           </div>
         </div>
 
-        {/* Desktop summary strip */}
+        {/* Summary strip (desktop) */}
         <div className="td-summary-strip d-none d-md-grid">
           <div className="td-summary-cell">
-            <div className="td-summary-label">Unpaid (Table)</div>
+            <div className="td-summary-label">Unpaid</div>
             <div className="td-summary-value is-danger">{totals.unpaid.toFixed(2)} TND</div>
-          </div>
-          <div className="td-summary-cell">
-            <div className="td-summary-label">Selected</div>
-            <div className="td-summary-value">{selectedTotal} TND</div>
-          </div>
-          <div className="td-summary-cell">
-            <div className="td-summary-label">Tips (paid / total)</div>
-            <div className="td-summary-value is-warning">
-              {totals.tipsPaid.toFixed(2)} / {totals.tips.toFixed(2)} TND
-            </div>
           </div>
           <div className="td-summary-cell">
             <div className="td-summary-label">Total (with tips)</div>
@@ -517,12 +472,68 @@ const TableDetails = () => {
         </div>
       </div>
 
-      {/* Orders list */}
-      {orders.length === 0 ? (
+      {/* ---------- Bulk actions ---------- */}
+      {orders.length > 0 && (
+        <div className="td-bulkbar">
+          <div className="td-bulkbar-left">
+            {selectedOrders.length > 0 ? (
+              <span className="td-bulkbar-label">
+                {selectedOrders.length} selected · <strong>{selectedTotal} TND</strong>
+              </span>
+            ) : (
+              <span className="td-bulkbar-label">
+                {hasUnpaid ? `Unpaid · ${totals.unpaid.toFixed(2)} TND` : 'Everything is paid'}
+              </span>
+            )}
+          </div>
+
+          <div className="td-bulkbar-actions">
+            {selectedOrders.length > 0 && (
+              <CButton
+                color="primary"
+                size="sm"
+                onClick={handleConfirmSelectedPayments}
+                disabled={loading || !selectedPaymentMethod}
+                title={!selectedPaymentMethod ? 'Select a payment method first' : undefined}
+              >
+                <CIcon icon={cilCheckCircle} className="me-1" />
+                <span className="d-none d-sm-inline">Confirm selected</span>
+                <span className="d-inline d-sm-none">Selected</span>
+              </CButton>
+            )}
+
+            <CButton
+              color="success"
+              size="sm"
+              onClick={handleConfirmAllPayments}
+              disabled={loading || !hasUnpaid || !selectedPaymentMethod}
+              title={!selectedPaymentMethod ? 'Select a payment method first' : undefined}
+            >
+              <CIcon icon={cilCheckCircle} className="me-1" />
+              <span className="d-none d-sm-inline">Confirm all unpaid</span>
+              <span className="d-inline d-sm-none">All</span>
+            </CButton>
+          </div>
+        </div>
+      )}
+
+      {/* ---------- Orders ---------- */}
+      {loading && orders.length === 0 ? (
+        <div className="td-list">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="td-skeleton-row" />
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
         <div className="td-list">
           <div className="td-empty">
             <CIcon icon={cilInfo} size="xl" className="mb-2 text-muted" />
-            <div>No orders yet on this table.</div>
+            <div className="td-empty-title">No orders on this table yet</div>
+            <div className="td-empty-body">Place the first order to get started.</div>
+            <CButton color="primary" onClick={() => setShowManualModal(true)} className="mt-3">
+              <CIcon icon={cilPlus} className="me-2" />
+              Place order
+            </CButton>
           </div>
         </div>
       ) : (
@@ -536,7 +547,9 @@ const TableDetails = () => {
             return (
               <div key={order._id}>
                 <div
-                  className={`td-row ${isSelected ? 'is-selected' : ''} ${order.payed ? 'is-paid' : ''}`}
+                  className={`td-row ${
+                    isSelected ? 'is-selected' : ''
+                  } ${order.payed ? 'is-paid' : ''}`}
                   onClick={() => {
                     if (order.payed) return
                     handleSelectOrder(order._id, order.totalPrice, order.payed)
@@ -562,22 +575,38 @@ const TableDetails = () => {
                     </div>
                   </div>
 
-                  <div className="d-flex align-items-center gap-2">
+                  <div className="td-row-actions">
                     <div className="td-row-amount">
                       {unpaid.toFixed(2)} TND
                       <small>unpaid</small>
                     </div>
+
                     <CButton
                       color="secondary"
                       size="sm"
                       variant="outline"
-                      className="rounded-circle p-1 d-inline-flex align-items-center justify-content-center"
-                      style={{ width: 30, height: 30 }}
+                      className="td-row-icon-btn"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleDetailsClick(index)
+                      }}
+                      disabled={order.payed}
+                      title="Product-level payment"
+                      aria-label="Product-level payment"
+                    >
+                      <CIcon icon={cilListRich} />
+                    </CButton>
+
+                    <CButton
+                      color="secondary"
+                      size="sm"
+                      variant="outline"
+                      className="td-row-icon-btn"
                       onClick={(e) => {
                         e.stopPropagation()
                         toggleRow(order._id)
                       }}
-                      aria-label="Toggle details"
+                      aria-label={isExpanded ? 'Hide items' : 'Show items'}
                     >
                       <CIcon icon={isExpanded ? cilChevronTop : cilChevronBottom} />
                     </CButton>
@@ -614,18 +643,6 @@ const TableDetails = () => {
                         })}
                       </tbody>
                     </table>
-
-                    <div className="td-expand-actions">
-                      <CButton
-                        color="primary"
-                        size="sm"
-                        className="rounded-pill px-3"
-                        disabled={order.payed}
-                        onClick={() => handleDetailsClick(index)}
-                      >
-                        Product-level payment
-                      </CButton>
-                    </div>
                   </div>
                 )}
               </div>
@@ -634,32 +651,27 @@ const TableDetails = () => {
         </div>
       )}
 
-      {/* Sticky mobile summary */}
+      {/* ---------- Mobile sticky summary ---------- */}
       <div className="td-mobile-summary d-md-none">
         <div className="td-summary-cell">
           <div className="td-summary-label">Unpaid</div>
           <div className="td-summary-value is-danger">{totals.unpaid.toFixed(2)}</div>
         </div>
         <div className="td-summary-cell">
-          <div className="td-summary-label">Selected</div>
-          <div className="td-summary-value">{selectedTotal}</div>
-        </div>
-        <div className="td-summary-cell">
-          <div className="td-summary-label">With Tips</div>
+          <div className="td-summary-label">With tips</div>
           <div className="td-summary-value is-success">{totals.withTips.toFixed(2)}</div>
         </div>
       </div>
 
-      {/* Mobile FAB – Place Order */}
+      {/* ---------- Mobile FAB ---------- */}
       <button
         className="td-fab d-md-none"
         onClick={() => setShowManualModal(true)}
-        aria-label="Place Order"
+        aria-label="Place order"
       >
         <CIcon icon={cilPlus} size="lg" />
       </button>
 
-      {/* Product-level payment modal */}
       <ProductSelectionModal
         visible={showDetailsModal}
         onClose={handleCloseDetailsModal}
@@ -672,7 +684,6 @@ const TableDetails = () => {
         tableNumber={table?.number}
       />
 
-      {/* Manual order modal */}
       <ManualOrderModal
         visible={showManualModal}
         onClose={setShowManualModal}

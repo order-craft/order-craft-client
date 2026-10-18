@@ -900,3 +900,183 @@ plan modal CSS
 .tl-header-top {
   border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
 }
+/* ---------- Table cards (new design) ---------- */
+.tl-card {
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 12px;
+  overflow: visible;
+  cursor: pointer;
+  height: 100%;
+  position: relative;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+/* When a card's dropdown is open, raise the entire card above its siblings */
+.tl-card:has(.dropdown-menu.show) {
+  z-index: 20;
+}
+
+.tl-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border-color: #cbd5e0;
+}
+
+.tl-card.is-busy {
+  border-left: 4px solid #d97706;
+}
+
+.tl-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px 14px;
+}
+
+.tl-card-number {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #f1f3f5;
+  color: #4a5568;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.05rem;
+}
+
+.tl-card-number.is-busy {
+  background: #fff3cd;
+  color: #92400e;
+}
+
+.tl-card-menu-btn {
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.12s ease;
+}
+
+.tl-card-menu-btn:hover {
+  background: #f1f3f5;
+  color: #1a1a1a;
+}
+
+.tl-card-menu {
+  min-width: 200px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+.tl-card-menu .dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.tl-card-body {
+  padding: 0 14px 14px 14px;
+}
+
+.tl-card-plan {
+  font-size: 0.82rem;
+  color: var(--cui-secondary-color, #6c757d);
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tl-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.tl-card-orders {
+  color: #4a5568;
+  font-weight: 600;
+}
+
+.tl-card-total {
+  color: #1a1a1a;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl-card-free {
+  color: #198754;
+  font-weight: 600;
+}
+
+/* ---------- Skeleton ---------- */
+.tl-skeleton-card {
+  height: 156px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #f1f3f5 0%, #fafbfc 50%, #f1f3f5 100%);
+  background-size: 200% 100%;
+  animation: tlShimmer 1.4s infinite linear;
+}
+
+@keyframes tlShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ---------- Empty ---------- */
+.tl-empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--cui-secondary-color, #6c757d);
+  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.tl-empty svg {
+  margin-bottom: 8px;
+  color: #c8ccd0;
+}
+
+.tl-empty-title {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-bottom: 4px;
+}
+
+.tl-empty-body {
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+/* Ensure the dropdown wrapper doesn't consume the card's click area */
+.tl-card-dropdown {
+  position: relative;
+  z-index: 2;
+}
+
+/* Keep the menu above the card */
+.tl-card-dropdown .dropdown-menu {
+  z-index: 1050;
+}

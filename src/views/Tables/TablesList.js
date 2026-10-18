@@ -1,23 +1,16 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CButton,
   CCard,
   CCardBody,
-  CCardHeader,
-  CCardTitle,
-  CRow,
   CCol,
+  CRow,
   CModal,
   CInputGroup,
   CFormInput,
   CFormSelect,
-  CCardImage,
   CBadge,
   CFormSwitch,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
   CSpinner,
   CDropdown,
   CDropdownToggle,
@@ -27,13 +20,10 @@ import {
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
-import Loading from '../../helpers/Loading'
-import tableImageDark from 'src/assets/images/table.jpg'
 import { io } from 'socket.io-client'
 import { GetToken } from '../../helpers/GetToken'
 import { saveAs } from 'file-saver'
 import CIcon from '@coreui/icons-react'
-
 import {
   cilCloudDownload,
   cilQrCode,
@@ -50,6 +40,8 @@ import {
   cilTablet,
   cilRestaurant,
   cilFilter,
+  cilOptions,
+  cilWarning,
 } from '@coreui/icons'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
@@ -59,6 +51,7 @@ import OrderCard from './OrderCard'
 import ProductSelectionModal from './ProductSelectionModal'
 import { useAuth } from '../../context/AuthContext'
 import { useToast } from '../../components/toast/ToastProvider'
+
 const TablesDashboard = () => {
   const [tables, setTables] = useState([])
   const [orders, setOrders] = useState([])
@@ -99,8 +92,6 @@ const TablesDashboard = () => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
   const navigate = useNavigate()
-
-  /* ---------- toasts ---------- */
   const { showToast } = useToast()
 
   /* ---------- data fetching ---------- */
@@ -110,11 +101,16 @@ const TablesDashboard = () => {
       const response = await axios.get(`${BaseUrl}/tables`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const tablesWithTotalPrice = response.data.map((table) => {
-        const totalPrice = table.orders.reduce((acc, order) => acc + order.totalPrice, 0)
-        return { ...table, totalPrice }
+      const withTotal = response.data.map((table) => {
+        const openOrders = (table.orders || []).filter((o) => o.status !== 'archived')
+        const totalPrice = openOrders.reduce((acc, order) => acc + Number(order.totalPrice || 0), 0)
+        return {
+          ...table,
+          orderCount: openOrders.length,
+          totalPrice,
+        }
       })
-      setTables(tablesWithTotalPrice)
+      setTables(withTotal)
     } catch (err) {
       setError('Error fetching tables')
       console.error(err)
@@ -153,7 +149,6 @@ const TablesDashboard = () => {
 
   const fetchMethods = async () => {
     try {
-      setLoading(true)
       const res = await axios.get(`${BaseUrl}/payment-methods`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -162,9 +157,7 @@ const TablesDashboard = () => {
       })
       setPaymentMethods(res.data)
     } catch (err) {
-      setError('Error fetching tables')
-    } finally {
-      setLoading(false)
+      setError('Error fetching payment methods')
     }
   }
 
@@ -182,6 +175,7 @@ const TablesDashboard = () => {
       isTakeAway ? fetchOrders() : fetchTables()
     })
     return () => socket.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTakeAway])
 
   const handleCardClick = (tableId) => {
@@ -192,7 +186,7 @@ const TablesDashboard = () => {
     showToast(Language.togoOrderSuccess || 'Order placed', 'success')
   }
 
-  /* ---------- handlers ---------- */
+  /* ---------- table / plan handlers ---------- */
   const handleCreateTable = async (e) => {
     e.preventDefault()
     setLoading(true)
@@ -202,7 +196,7 @@ const TablesDashboard = () => {
         { number: tableNumber, plan: selectedPlan },
         { headers: { Authorization: `Bearer ${token}` } },
       )
-      showToast(Language.tableCreated || 'Table created successfully', 'success')
+      showToast(Language.tableCreated || 'Table created', 'success')
       setShowCreateModal(false)
       setTableNumber('')
       fetchTables()
@@ -224,7 +218,7 @@ const TablesDashboard = () => {
       setPlans([...plans, response.data])
       setNewPlanName('')
       setNewPlanDescription('')
-      showToast(Language.planCreated || 'Plan created successfully', 'success')
+      showToast(Language.planCreated || 'Plan created', 'success')
     } catch (err) {
       showToast('Error creating plan', 'danger')
     }
@@ -245,7 +239,7 @@ const TablesDashboard = () => {
         { headers: { Authorization: `Bearer ${token}` } },
       )
       fetchPlans()
-      showToast(Language.planUpdated || 'Plan updated successfully', 'success')
+      showToast(Language.planUpdated || 'Plan updated', 'success')
       setShowEditPlanModal(false)
     } catch (err) {
       showToast('Error updating plan', 'danger')
@@ -253,25 +247,20 @@ const TablesDashboard = () => {
   }
 
   const handleDeletePlan = async (planId) => {
-    if (
-      window.confirm(
-        'Are you sure you want to delete this plan? Tables using this plan will not be deleted.',
-      )
-    ) {
-      try {
-        await axios.delete(`${BaseUrl}/tables/plans/${planId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        fetchPlans()
-        showToast(Language.planDeleted || 'Plan deleted successfully', 'success')
-      } catch (err) {
-        showToast('Error deleting plan', 'danger')
-      }
+    if (!window.confirm('Delete this plan? Tables using it will not be deleted.')) return
+    try {
+      await axios.delete(`${BaseUrl}/tables/plans/${planId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      fetchPlans()
+      showToast(Language.planDeleted || 'Plan deleted', 'success')
+    } catch (err) {
+      showToast('Error deleting plan', 'danger')
     }
   }
 
-  const downloadQRCode = (tableNumber, qrCodeURL) => {
-    saveAs(qrCodeURL, `Table-${tableNumber}-QRCode.png`)
+  const downloadQRCode = (number, url) => {
+    saveAs(url, `Table-${number}-QRCode.png`)
   }
 
   const handleDeleteTable = async (tableId, unpaidOrders) => {
@@ -279,23 +268,19 @@ const TablesDashboard = () => {
       showToast('Cannot delete a table with unpaid orders.', 'danger')
       return
     }
-    if (
-      window.confirm(
-        'By deleting the table you are going to delete also any orders assigned to it?',
-      )
-    ) {
-      setLoading(true)
-      try {
-        await axios.delete(`${BaseUrl}/tables/${tableId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        showToast(Language.tableDeleted || 'Table deleted successfully', 'success')
-        fetchTables()
-      } catch (err) {
-        showToast('Error deleting table', 'danger')
-      } finally {
-        setLoading(false)
-      }
+    if (!window.confirm('Deleting the table will also delete any orders assigned to it. Continue?'))
+      return
+    setLoading(true)
+    try {
+      await axios.delete(`${BaseUrl}/tables/${tableId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      showToast(Language.tableDeleted || 'Table deleted', 'success')
+      fetchTables()
+    } catch (err) {
+      showToast('Error deleting table', 'danger')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -311,7 +296,7 @@ const TablesDashboard = () => {
         { sourceTableId: selectedTable._id, targetTableId: targetTable },
         { headers: { Authorization: `Bearer ${token}` } },
       )
-      showToast(Language.ordersMoved || 'Orders moved successfully', 'success')
+      showToast(Language.ordersMoved || 'Orders moved', 'success')
       setShowMoveOrdersModal(false)
       fetchTables()
     } catch (err) {
@@ -322,43 +307,47 @@ const TablesDashboard = () => {
   }
 
   /* ---------- filters ---------- */
-  const filteredTables = tables.filter((table) => {
-    const matchesSearch = table.number.toString().includes(searchTerm)
-    const matchesPlan = selectedPlanFilter === 'all' || table.plan === selectedPlanFilter
-    return matchesSearch && matchesPlan
-  })
+  const filteredTables = useMemo(() => {
+    return tables.filter((table) => {
+      const matchesSearch = table.number.toString().includes(searchTerm)
+      const matchesPlan = selectedPlanFilter === 'all' || table.plan === selectedPlanFilter
+      return matchesSearch && matchesPlan
+    })
+  }, [tables, searchTerm, selectedPlanFilter])
 
-  const filteredOrders = orders.filter((order) => {
-    const matchesPayStatus = showPaidOrders || !order.payed
-    const matchesSearch = order.orderNumber.toString().includes(searchTerm)
-    const matchesType = orderTypeFilter === 'all' || order.orderType === orderTypeFilter
-    return matchesSearch && matchesType && matchesPayStatus
-  })
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const matchesPayStatus = showPaidOrders || !order.payed
+      const matchesSearch = order.orderNumber.toString().includes(searchTerm)
+      const matchesType = orderTypeFilter === 'all' || order.orderType === orderTypeFilter
+      return matchesSearch && matchesType && matchesPayStatus
+    })
+  }, [orders, searchTerm, orderTypeFilter, showPaidOrders])
 
-  const hundleTargetTableChange = (e) => {
-    setTargetTable(e.target.value)
-    setTargetTableNumber(e.target.value)
-  }
+  const moveOrdersTargets = useMemo(() => {
+    return tables.filter(
+      (table) =>
+        table.number.toString().includes(targetTableNumber) &&
+        table._id !== selectedTable?._id &&
+        (modalPlanFilter === 'all' || table.plan === modalPlanFilter),
+    )
+  }, [tables, targetTableNumber, selectedTable, modalPlanFilter])
 
-  const moveOrdersTargets = tables.filter(
-    (table) =>
-      table.number.toString().includes(targetTableNumber) &&
-      table._id !== selectedTable?._id &&
-      (modalPlanFilter === 'all' || table.plan === modalPlanFilter),
-  )
+  const busyCount = filteredTables.filter((t) => t.orderCount > 0).length
 
+  /* ---------- render ---------- */
   return (
     <>
       <CRow>
         <CCol xs={12}>
           <CCard className="mb-4">
             <div className="tl-header">
-              {/* ---- Top row: title + view segmented control ---- */}
+              {/* Title row */}
               <div className="tl-header-top">
                 <div>
                   <h5 className="tl-title">
                     {isTakeAway
-                      ? Language.ordersToday || 'Orders Today'
+                      ? Language.ordersToday || 'Orders today'
                       : Language.tables || 'Tables'}
                   </h5>
                   <div className="tl-subtitle">
@@ -372,8 +361,7 @@ const TablesDashboard = () => {
                         <strong>{filteredTables.length}</strong>{' '}
                         {filteredTables.length === 1 ? 'table' : 'tables'}
                         {' · '}
-                        <strong>{filteredTables.filter((t) => t.unpaidOrders).length}</strong> with
-                        unpaid orders
+                        <strong>{busyCount}</strong> busy
                       </>
                     )}
                   </div>
@@ -399,19 +387,17 @@ const TablesDashboard = () => {
                     </button>
                   </div>
 
-                  {isTakeAway && (
-                    <CFormSwitch
-                      id="toggleViewSwitch1"
-                      label={Language.showPaidOrders || 'Show paid'}
-                      checked={showPaidOrders}
-                      onChange={(e) => setShowPaidOrders(e.target.checked)}
-                      className="tl-paid-switch"
-                    />
+                  {/* Primary action */}
+                  {isTakeAway ? null : (
+                    <CButton color="primary" onClick={() => setShowOrderModal(true)}>
+                      <CIcon icon={cilPlus} className="me-2" />
+                      {Language.newTogo || 'New to-go'}
+                    </CButton>
                   )}
                 </div>
               </div>
 
-              {/* ---- Bottom row: filters + actions ---- */}
+              {/* Filter row */}
               <div className="tl-header-controls">
                 <div className="tl-controls-left">
                   <div className="tl-search">
@@ -430,18 +416,27 @@ const TablesDashboard = () => {
                   </div>
 
                   {isTakeAway ? (
-                    <div className="tl-filter">
-                      <CIcon icon={cilFilter} className="tl-filter-icon" />
-                      <select
-                        value={orderTypeFilter}
-                        onChange={(e) => setOrderTypeFilter(e.target.value)}
-                        aria-label="Order type"
-                      >
-                        <option value="all">{Language.allTypes || 'All Types'}</option>
-                        <option value="to-go">{Language.togo}</option>
-                        <option value="delivery">{Language.delivery}</option>
-                      </select>
-                    </div>
+                    <>
+                      <div className="tl-filter">
+                        <CIcon icon={cilFilter} className="tl-filter-icon" />
+                        <select
+                          value={orderTypeFilter}
+                          onChange={(e) => setOrderTypeFilter(e.target.value)}
+                          aria-label="Order type"
+                        >
+                          <option value="all">{Language.allTypes || 'All types'}</option>
+                          <option value="to-go">{Language.togo}</option>
+                          <option value="delivery">{Language.delivery}</option>
+                        </select>
+                      </div>
+                      <CFormSwitch
+                        id="tl-paid-toggle"
+                        label={Language.showPaidOrders || 'Show paid'}
+                        checked={showPaidOrders}
+                        onChange={(e) => setShowPaidOrders(e.target.checked)}
+                        className="tl-paid-switch"
+                      />
+                    </>
                   ) : (
                     <div className="tl-filter">
                       <CIcon icon={cilFilter} className="tl-filter-icon" />
@@ -450,7 +445,7 @@ const TablesDashboard = () => {
                         onChange={(e) => setSelectedPlanFilter(e.target.value)}
                         aria-label="Plan"
                       >
-                        <option value="all">{Language.allPlans || 'All Plans'}</option>
+                        <option value="all">{Language.allPlans || 'All plans'}</option>
                         {plans.map((plan) => (
                           <option key={plan._id} value={plan._id}>
                             {plan.name}
@@ -461,10 +456,11 @@ const TablesDashboard = () => {
                   )}
                 </div>
 
-                {!isTakeAway && (
+                {!isTakeAway && isSuperClient && (
                   <div className="tl-controls-right">
                     <CButton
-                      color="primary"
+                      color="secondary"
+                      variant="outline"
                       onClick={() => setShowCreateModal(true)}
                       className="tl-action-btn"
                     >
@@ -472,144 +468,353 @@ const TablesDashboard = () => {
                       {Language.table || 'Table'}
                     </CButton>
                     <CButton
-                      color="primary"
-                      onClick={() => setShowOrderModal(true)}
+                      color="secondary"
+                      variant="outline"
+                      onClick={() => setShowPlanModal(true)}
                       className="tl-action-btn"
                     >
-                      <CIcon icon={cilPlus} className="me-2" />
-                      {Language.togo || 'To-go'}
+                      <CIcon icon={cilLayers} className="me-2" />
+                      {Language.managePlans || 'Plans'}
                     </CButton>
-                    {isSuperClient && (
-                      <CButton
-                        color="secondary"
-                        variant="outline"
-                        onClick={() => setShowPlanModal(true)}
-                        className="tl-action-btn"
-                      >
-                        <CIcon icon={cilLayers} className="me-2" />
-                        {Language.managePlans || 'Plans'}
-                      </CButton>
-                    )}
                   </div>
                 )}
               </div>
             </div>
 
             <CCardBody>
-              {loading && <Loading />}
-              {error && <p className="text-danger">{error}</p>}
+              {error && <div className="alert alert-danger mb-3">{error}</div>}
 
-              <CRow className="g-3">
-                {isTakeAway
-                  ? filteredOrders.map((order) => (
-                      <OrderCard
-                        key={order._id}
-                        order={order}
-                        onClick={() => {
-                          setSelectedOrderId(order._id)
-                          setSelectedOrderProducts(order.products)
-                          setShowProdSelectModal(true)
-                        }}
-                        paymentMethods={paymentMethods}
-                        refreshOrders={fetchOrders}
-                        onShowToast={showToast}
-                      />
-                    ))
-                  : filteredTables.map((table) => (
-                      <CCol xs={12} sm={6} md={4} lg={3} xl={2} key={table._id}>
-                        <CCard
-                          className="h-100"
-                          style={{ cursor: 'pointer', position: 'relative' }}
-                        >
-                          <CCardHeader className="p-0 d-flex justify-content-end">
-                            <CDropdown className="w-100">
-                              <CDropdownToggle
-                                color="secondary"
-                                size="sm"
-                                className="w-100 rounded-0"
-                                style={{
-                                  borderTopLeftRadius: '0 !important',
-                                  borderTopRightRadius: '0 !important',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  padding: '0.25rem 1rem',
-                                }}
-                              >
-                                {Language.actions}
-                                <CIcon icon={cilPencil} width={12} className="ms-2" />
-                              </CDropdownToggle>
-                              <CDropdownMenu
-                                style={{
-                                  position: 'absolute',
-                                  right: 0,
-                                  left: 'auto',
-                                  minWidth: 'max-content',
-                                  width: 'auto',
-                                }}
-                              >
-                                <CDropdownItem
-                                  onClick={() => downloadQRCode(table.number, table.qrCode)}
-                                >
-                                  <CIcon icon={cilCloudDownload} className="me-2" />
-                                  {Language.downloadQR}
-                                </CDropdownItem>
-                                {isSuperClient && (
-                                  <CDropdownItem
-                                    onClick={() => handleDeleteTable(table._id, table.unpaidOrders)}
-                                  >
-                                    <CIcon icon={cilTrash} className="me-2" />
-                                    {Language.deleteTable}
-                                  </CDropdownItem>
-                                )}
-                                <CDropdownItem
-                                  onClick={() => {
-                                    setSelectedTable(table)
-                                    setShowMoveOrdersModal(true)
-                                  }}
-                                >
-                                  <CIcon icon={cilQrCode} className="me-2" />
-                                  {Language.switchTable}
-                                </CDropdownItem>
-                              </CDropdownMenu>
-                            </CDropdown>
-                          </CCardHeader>
+              {/* Skeleton loading */}
+              {loading && tables.length === 0 && !isTakeAway && (
+                <CRow className="g-3">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <CCol xs={12} sm={6} md={4} lg={3} xl={2} key={i}>
+                      <div className="tl-skeleton-card" />
+                    </CCol>
+                  ))}
+                </CRow>
+              )}
 
-                          <CCardBody
-                            onClick={() => handleCardClick(table._id)}
-                            className={table.unpaidOrders ? 'text-white' : ''}
-                            style={{
-                              background: table.unpaidOrders ? '#F39C12' : '',
-                              paddingBottom: '1.5rem',
-                            }}
-                          >
-                            <CCardImage
-                              className="img-fluid"
-                              style={{
-                                height: '150px',
-                                objectFit: 'cover',
-                                width: '100%',
+              {/* Takeaway skeleton */}
+              {loading && orders.length === 0 && isTakeAway && (
+                <CRow className="g-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <CCol xs={12} sm={6} md={6} lg={4} key={i}>
+                      <div className="tl-skeleton-card" />
+                    </CCol>
+                  ))}
+                </CRow>
+              )}
+
+              {/* Content */}
+              {!loading || tables.length > 0 || orders.length > 0 ? (
+                <CRow className="g-3">
+                  {isTakeAway
+                    ? filteredOrders.map((order) => (
+                        <OrderCard
+                          key={order._id}
+                          order={order}
+                          onClick={() => {
+                            setSelectedOrderId(order._id)
+                            setSelectedOrderProducts(order.products)
+                            setShowProdSelectModal(true)
+                          }}
+                          paymentMethods={paymentMethods}
+                          refreshOrders={fetchOrders}
+                          onShowToast={showToast}
+                        />
+                      ))
+                    : filteredTables.map((table) => {
+                        const busy = table.orderCount > 0
+                        return (
+                          <CCol xs={12} sm={6} md={4} lg={3} xl={2} key={table._id}>
+                            <div
+                              className={`tl-card ${busy ? 'is-busy' : ''}`}
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                // ignore clicks that originated from the menu
+                                if (e.target.closest('.tl-card-menu-btn')) return
+                                if (e.target.closest('.dropdown-menu')) return
+                                handleCardClick(table._id)
                               }}
-                              src={tableImageDark}
-                              alt={`Table ${table.number}`}
-                            />
-                            <CCardTitle className="mt-3 mb-1">
-                              {Language.table} {table.number}
-                            </CCardTitle>
-                            <small className="text-muted d-block">
-                              {plans.find((p) => p._id === table.plan)?.name || 'No Plan'}
-                            </small>
-                          </CCardBody>
-                        </CCard>
-                      </CCol>
-                    ))}
-              </CRow>
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  handleCardClick(table._id)
+                                }
+                              }}
+                            >
+                              <div className="tl-card-top">
+                                <div className={`tl-card-number ${busy ? 'is-busy' : ''}`}>
+                                  {table.number}
+                                </div>
+
+                                <CDropdown variant="btn-group" className="tl-card-dropdown">
+                                  {' '}
+                                  <CDropdownToggle
+                                    color="transparent"
+                                    caret={false}
+                                    className="tl-card-menu-btn"
+                                  >
+                                    <CIcon icon={cilOptions} />
+                                  </CDropdownToggle>
+                                  <CDropdownMenu className="tl-card-menu" placement="bottom-end">
+                                    <CDropdownItem
+                                      onClick={(e) => {
+                                        downloadQRCode(table.number, table.qrCode)
+                                      }}
+                                    >
+                                      <CIcon icon={cilCloudDownload} className="me-2" />
+                                      {Language.downloadQR || 'Download QR'}
+                                    </CDropdownItem>
+                                    <CDropdownItem
+                                      onClick={(e) => {
+                                        setSelectedTable(table)
+                                        setShowMoveOrdersModal(true)
+                                      }}
+                                    >
+                                      <CIcon icon={cilSwapHorizontal} className="me-2" />
+                                      {Language.switchTable || 'Move orders'}
+                                    </CDropdownItem>
+                                    {isSuperClient && (
+                                      <CDropdownItem
+                                        onClick={(e) => {
+                                          handleDeleteTable(table._id, table.unpaidOrders)
+                                        }}
+                                      >
+                                        <CIcon icon={cilTrash} className="me-2 text-danger" />
+                                        <span className="text-danger">
+                                          {Language.deleteTable || 'Delete table'}
+                                        </span>
+                                      </CDropdownItem>
+                                    )}
+                                  </CDropdownMenu>
+                                </CDropdown>
+                              </div>
+
+                              <div className="tl-card-body">
+                                <div className="tl-card-plan">
+                                  {plans.find((p) => p._id === table.plan)?.name || 'No plan'}
+                                </div>
+                                <div className="tl-card-meta">
+                                  {busy ? (
+                                    <>
+                                      <span className="tl-card-orders">
+                                        {table.orderCount}{' '}
+                                        {table.orderCount === 1 ? 'order' : 'orders'}
+                                      </span>
+                                      <span className="tl-card-total">
+                                        {table.totalPrice.toFixed(2)} TND
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <span className="tl-card-free">Available</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </CCol>
+                        )
+                      })}
+                </CRow>
+              ) : null}
+
+              {/* Empty state - no tables */}
+              {!loading && !isTakeAway && tables.length === 0 && (
+                <div className="tl-empty">
+                  <CIcon icon={cilTablet} size="xl" />
+                  <div className="tl-empty-title">{Language.noTablesYet || 'No tables yet'}</div>
+                  <div className="tl-empty-body">
+                    {Language.noTablesHint ||
+                      'Start by creating a plan for your floor, then add tables to it.'}
+                  </div>
+                  <CButton color="primary" onClick={() => setShowPlanModal(true)}>
+                    <CIcon icon={cilLayers} className="me-2" />
+                    {Language.managePlans || 'Manage plans'}
+                  </CButton>
+                </div>
+              )}
+
+              {/* Empty state - no matching tables */}
+              {!loading && !isTakeAway && tables.length > 0 && filteredTables.length === 0 && (
+                <div className="tl-empty">
+                  <CIcon icon={cilWarning} size="xl" />
+                  <div className="tl-empty-title">
+                    {Language.noTablesMatch || 'No tables match'}
+                  </div>
+                  <div className="tl-empty-body">
+                    {Language.noTablesMatchHint || 'Try a different search term or plan.'}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state - no orders today */}
+              {!loading && isTakeAway && orders.length === 0 && (
+                <div className="tl-empty">
+                  <CIcon icon={cilRestaurant} size="xl" />
+                  <div className="tl-empty-title">
+                    {Language.noOrdersToday || 'No takeaway orders today'}
+                  </div>
+                  <div className="tl-empty-body">
+                    {Language.noOrdersTodayHint ||
+                      'New takeaway and delivery orders will appear here.'}
+                  </div>
+                  <CButton color="primary" onClick={() => setShowOrderModal(true)}>
+                    <CIcon icon={cilPlus} className="me-2" />
+                    {Language.newTogo || 'New to-go'}
+                  </CButton>
+                </div>
+              )}
+
+              {/* Empty state - no matching orders */}
+              {!loading && isTakeAway && orders.length > 0 && filteredOrders.length === 0 && (
+                <div className="tl-empty">
+                  <CIcon icon={cilWarning} size="xl" />
+                  <div className="tl-empty-title">
+                    {Language.noOrdersMatch || 'No orders match'}
+                  </div>
+                  <div className="tl-empty-body">
+                    {Language.noOrdersMatchHint || 'Try a different search or filter.'}
+                  </div>
+                </div>
+              )}
             </CCardBody>
           </CCard>
         </CCol>
       </CRow>
 
-      {/* ============================= Create Table ============================= */}
+      {/* Move Orders modal */}
+      <CModal
+        visible={showMoveOrdersModal}
+        onClose={() => setShowMoveOrdersModal(false)}
+        size="lg"
+        backdrop="static"
+        className="tm-modal"
+      >
+        <div className="tm-header">
+          <div>
+            <h5 className="tm-header-title">
+              <CIcon icon={cilSwapHorizontal} />
+              {Language.moveOrdersToAnotherTable}
+            </h5>
+            <div className="tm-header-sub">
+              Source: {Language.table} {selectedTable?.number}
+            </div>
+          </div>
+          <button
+            className="tm-close"
+            onClick={() => setShowMoveOrdersModal(false)}
+            aria-label="Close"
+            type="button"
+          >
+            &times;
+          </button>
+        </div>
+
+        <div className="tm-body">
+          <CRow className="g-3">
+            <CCol md={8}>
+              <div className="tm-field" style={{ marginBottom: 0 }}>
+                <label htmlFor="tm-target-search">
+                  {Language.searchByTableNumber || 'Search by table number'}
+                </label>
+                <CInputGroup>
+                  <CFormInput
+                    id="tm-target-search"
+                    type="text"
+                    placeholder="12"
+                    value={targetTableNumber}
+                    onChange={(e) => {
+                      setTargetTableNumber(e.target.value)
+                      setTargetTable('')
+                    }}
+                  />
+                </CInputGroup>
+              </div>
+            </CCol>
+            <CCol md={4}>
+              <div className="tm-field" style={{ marginBottom: 0 }}>
+                <label htmlFor="tm-target-plan">{Language.plan || 'Plan'}</label>
+                <CFormSelect
+                  id="tm-target-plan"
+                  value={modalPlanFilter}
+                  onChange={(e) => setModalPlanFilter(e.target.value)}
+                >
+                  <option value="all">{Language.allPlans}</option>
+                  {plans.map((plan) => (
+                    <option key={plan._id} value={plan._id}>
+                      {plan.name}
+                    </option>
+                  ))}
+                </CFormSelect>
+              </div>
+            </CCol>
+          </CRow>
+
+          <div className="tm-list">
+            {moveOrdersTargets.length === 0 ? (
+              <div className="tm-plans-empty" style={{ margin: 14 }}>
+                {Language.noTablesFound || 'No matching tables'}
+              </div>
+            ) : (
+              moveOrdersTargets.map((table) => {
+                const isSelected = targetTable === table._id
+                return (
+                  <div
+                    key={table._id}
+                    className={`tm-row ${isSelected ? 'is-selected' : ''}`}
+                    onClick={() => {
+                      setTargetTable(table._id)
+                      setTargetTableNumber(table.number)
+                    }}
+                  >
+                    <div>
+                      <p className="tm-row-title">
+                        {Language.table} {table.number}
+                      </p>
+                      <div className="tm-row-meta">
+                        {plans.find((p) => p._id === table.plan)?.name || 'No plan'}
+                      </div>
+                    </div>
+                    <span className="tm-row-tag">
+                      {isSelected ? Language.selected || 'Selected' : Language.select || 'Select'}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="tm-footer">
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={() => setShowMoveOrdersModal(false)}
+          >
+            <CIcon icon={cilX} className="me-2" />
+            {Language.cancel}
+          </CButton>
+          <div className="tm-footer-right">
+            <CButton color="primary" onClick={handleMoveOrders} disabled={!targetTable || loading}>
+              {loading ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  {Language.loading}
+                </>
+              ) : (
+                <>
+                  <CIcon icon={cilSwapHorizontal} className="me-2" />
+                  {Language.moveOrders}
+                </>
+              )}
+            </CButton>
+          </div>
+        </div>
+      </CModal>
+
+      {/* Create Table modal */}
       <CModal
         visible={showCreateModal}
         onClose={() => setShowCreateModal(false)}
@@ -664,7 +869,7 @@ const TablesDashboard = () => {
                 ))}
               </CFormSelect>
               {plans.length === 0 && (
-                <div className="tm-hint">No plans yet — create one from “Manage Plans”.</div>
+                <div className="tm-hint">No plans yet — create one from "Manage Plans".</div>
               )}
             </div>
           </div>
@@ -702,139 +907,7 @@ const TablesDashboard = () => {
         </form>
       </CModal>
 
-      {/* ============================= Move Orders ============================= */}
-      <CModal
-        visible={showMoveOrdersModal}
-        onClose={() => setShowMoveOrdersModal(false)}
-        size="lg"
-        backdrop="static"
-        className="tm-modal"
-      >
-        <div className="tm-header">
-          <div>
-            <h5 className="tm-header-title">
-              <CIcon icon={cilSwapHorizontal} />
-              {Language.moveOrdersToAnotherTable}
-            </h5>
-            <div className="tm-header-sub">
-              Source: {Language.table} {selectedTable?.number}
-            </div>
-          </div>
-          <button
-            className="tm-close"
-            onClick={() => setShowMoveOrdersModal(false)}
-            aria-label="Close"
-            type="button"
-          >
-            &times;
-          </button>
-        </div>
-
-        <div className="tm-body">
-          <CRow className="g-3">
-            <CCol md={8}>
-              <div className="tm-search" style={{ marginBottom: 0 }}>
-                <div className="tm-field" style={{ marginBottom: 0 }}>
-                  <label htmlFor="tm-target-search">
-                    {Language.searchByTableNumber || 'Search by table number'}
-                  </label>
-                  <CInputGroup>
-                    <CFormInput
-                      id="tm-target-search"
-                      type="text"
-                      placeholder="12"
-                      value={targetTableNumber}
-                      onChange={(e) => {
-                        setTargetTableNumber(e.target.value)
-                        setTargetTable('')
-                      }}
-                    />
-                  </CInputGroup>
-                </div>
-              </div>
-            </CCol>
-            <CCol md={4}>
-              <div className="tm-field" style={{ marginBottom: 0 }}>
-                <label htmlFor="tm-target-plan">{Language.plan}</label>
-                <CFormSelect
-                  id="tm-target-plan"
-                  value={modalPlanFilter}
-                  onChange={(e) => setModalPlanFilter(e.target.value)}
-                >
-                  <option value="all">{Language.allPlans}</option>
-                  {plans.map((plan) => (
-                    <option key={plan._id} value={plan._id}>
-                      {plan.name}
-                    </option>
-                  ))}
-                </CFormSelect>
-              </div>
-            </CCol>
-          </CRow>
-
-          <div className="tm-list">
-            {moveOrdersTargets.length === 0 ? (
-              <div className="tm-plans-empty" style={{ margin: 14 }}>
-                {Language.noTablesFound || 'No matching tables'}
-              </div>
-            ) : (
-              moveOrdersTargets.map((table) => {
-                const isSelected = targetTable === table._id
-                return (
-                  <div
-                    key={table._id}
-                    className={`tm-row ${isSelected ? 'is-selected' : ''}`}
-                    onClick={() => {
-                      setTargetTable(table._id)
-                      setTargetTableNumber(table.number)
-                    }}
-                  >
-                    <div>
-                      <p className="tm-row-title">
-                        {Language.table} {table.number}
-                      </p>
-                      <div className="tm-row-meta">
-                        {plans.find((p) => p._id === table.plan)?.name || 'No Plan'}
-                      </div>
-                    </div>
-                    <span className="tm-row-tag">
-                      {isSelected ? Language.selected || 'Selected' : Language.select || 'Select'}
-                    </span>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="tm-footer">
-          <CButton
-            color="secondary"
-            variant="outline"
-            onClick={() => setShowMoveOrdersModal(false)}
-          >
-            <CIcon icon={cilX} className="me-2" />
-            {Language.cancel}
-          </CButton>
-          <div className="tm-footer-right">
-            <CButton color="primary" onClick={handleMoveOrders} disabled={!targetTable || loading}>
-              {loading ? (
-                <>
-                  <CSpinner size="sm" className="me-2" />
-                  {Language.loading}
-                </>
-              ) : (
-                <>
-                  <CIcon icon={cilSwapHorizontal} className="me-2" />
-                  {Language.moveOrders}
-                </>
-              )}
-            </CButton>
-          </div>
-        </div>
-      </CModal>
-
-      {/* ============================= Manage Plans ============================= */}
+      {/* Manage Plans modal */}
       <CModal
         visible={showPlanModal}
         onClose={() => setShowPlanModal(false)}
@@ -864,7 +937,6 @@ const TablesDashboard = () => {
 
         <div className="tm-body">
           <div className="tm-plans-layout">
-            {/* Left: create form */}
             <div>
               <div className="tm-plans-section-title">
                 {Language.createNewPlan || 'Create a new plan'}
@@ -901,7 +973,6 @@ const TablesDashboard = () => {
               </CButton>
             </div>
 
-            {/* Right: existing plans */}
             <div>
               <div className="tm-plans-section-title">
                 {Language.existingPlans || 'Existing plans'}
@@ -910,7 +981,7 @@ const TablesDashboard = () => {
               {plans.length === 0 ? (
                 <div className="tm-plans-empty">
                   <CIcon icon={cilInfo} size="xl" />
-                  <div className="mt-2">{Language.noPlansCreatedYet || 'No plans created yet'}</div>
+                  <div className="mt-2">{Language.noPlansCreatedYet || 'No plans yet'}</div>
                 </div>
               ) : (
                 <div className="tm-plans-list">
@@ -960,7 +1031,7 @@ const TablesDashboard = () => {
         </div>
       </CModal>
 
-      {/* ============================= Edit Plan ============================= */}
+      {/* Edit Plan modal */}
       <CModal
         visible={showEditPlanModal}
         onClose={() => setShowEditPlanModal(false)}
@@ -1015,7 +1086,6 @@ const TablesDashboard = () => {
         </div>
       </CModal>
 
-      {/* ============================= Manual order modal (unchanged) ============================= */}
       <ManualOrderModal
         visible={showOrderModal}
         onClose={setShowOrderModal}
@@ -1023,7 +1093,6 @@ const TablesDashboard = () => {
         enableOrderType={true}
       />
 
-      {/* ============================= Product selection modal (unchanged) ============================= */}
       <ProductSelectionModal
         visible={showProdSelectModal}
         onClose={setShowProdSelectModal}
