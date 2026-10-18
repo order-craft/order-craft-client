@@ -3,6 +3,9 @@
    ========================================================================= */
 
 .app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
   padding: 0;
   margin-bottom: 20px;
   background: #fff;
@@ -128,5 +131,56 @@
   }
   .app-header-lang-code {
     display: none;
+  }
+}
+/* Make the header reliably sticky on phones and desktop */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030; /* above card content, below modals */
+  background: #fff;
+}
+
+/* Prevent ancestor overflow from breaking sticky */
+body,
+#root {
+  overflow-x: visible;
+}
+
+/* But keep the horizontal-overflow safety net on inner scroll containers */
+@media (max-width: 767.98px) {
+  html,
+  body {
+    max-width: 100%;
+  }
+}
+/* Mobile: use fixed positioning for maximum compatibility */
+@media (max-width: 767.98px) {
+  .app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1030;
+    margin-bottom: 0;
+  }
+
+  /* Push the content down by the header height (56px) */
+  .wrapper {
+    padding-top: 56px;
+  }
+
+  /* Belt-and-braces: prevent overflow from creating a horizontal scrollbar */
+  body {
+    overflow-x: hidden; /* safe now because nothing below relies on sticky */
+  }
+}
+
+/* Desktop: keep sticky */
+@media (min-width: 768px) {
+  .app-header {
+    position: sticky;
+    top: 0;
+    z-index: 1030;
   }
 }

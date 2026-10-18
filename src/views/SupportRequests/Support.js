@@ -1,15 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CModal,
-  CSpinner,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-} from '@coreui/react'
+import { CButton, CCard, CCardBody, CModal, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilCheckCircle, cilTrash, cilBell, cilFilter } from '@coreui/icons'
 import axios from 'axios'
@@ -18,7 +8,7 @@ import { GetToken } from '../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './support.css'
-
+import { useToast } from '../../components/toast/ToastProvider'
 const SupportRequestsManager = () => {
   const token = GetToken()
   const t = useSelector((state) => state.language)
@@ -51,15 +41,7 @@ const SupportRequestsManager = () => {
   const [selectedIds, setSelectedIds] = useState([])
   const [bulkConfirmVisible, setBulkConfirmVisible] = useState(false)
   const [bulkDeleting, setBulkDeleting] = useState(false)
-  const [toasts, setToasts] = useState([])
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  const { showToast } = useToast()
 
   const axiosConfig = {
     headers: {
@@ -166,22 +148,6 @@ const SupportRequestsManager = () => {
 
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         <div className="sr-header">
           <div className="sr-header-inner">

@@ -1,15 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CSpinner,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-} from '@coreui/react'
+import { CButton, CCard, CCardBody, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
   cilFile,
@@ -29,6 +20,7 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './receipt.css'
+import { useToast } from '../../components/toast/ToastProvider'
 
 const palette = [
   '#0d6efd',
@@ -61,15 +53,7 @@ const OrdersComponent = () => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
 
-  const [toasts, setToasts] = useState([])
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  const { showToast } = useToast()
 
   /* ---------- data ---------- */
   const fetchOrders = useCallback(async () => {
@@ -214,22 +198,6 @@ const OrdersComponent = () => {
   /* ---------- render ---------- */
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         {/* ---- Top strip ---- */}
         <div className="rc-header">

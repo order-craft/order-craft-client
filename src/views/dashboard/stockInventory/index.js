@@ -1,16 +1,7 @@
-import React, { useState, useCallback } from 'react'
-import {
-  CContainer,
-  CCard,
-  CCardBody,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-  CSpinner,
-} from '@coreui/react'
+import { useState, useCallback } from 'react'
+import { CContainer, CCard, CCardBody, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilHome, cilList, cilRestaurant, cilInfo } from '@coreui/icons'
+import { cilHome, cilList, cilRestaurant } from '@coreui/icons'
 import RecipesTab from './RecipesTab'
 import RawMaterialsTab from './RawMaterialsTab'
 import InventoryTab from './InventoryTab'
@@ -20,13 +11,12 @@ import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
 import axios from 'axios'
 import './StockInventory.css'
-
+import { useToast } from '../../../components/toast/ToastProvider'
 const StockInventory = () => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
   const [activeTab, setActiveTab] = useState('raw-materials')
   const [loading, setLoading] = useState(false)
-  const [toasts, setToasts] = useState([])
   const token = GetToken()
 
   // Live tab counts, reported by each child tab
@@ -35,19 +25,18 @@ const StockInventory = () => {
     inventory: null,
     recipes: null,
   })
-  // Stable — setState functional form means no deps are needed
   const reportCount = useCallback((key, n) => {
     setCounts((prev) => (prev[key] === n ? prev : { ...prev, [key]: n }))
   }, [])
 
-  // Stable — token is a plain string
-  const showAlert = useCallback((msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }, [])
+  // Shared toast provider
+  const { showToast } = useToast()
+  const showAlert = useCallback(
+    (msg, color = 'success') => {
+      showToast(msg, color)
+    },
+    [showToast],
+  )
 
   // Stable — depends only on token and showAlert, both stable
   const apiCall = useCallback(
@@ -74,9 +63,6 @@ const StockInventory = () => {
   const reportRawCount = useCallback((n) => reportCount('raw-materials', n), [reportCount])
   const reportInventoryCount = useCallback((n) => reportCount('inventory', n), [reportCount])
   const reportRecipeCount = useCallback((n) => reportCount('recipes', n), [reportCount])
-  const removeToast = (id) => {
-    setToasts((prev) => prev.filter((x) => x.id !== id))
-  }
 
   const tabs = [
     { key: 'raw-materials', title: Language.rawMaterials || 'Raw Materials', icon: cilHome },
@@ -86,25 +72,6 @@ const StockInventory = () => {
 
   return (
     <CContainer fluid className="py-4">
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>
-              <CIcon icon={cilInfo} className="me-2" />
-              {color === 'danger' ? 'Error' : 'Notification'}
-            </CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         <div className="si-header">
           <div className="si-header-top">

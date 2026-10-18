@@ -18,7 +18,7 @@ import PersonalDetailsModal from './personalDetailsModal'
 import PlaceDetailsModal from './PlaceDetailsModal'
 import SettingsModal from './SettingsModal'
 import PDVerificationModal from './PDVerificationModal'
-import AlertToast from './AlertToast'
+import AlertToast from '../../../components/toast/AlertToast'
 import './profile.css'
 
 const Profile = () => {

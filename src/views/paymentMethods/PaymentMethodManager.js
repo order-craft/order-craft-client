@@ -1,16 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CModal,
-  CFormInput,
-  CSpinner,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-} from '@coreui/react'
+import { CButton, CCard, CCardBody, CModal, CFormInput, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilPlus, cilPencil, cilTrash, cilCreditCard, cilWarning } from '@coreui/icons'
 import axios from 'axios'
@@ -19,7 +8,7 @@ import { GetToken } from '../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './PaymentMethodManager.css'
-
+import { useToast } from '../../components/toast/ToastProvider'
 /* deterministic color per payment-method id */
 const palette = [
   '#0d6efd',
@@ -58,15 +47,7 @@ const PaymentMethodManager = () => {
   const [confirmTarget, setConfirmTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  const [toasts, setToasts] = useState([])
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  const { showToast } = useToast()
 
   const axiosConfig = {
     headers: {
@@ -174,22 +155,6 @@ const PaymentMethodManager = () => {
 
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         <div className="pm-header">
           <div className="pm-header-inner">

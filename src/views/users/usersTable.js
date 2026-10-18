@@ -20,7 +20,7 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './users.css'
-
+import { useToast } from '../../components/toast/ToastProvider'
 const avatarPalette = ['#0d6efd', '#6610f2', '#d63384', '#fd7e14', '#198754', '#20c997', '#0dcaf0']
 const colorFor = (id) => {
   let h = 0
@@ -53,15 +53,7 @@ const Dashboard = () => {
   const [confirmTarget, setConfirmTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
-  const [toasts, setToasts] = useState([])
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  const { showToast } = useToast()
 
   /* ---------- fetch ---------- */
   const fetchClients = async () => {
@@ -216,22 +208,6 @@ const Dashboard = () => {
   /* ---------- render ---------- */
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         <div className="ut-header">
           <div className="ut-header-inner">

@@ -1,15 +1,5 @@
-import React, { useState } from 'react'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CFormInput,
-  CSpinner,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-} from '@coreui/react'
+import { useState } from 'react'
+import { CButton, CCard, CCardBody, CFormInput, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilArrowLeft, cilCheck, cilLowVision } from '@coreui/icons'
 import { useNavigate } from 'react-router-dom'
@@ -18,7 +8,7 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import './users.css'
-
+import { useToast } from '../../components/toast/ToastProvider'
 const CreateUser = () => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
@@ -32,16 +22,7 @@ const CreateUser = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
   const [submitting, setSubmitting] = useState(false)
-  const [toasts, setToasts] = useState([])
-
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 4000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  const { showToast } = useToast()
 
   const validate = () => {
     const e = {}
@@ -84,22 +65,6 @@ const CreateUser = () => {
 
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={4000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         <div className="ut-header">
           <div className="ut-header-inner">

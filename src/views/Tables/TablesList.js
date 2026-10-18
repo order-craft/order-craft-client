@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CButton,
   CCard,
@@ -39,7 +39,6 @@ import {
   cilQrCode,
   cilTrash,
   cilSave,
-  cilList,
   cilInfo,
   cilLayers,
   cilPencil,
@@ -59,7 +58,7 @@ import ManualOrderModal from './OrderModal'
 import OrderCard from './OrderCard'
 import ProductSelectionModal from './ProductSelectionModal'
 import { useAuth } from '../../context/AuthContext'
-
+import { useToast } from '../../components/toast/ToastProvider'
 const TablesDashboard = () => {
   const [tables, setTables] = useState([])
   const [orders, setOrders] = useState([])
@@ -102,17 +101,7 @@ const TablesDashboard = () => {
   const navigate = useNavigate()
 
   /* ---------- toasts ---------- */
-  const [toasts, setToasts] = useState([])
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => {
-    setToasts((prev) => prev.filter((x) => x.id !== id))
-  }
+  const { showToast } = useToast()
 
   /* ---------- data fetching ---------- */
   const fetchTables = async () => {
@@ -360,25 +349,9 @@ const TablesDashboard = () => {
 
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CRow>
         <CCol xs={12}>
-                    <CCard className="mb-4">
+          <CCard className="mb-4">
             <div className="tl-header">
               {/* ---- Top row: title + view segmented control ---- */}
               <div className="tl-header-top">

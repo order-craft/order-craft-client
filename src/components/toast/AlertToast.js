@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { CToast, CToastBody, CToaster } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilCheckCircle, cilWarning, cilInfo, cilXCircle, cilX } from '@coreui/icons'
-import './profile.css'
+import './toast.css'
 
 const TONE_META = {
   success: { icon: cilCheckCircle, color: '#198754', tint: '#d1e7dd' },

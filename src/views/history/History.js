@@ -1,14 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CSpinner,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-} from '@coreui/react'
+import { CButton, CCard, CCardBody, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
   cilSearch,
@@ -29,6 +20,7 @@ import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import { useAuth } from '../../context/AuthContext'
 import '../dashboard/receipt.css'
+import { useToast } from '../../components/toast/ToastProvider'
 
 const palette = [
   '#0d6efd',
@@ -70,15 +62,7 @@ const ArchivedOrdersByDate = () => {
   const [loaded, setLoaded] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
 
-  const [toasts, setToasts] = useState([])
-  const showToast = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  const { showToast } = useToast()
 
   /* ---------- fetch waiters (superClient only) ---------- */
   useEffect(() => {
@@ -242,22 +226,6 @@ const ArchivedOrdersByDate = () => {
   /* ---------- render ---------- */
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         {/* ---- Top strip ---- */}
         <div className="rc-header">

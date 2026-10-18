@@ -70,33 +70,42 @@ const Dashboard = () => {
   ]
 
   return (
-    <div className="db-grid">
-      {sections.map((section) => {
-        const Icon = section.icon
-        return (
-          <button
-            type="button"
-            key={section.path}
-            className="db-card"
-            onClick={() => navigate(section.path)}
-          >
-            <div
-              className="db-card-icon"
-              style={{
-                background: section.tint,
-                color: section.color,
-              }}
+    <div className="db-page">
+      <div className="db-page-header">
+        <h1 className="db-page-title">{Language.dashboard || 'Dashboard'}</h1>
+        <p className="db-page-subtitle">
+          {Language.dashboardHint || 'Choose a section to explore your business.'}
+        </p>
+      </div>
+
+      <div className="db-grid">
+        {sections.map((section) => {
+          const Icon = section.icon
+          return (
+            <button
+              type="button"
+              key={section.path}
+              className="db-card"
+              onClick={() => navigate(section.path)}
             >
-              <CIcon icon={Icon} size="xl" />
-            </div>
-            <div className="db-card-text">
-              <div className="db-card-title">{section.title}</div>
-              <div className="db-card-subtitle">{section.subtitle}</div>
-            </div>
-            <div className="db-card-accent" style={{ background: section.color }} />
-          </button>
-        )
-      })}
+              <div
+                className="db-card-icon"
+                style={{
+                  background: section.tint,
+                  color: section.color,
+                }}
+              >
+                <CIcon icon={Icon} size="xl" />
+              </div>
+              <div className="db-card-text">
+                <div className="db-card-title">{section.title}</div>
+                <div className="db-card-subtitle">{section.subtitle}</div>
+              </div>
+              <div className="db-card-accent" style={{ background: section.color }} />
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

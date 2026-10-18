@@ -15,7 +15,8 @@
   }
 }
 
-@media (min-width: 992px) {
+/* 3 columns only from 1200px up — before that, 2 columns means bigger cards */
+@media (min-width: 1200px) {
   .db-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -25,8 +26,9 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 18px 20px 18px 22px;
+  gap: 18px;
+  padding: 28px 26px 28px 30px;
+  min-height: 140px;
   background: #fff;
   border: 1px solid var(--cui-border-color, #d8dbe0);
   border-radius: 12px;
@@ -65,9 +67,9 @@
 }
 
 .db-card-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -81,15 +83,15 @@
 
 .db-card-title {
   font-weight: 700;
-  font-size: 0.98rem;
+  font-size: 1.1rem;
   color: #1a1a1a;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .db-card-subtitle {
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   color: var(--cui-secondary-color, #6c757d);
-  line-height: 1.35;
+  line-height: 1.45;
 }
 
 @media (max-width: 480px) {
@@ -106,5 +108,37 @@
   }
   .db-card-subtitle {
     font-size: 0.78rem;
+  }
+}
+/* Page wrapper with header */
+.db-page {
+  padding: 4px 0 32px 0;
+}
+
+.db-page-header {
+  margin-bottom: 24px;
+}
+
+.db-page-title {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 4px 0;
+  letter-spacing: -0.01em;
+}
+
+.db-page-subtitle {
+  font-size: 0.92rem;
+  color: var(--cui-secondary-color, #6c757d);
+  margin: 0;
+  max-width: 60ch;
+}
+
+@media (max-width: 767.98px) {
+  .db-page-title {
+    font-size: 1.35rem;
+  }
+  .db-page-subtitle {
+    font-size: 0.85rem;
   }
 }

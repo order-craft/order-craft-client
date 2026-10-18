@@ -1,15 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import {
-  CCard,
-  CCardBody,
-  CButton,
-  CSpinner,
-  CProgress,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-} from '@coreui/react'
+import { CCard, CCardBody, CButton, CSpinner, CProgress } from '@coreui/react'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import axios from 'axios'
 import { io } from 'socket.io-client'
@@ -18,7 +8,6 @@ import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import CIcon from '@coreui/icons-react'
 import {
-  cilPrint,
   cilClock,
   cilFire,
   cilCheckCircle,
@@ -31,11 +20,10 @@ import {
   cilChevronBottom,
   cilChevronTop,
   cilSearch,
-  cilX,
 } from '@coreui/icons'
 import { formatDistanceToNow } from 'date-fns'
 import './OrdersList.css'
-
+import { useToast } from '../../components/toast/ToastProvider'
 const OrdersList = () => {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -53,8 +41,6 @@ const OrdersList = () => {
   const token = GetToken()
   const t = useSelector((state) => state.language)
   const Language = translations[t]
-
-  const [toasts, setToasts] = useState([])
 
   /* ---------- data ---------- */
   const fetchOrders = async () => {
@@ -127,14 +113,9 @@ const OrdersList = () => {
   }
 
   /* ---------- toasts ---------- */
-  const showAlert = (msg, color = 'success') => {
-    const id = Date.now() + Math.random()
-    setToasts((prev) => [...prev, { id, msg, color }])
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id))
-    }, 5000)
-  }
-  const removeToast = (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
+  /* ---------- toasts ---------- */
+  const { showToast } = useToast()
+  const showAlert = (msg, color = 'success') => showToast(msg, color)
 
   /* ---------- status update ---------- */
   const cancelOrder = (orderId) => {
@@ -597,22 +578,6 @@ const OrdersList = () => {
 
   return (
     <>
-      <CToaster position="top-end">
-        {toasts.map(({ id, msg, color }) => (
-          <CToast
-            key={id}
-            autohide
-            delay={5000}
-            color={color}
-            visible
-            onClose={() => removeToast(id)}
-          >
-            <CToastHeader closeButton>{color === 'danger' ? 'Error' : 'Notification'}</CToastHeader>
-            <CToastBody>{msg}</CToastBody>
-          </CToast>
-        ))}
-      </CToaster>
-
       <CCard className="mb-4">
         {/* ---- Header ---- */}
         <div className="ol-header">

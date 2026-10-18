@@ -127,9 +127,8 @@
   body,
   #root {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
-
   /* Cards, containers and rows shrink to fit */
   .card,
   .container,
@@ -164,4 +163,10 @@
   .c-widget-stats-f {
     width: 100%;
   }
+}
+html,
+body,
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
 }
