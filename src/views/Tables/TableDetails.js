@@ -1,26 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   CButton,
-  CCard,
-  CCardBody,
-  CCol,
-  CRow,
-  CModal,
-  CModalBody,
-  CModalFooter,
-  CModalHeader,
-  CModalTitle,
   CDropdown,
   CDropdownToggle,
   CDropdownMenu,
   CDropdownItem,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
   CFormCheck,
   CBadge,
-  CSpinner,
 } from '@coreui/react'
 import { CIcon } from '@coreui/icons-react'
 import {
@@ -45,7 +31,8 @@ import ProductSelectionModal from './ProductSelectionModal'
 import jsPDF from 'jspdf'
 import ManualOrderModal from './OrderModal'
 import { useToast } from '../../components/toast/ToastProvider'
-
+import { useSelector } from 'react-redux'
+import translations from '../../app/Language'
 const TableDetails = () => {
   const { tableId } = useParams()
 
@@ -65,6 +52,8 @@ const TableDetails = () => {
 
   const navigate = useNavigate()
   const token = GetToken()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   const { showToast } = useToast()
 
   /* ---------- data fetching ---------- */
@@ -389,7 +378,7 @@ const TableDetails = () => {
           <div className="td-header-left">
             <CButton color="light" size="sm" onClick={() => navigate(-1)} className="td-back-btn">
               <CIcon icon={cilArrowLeft} />
-              <span>Back</span>
+              <span>{Language.backBtn}</span>
             </CButton>
 
             <div>
@@ -401,7 +390,7 @@ const TableDetails = () => {
                 {orders.length} {orders.length === 1 ? 'order' : 'orders'}
                 {hasUnpaid && (
                   <CBadge color="warning" shape="rounded-pill" className="ms-2">
-                    Unpaid
+                    {Language.Unpaid}
                   </CBadge>
                 )}
               </div>
@@ -413,12 +402,14 @@ const TableDetails = () => {
             <CDropdown>
               <CDropdownToggle color="light" size="sm" className="td-method-toggle">
                 <CIcon icon={cilCreditCard} className="td-method-icon" />
-                <span className="td-method-label">{selectedMethod?.name || 'Payment method'}</span>
+                <span className="td-method-label">
+                  {selectedMethod?.name || Language.paymentMethod}
+                </span>{' '}
                 <CIcon icon={cilChevronBottom} className="td-method-caret" />
               </CDropdownToggle>
               <CDropdownMenu className="td-method-menu">
                 {methods.length === 0 && (
-                  <CDropdownItem disabled>No methods configured</CDropdownItem>
+                  <CDropdownItem disabled>{Language.noMethodsConfigured}</CDropdownItem>
                 )}
                 {methods.map((m) => (
                   <CDropdownItem
@@ -441,7 +432,7 @@ const TableDetails = () => {
               className="td-primary-btn"
             >
               <CIcon icon={cilPlus} className="me-1" />
-              <span className="d-none d-sm-inline">New order</span>
+              <span className="d-none d-sm-inline">{Language.placeOrder}</span>
             </CButton>
 
             {/* Overflow menu */}
@@ -452,7 +443,7 @@ const TableDetails = () => {
               <CDropdownMenu placement="bottom-end" className="td-menu">
                 <CDropdownItem onClick={handlePrintReceipt}>
                   <CIcon icon={cilPrint} className="me-2" />
-                  Print receipt
+                  {Language.printReceipt}
                 </CDropdownItem>
               </CDropdownMenu>
             </CDropdown>
@@ -462,11 +453,13 @@ const TableDetails = () => {
         {/* Summary strip (desktop) */}
         <div className="td-summary-strip d-none d-md-grid">
           <div className="td-summary-cell">
-            <div className="td-summary-label">Unpaid</div>
+            <div className="td-summary-label">{Language.Unpaid}</div>
             <div className="td-summary-value is-danger">{totals.unpaid.toFixed(2)} TND</div>
           </div>
           <div className="td-summary-cell">
-            <div className="td-summary-label">Total (with tips)</div>
+            <div className="td-summary-label">
+              {Language.total} ({Language.WithTips})
+            </div>
             <div className="td-summary-value is-success">{totals.withTips.toFixed(2)} TND</div>
           </div>
         </div>
@@ -478,11 +471,13 @@ const TableDetails = () => {
           <div className="td-bulkbar-left">
             {selectedOrders.length > 0 ? (
               <span className="td-bulkbar-label">
-                {selectedOrders.length} selected · <strong>{selectedTotal} TND</strong>
+                {selectedOrders.length} {Language.selected} · <strong>{selectedTotal} TND</strong>
               </span>
             ) : (
               <span className="td-bulkbar-label">
-                {hasUnpaid ? `Unpaid · ${totals.unpaid.toFixed(2)} TND` : 'Everything is paid'}
+                {hasUnpaid
+                  ? `${Language.Unpaid} · ${totals.unpaid.toFixed(2)} TND`
+                  : Language.allPaid}
               </span>
             )}
           </div>
@@ -497,8 +492,8 @@ const TableDetails = () => {
                 title={!selectedPaymentMethod ? 'Select a payment method first' : undefined}
               >
                 <CIcon icon={cilCheckCircle} className="me-1" />
-                <span className="d-none d-sm-inline">Confirm selected</span>
-                <span className="d-inline d-sm-none">Selected</span>
+                <span className="d-none d-sm-inline">{Language.confirmSelected}</span>
+                <span className="d-inline d-sm-none">{Language.selected}</span>
               </CButton>
             )}
 
@@ -510,8 +505,8 @@ const TableDetails = () => {
               title={!selectedPaymentMethod ? 'Select a payment method first' : undefined}
             >
               <CIcon icon={cilCheckCircle} className="me-1" />
-              <span className="d-none d-sm-inline">Confirm all unpaid</span>
-              <span className="d-inline d-sm-none">All</span>
+              <span className="d-none d-sm-inline">{Language.confirmAll}</span>
+              <span className="d-inline d-sm-none">{Language.confirmAll}</span>
             </CButton>
           </div>
         </div>
@@ -528,11 +523,11 @@ const TableDetails = () => {
         <div className="td-list">
           <div className="td-empty">
             <CIcon icon={cilInfo} size="xl" className="mb-2 text-muted" />
-            <div className="td-empty-title">No orders on this table yet</div>
-            <div className="td-empty-body">Place the first order to get started.</div>
+            <div className="td-empty-title">{Language.noOrdersOnTable}</div>
+            <div className="td-empty-body">{Language.placeFirstOrder}</div>
             <CButton color="primary" onClick={() => setShowManualModal(true)} className="mt-3">
               <CIcon icon={cilPlus} className="me-2" />
-              Place order
+              {Language.placeOrder}
             </CButton>
           </div>
         </div>
@@ -565,12 +560,18 @@ const TableDetails = () => {
                   </div>
 
                   <div className="td-row-main">
-                    <p className="td-row-title">Order #{index + 1}</p>
+                    <p className="td-row-title">
+                      {Language.order} #{index + 1}
+                    </p>{' '}
                     <div className="td-row-meta">
                       <span className={`td-status-pill ${status.key}`}>{status.label}</span>
-                      <span>{order.products.length} items</span>
+                      <span>
+                        {order.products.length} {Language.items}
+                      </span>
                       {order.tips ? (
-                        <span className="td-tip-line">· tip {order.tips.toFixed(2)} TND</span>
+                        <span className="td-tip-line">
+                          · {Language.tips} {order.tips.toFixed(2)} TND
+                        </span>
                       ) : null}
                     </div>
                   </div>
@@ -578,7 +579,7 @@ const TableDetails = () => {
                   <div className="td-row-actions">
                     <div className="td-row-amount">
                       {unpaid.toFixed(2)} TND
-                      <small>unpaid</small>
+                      <small>{Language.unpaid}</small>
                     </div>
 
                     <CButton
@@ -591,8 +592,8 @@ const TableDetails = () => {
                         handleDetailsClick(index)
                       }}
                       disabled={order.payed}
-                      title="Product-level payment"
-                      aria-label="Product-level payment"
+                      title={Language.productLevelPayment}
+                      aria-label={Language.productLevelPayment}
                     >
                       <CIcon icon={cilListRich} />
                     </CButton>
@@ -606,7 +607,7 @@ const TableDetails = () => {
                         e.stopPropagation()
                         toggleRow(order._id)
                       }}
-                      aria-label={isExpanded ? 'Hide items' : 'Show items'}
+                      aria-label={isExpanded ? Language.hideDetails : Language.details}
                     >
                       <CIcon icon={isExpanded ? cilChevronTop : cilChevronBottom} />
                     </CButton>
@@ -618,10 +619,10 @@ const TableDetails = () => {
                     <table className="td-expand-table">
                       <thead>
                         <tr>
-                          <th>Item</th>
-                          <th className="num">Qty</th>
-                          <th className="num">Unit</th>
-                          <th className="num">Total</th>
+                          <th>{Language.item}</th>
+                          <th className="num">{Language.quantity}</th>
+                          <th className="num">{Language.price}</th>
+                          <th className="num">{Language.total}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -654,11 +655,11 @@ const TableDetails = () => {
       {/* ---------- Mobile sticky summary ---------- */}
       <div className="td-mobile-summary d-md-none">
         <div className="td-summary-cell">
-          <div className="td-summary-label">Unpaid</div>
+          <div className="td-summary-label">{Language.Unpaid}</div>{' '}
           <div className="td-summary-value is-danger">{totals.unpaid.toFixed(2)}</div>
         </div>
         <div className="td-summary-cell">
-          <div className="td-summary-label">With tips</div>
+          <div className="td-summary-label">{Language.WithTips}</div>{' '}
           <div className="td-summary-value is-success">{totals.withTips.toFixed(2)}</div>
         </div>
       </div>
@@ -667,7 +668,7 @@ const TableDetails = () => {
       <button
         className="td-fab d-md-none"
         onClick={() => setShowManualModal(true)}
-        aria-label="Place order"
+        aria-label={Language.placeOrder}
       >
         <CIcon icon={cilPlus} size="lg" />
       </button>

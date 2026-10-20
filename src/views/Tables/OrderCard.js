@@ -1,4 +1,4 @@
-import { React, useEffect, useRef, useState } from "react";
+import { React, useEffect, useRef, useState } from 'react'
 import {
   CAlert,
   CBadge,
@@ -19,108 +19,89 @@ import {
   CToastBody,
   CToaster,
   CToastHeader,
-} from "@coreui/react";
-import translations from "../../app/Language";
-import { useSelector } from "react-redux";
-import CIcon from "@coreui/icons-react";
-import {
-  cilCheckCircle,
-  cilCreditCard,
-  cilMoney,
-  cilPrint,
-} from "@coreui/icons";
-import { GetToken } from "../../helpers/GetToken";
-import axios from "axios";
-import { BaseUrl } from "../../helpers/BaseUrl";
-import {
-  Br,
-  Cut,
-  Line,
-  Printer,
-  render,
-  Row,
-  Text,
-} from "react-thermal-printer";
+} from '@coreui/react'
+import translations from '../../app/Language'
+import { useSelector } from 'react-redux'
+import CIcon from '@coreui/icons-react'
+import { cilCheckCircle, cilCreditCard, cilMoney, cilPrint } from '@coreui/icons'
+import { GetToken } from '../../helpers/GetToken'
+import axios from 'axios'
+import { BaseUrl } from '../../helpers/BaseUrl'
+import { Br, Cut, Line, Printer, render, Row, Text } from 'react-thermal-printer'
 
-const OrderCard = ({
-  order,
-  onClick,
-  paymentMethods,
-  refreshOrders,
-  onShowToast,
-}) => {
-  const t = useSelector((state) => state.language);
-  const Language = translations[t];
-  const token = GetToken();
+const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast }) => {
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+  const token = GetToken()
 
-  const [open, setOpen] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [selectedOrder, setSelectedOrder] = useState();
-  const receiptRef = useRef();
-  const connectorRef = useRef(null);
-  const [ready, setReady] = useState(false);
-  const [printerStatus, setPrinterStatus] = useState("disconnected");
+  const [open, setOpen] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [selectedOrder, setSelectedOrder] = useState()
+  const receiptRef = useRef()
+  const connectorRef = useRef(null)
+  const [ready, setReady] = useState(false)
+  const [printerStatus, setPrinterStatus] = useState('disconnected')
 
   async function createEmulatorConnector() {
-    console.log("[Connector] Attempting WebSocket → ws://localhost:8080");
-    const ws = new WebSocket("ws://localhost:8080");
+    console.log('[Connector] Attempting WebSocket → ws://localhost:8080')
+    const ws = new WebSocket('ws://localhost:8080')
 
     return new Promise((resolve, reject) => {
       ws.onopen = () => {
-        console.log("[Connector] WebSocket open ✅");
-        setPrinterStatus("connected");
+        console.log('[Connector] WebSocket open ✅')
+        setPrinterStatus('connected')
         resolve({
           sendRaw: (buf) => {
-            console.log("[Connector] sendRaw", buf.byteLength, "bytes");
-            ws.send(buf);
+            console.log('[Connector] sendRaw', buf.byteLength, 'bytes')
+            ws.send(buf)
           },
           close: () => {
-            console.log("[Connector] Closing WebSocket");
-            ws.close();
-            setPrinterStatus("disconnected");
+            console.log('[Connector] Closing WebSocket')
+            ws.close()
+            setPrinterStatus('disconnected')
           },
-        });
-      };
+        })
+      }
       ws.onerror = (err) => {
-        console.error("[Connector] WebSocket error ❌", err);
-        setPrinterStatus("error");
-        reject(err);
-      };
+        console.error('[Connector] WebSocket error ❌', err)
+        setPrinterStatus('error')
+        reject(err)
+      }
       ws.onclose = () => {
-        setPrinterStatus("disconnected");
-      };
+        setPrinterStatus('disconnected')
+      }
       setTimeout(() => {
         if (ws.readyState !== WebSocket.OPEN) {
-          setPrinterStatus("timeout");
-          reject(new Error("WS connection timed out"));
+          setPrinterStatus('timeout')
+          reject(new Error('WS connection timed out'))
         }
-      }, 5000);
-    });
+      }, 5000)
+    })
   }
 
   useEffect(() => {
-    console.log("[App] useEffect mount, initializing connector…");
-    (async () => {
+    console.log('[App] useEffect mount, initializing connector…')
+    ;(async () => {
       try {
-        connectorRef.current = await createEmulatorConnector();
-        setReady(true);
-        console.log("[App] Connector initialized, ready = true");
+        connectorRef.current = await createEmulatorConnector()
+        setReady(true)
+        console.log('[App] Connector initialized, ready = true')
       } catch (e) {
-        console.error("[App] Failed to init connector:", e);
-        onShowToast("Failed to connect to printer", "danger");
+        console.error('[App] Failed to init connector:', e)
+        onShowToast('Failed to connect to printer', 'danger')
       }
-    })();
+    })()
 
     return () => {
       if (connectorRef.current) {
-        connectorRef.current.close();
+        connectorRef.current.close()
       }
-    };
-  }, []);
+    }
+  }, [])
 
   async function buildReceipt(order) {
     const receipt = (
@@ -131,48 +112,44 @@ const OrderCard = ({
         <Br />
         <Line />
         {order.products.map((p) => (
-          <Row
-            key={p._id}
-            left={`${p.quantity} × ${p.name}`}
-            right={`$${p.quantity * p.price}`}
-          />
+          <Row key={p._id} left={`${p.quantity} × ${p.name}`} right={`$${p.quantity * p.price}`} />
         ))}
         <Line />
         <Row left="Total" right={`$${order.totalPrice}`} />
         <Br />
         <Cut />
       </Printer>
-    );
+    )
 
-    return render(receipt);
+    return render(receipt)
   }
 
   const handlePrint = async (order) => {
     try {
-      console.log("Attempting to print...");
+      console.log('Attempting to print...')
 
       // First try WebSocket printing
       if (ready && connectorRef.current) {
-        const data = await buildReceipt(order);
-        await connectorRef.current.sendRaw(data.buffer);
-        console.log("Print job sent to emulator");
-        onShowToast("Receipt sent to printer", "success");
-        return;
+        const data = await buildReceipt(order)
+        await connectorRef.current.sendRaw(data.buffer)
+        console.log('Print job sent to emulator')
+        onShowToast('Receipt sent to printer', 'success')
+        return
       }
 
       // Fallback to browser printing
-      handlePrintReceipt(order);
+      handlePrintReceipt(order)
     } catch (error) {
-      console.error("Printing failed:", error);
+      console.error('Printing failed:', error)
       // Fallback to browser printing
-      handlePrintReceipt(order);
+      handlePrintReceipt(order)
     }
-  };
+  }
 
   const handlePrintReceipt = () => {
     try {
-      const receiptHtml = receiptRef.current.innerHTML;
-      const printWindow = window.open("", "_blank", "width=300,height=600");
+      const receiptHtml = receiptRef.current.innerHTML
+      const printWindow = window.open('', '_blank', 'width=300,height=600')
       printWindow.document.writeln(`
         <html>
           <head>
@@ -186,48 +163,48 @@ const OrderCard = ({
           </head>
           <body>${receiptHtml}</body>
         </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
+      `)
+      printWindow.document.close()
+      printWindow.focus()
       setTimeout(() => {
-        printWindow.print();
-        printWindow.close();
-      }, 500);
+        printWindow.print()
+        printWindow.close()
+      }, 500)
     } catch (error) {
-      console.error("Browser printing failed:", error);
-      onShowToast("Failed to open print dialog", "danger");
+      console.error('Browser printing failed:', error)
+      onShowToast('Failed to open print dialog', 'danger')
     }
-  };
+  }
 
   // Map status to badge color
   const statusColor = (status) => {
     switch (status) {
-      case "pending":
-        return "warning";
-      case "preparing":
-        return "info";
-      case "completed":
-        return "success";
+      case 'pending':
+        return 'warning'
+      case 'preparing':
+        return 'info'
+      case 'completed':
+        return 'success'
       default:
-        return "secondary";
+        return 'secondary'
     }
-  };
+  }
 
   // Map type to badge color
   const typeColor = (type) => {
     switch (type) {
-      case "to-go":
-        return "primary";
-      case "delivery":
-        return "dark";
+      case 'to-go':
+        return 'primary'
+      case 'delivery':
+        return 'dark'
       default:
-        return "secondary";
+        return 'secondary'
     }
-  };
+  }
 
   const handleConfirmPayment = async () => {
-    setLoading(true);
-    setError("");
+    setLoading(true)
+    setError('')
 
     try {
       const response = await axios.put(
@@ -239,98 +216,74 @@ const OrderCard = ({
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         },
-      );
+      )
 
       if (response.status === 200) {
-        const {
-          message,
-          updatedOrder,
-          warnings = [],
-          insufficientMaterials = [],
-        } = response.data;
+        const { message, updatedOrder, warnings = [], insufficientMaterials = [] } = response.data
 
-        refreshOrders();
+        refreshOrders()
 
-        onShowToast(message || "Order confirmed successfully", "success");
+        onShowToast(message || 'Order confirmed successfully', 'success')
 
         if (warnings.length > 0) {
           warnings.forEach((warning) => {
             setTimeout(() => {
-              onShowToast(warning, "warning");
-            }, 500);
-          });
+              onShowToast(warning, 'warning')
+            }, 500)
+          })
         }
 
         if (insufficientMaterials.length > 0) {
-          const materialsText = insufficientMaterials.join(", ");
+          const materialsText = insufficientMaterials.join(', ')
           setTimeout(
             () => {
-              onShowToast(
-                `Insufficient stock for materials: ${materialsText}`,
-                "warning",
-              );
+              onShowToast(`Insufficient stock for materials: ${materialsText}`, 'warning')
             },
             warnings.length > 0 ? 1000 : 500,
-          );
+          )
         }
         if (response.data.deficits && response.data.deficits.length > 0) {
           response.data.deficits.forEach((d, idx) => {
-            const msg = `${d.rawMaterialName}: needed ${d.needed}${d.unit}, had ${d.available}${d.unit} — ${d.deficit}${d.unit} short`;
+            const msg = `${d.rawMaterialName}: needed ${d.needed}${d.unit}, had ${d.available}${d.unit} — ${d.deficit}${d.unit} short`
             setTimeout(
-              () => onShowToast(msg, "warning"),
-              warnings.length * 500 +
-                insufficientMaterials.length * 500 +
-                500 * (idx + 1),
-            );
-          });
-        }
-        if (response.data.deficits && response.data.deficits.length > 0) {
-          response.data.deficits.forEach((d, idx) => {
-            const msg = `${d.rawMaterialName}: needed ${d.needed}${d.unit}, had ${d.available}${d.unit} — ${d.deficit}${d.unit} short`;
-            setTimeout(
-              () => onShowToast(msg, "warning"),
-              warnings.length * 500 +
-                insufficientMaterials.length * 500 +
-                500 * (idx + 1),
-            );
-          });
+              () => onShowToast(msg, 'warning'),
+              warnings.length * 500 + insufficientMaterials.length * 500 + 500 * (idx + 1),
+            )
+          })
         }
 
-        setSuccess(true);
+        setSuccess(true)
         setTimeout(() => {
-          setSuccess(false);
-          setShowPaymentModal(false);
-          setPaymentMethod("");
-          setSelectedOrder("");
-        }, 1500);
+          setSuccess(false)
+          setShowPaymentModal(false)
+          setPaymentMethod('')
+          setSelectedOrder('')
+        }, 1500)
       } else {
-        onShowToast("Failed to confirm payment", "danger");
-        console.error("Failed to confirm payment");
+        onShowToast('Failed to confirm payment', 'danger')
+        console.error('Failed to confirm payment')
       }
     } catch (error) {
-      let errorMessage = "Failed to confirm payment";
+      let errorMessage = 'Failed to confirm payment'
       if (error.response) {
-        errorMessage =
-          error.response.data?.error ||
-          error.response.data?.message ||
-          errorMessage;
+        errorMessage = error.response.data?.error || error.response.data?.message || errorMessage
       } else if (error.request) {
-        errorMessage = "Network error. Please check your connection.";
+        errorMessage = 'Network error. Please check your connection.'
       }
-      onShowToast(errorMessage, "danger");
-      setError(errorMessage);
-      console.error("Failed to confirm payment:", error);
+      onShowToast(errorMessage, 'danger')
+      setError(errorMessage)
+      console.error('Failed to confirm payment:', error)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <CCol xs={12} sm={6} md={6} lg={4} xl={3}>
-      <CCard className="h-100 clickable-card" style={{ cursor: "pointer" }}>
+      <CCard className="h-100 clickable-card" style={{ cursor: 'pointer' }}>
         <CCardHeader className="d-flex justify-content-between align-items-center">
           <strong>
             {Language.order} #{order.orderNumber}
@@ -341,34 +294,34 @@ const OrderCard = ({
             <CBadge
               size="sm"
               color={
-                printerStatus === "connected"
-                  ? "success"
-                  : printerStatus === "error"
-                    ? "danger"
-                    : "warning"
+                printerStatus === 'connected'
+                  ? 'success'
+                  : printerStatus === 'error'
+                    ? 'danger'
+                    : 'warning'
               }
               className="me-1"
             >
-              {printerStatus === "connected"
-                ? "Printer Ready"
-                : printerStatus === "error"
-                  ? "Printer Error"
-                  : "Printer Offline"}
+              {printerStatus === 'connected'
+                ? 'Printer Ready'
+                : printerStatus === 'error'
+                  ? 'Printer Error'
+                  : 'Printer Offline'}
             </CBadge>
 
             {/* Confirm payment button */}
             <CButton
-              color={order.payed ? "secondary" : "success"}
+              color={order.payed ? 'secondary' : 'success'}
               size="sm"
               onClick={() => {
                 if (!order.payed) {
-                  setSelectedOrder(order._id);
-                  setShowPaymentModal(true);
+                  setSelectedOrder(order._id)
+                  setShowPaymentModal(true)
                 }
               }}
               disabled={order.payed}
               className="rounded-pill px-3 py-2 m-1 d-flex align-items-center shadow-sm"
-              title={order.payed ? "Already paid" : "Mark as paid"}
+              title={order.payed ? Language.alreadyPaid : Language.markAsPaid}
             >
               <CIcon icon={order.payed ? cilCheckCircle : cilCreditCard} />
             </CButton>
@@ -379,7 +332,7 @@ const OrderCard = ({
               size="sm"
               onClick={() => handlePrint(order)}
               className="rounded-pill px-3 py-2 m-1 d-flex align-items-center border shadow-sm"
-              title="Print receipt"
+              title={Language.printReceiptShort}
             >
               <CIcon icon={cilPrint} />
             </CButton>
@@ -400,13 +353,13 @@ const OrderCard = ({
           {/* Products toggle header */}
           <div
             onClick={(e) => {
-              e.stopPropagation();
-              setOpen(!open);
+              e.stopPropagation()
+              setOpen(!open)
             }}
             style={{
-              cursor: "pointer",
+              cursor: 'pointer',
               fontWeight: 500,
-              marginBottom: "0.5rem",
+              marginBottom: '0.5rem',
             }}
           >
             {open
@@ -418,10 +371,7 @@ const OrderCard = ({
           {open && (
             <div className="mb-2">
               {order.products.map((prod) => (
-                <div
-                  key={prod.product._id}
-                  className="d-flex justify-content-between"
-                >
+                <div key={prod.product._id} className="d-flex justify-content-between">
                   <span>
                     {prod.quantity} × {prod.product.name}
                   </span>
@@ -433,25 +383,20 @@ const OrderCard = ({
 
           {/* Total Price */}
           <div className="mb-2">
-            <small className="text-muted">{Language.total || "Total"}: </small>
+            <small className="text-muted">{Language.total || 'Total'}: </small>
             <strong>{order.totalPrice} DT</strong>
           </div>
         </CCardBody>
 
         {/* Payment Method Modal */}
-        <CModal
-          visible={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-        >
+        <CModal visible={showPaymentModal} onClose={() => setShowPaymentModal(false)}>
           <CModalHeader>
             <CModalTitle>{Language.confirmPayment}</CModalTitle>
           </CModalHeader>
           <CModalBody>
             {/* error or success alerts */}
             {error && <CAlert color="danger">{error}</CAlert>}
-            {success && (
-              <CAlert color="success">{Language.paymentSuccess}</CAlert>
-            )}
+            {success && <CAlert color="success">{Language.paymentSuccess}</CAlert>}
 
             {!success && (
               <>
@@ -471,17 +416,10 @@ const OrderCard = ({
             )}
           </CModalBody>
           <CModalFooter>
-            <CButton
-              color="secondary"
-              onClick={() => setShowPaymentModal(false)}
-            >
+            <CButton color="secondary" onClick={() => setShowPaymentModal(false)}>
               {Language.cancel}
             </CButton>
-            <CButton
-              color="primary"
-              disabled={!paymentMethod}
-              onClick={handleConfirmPayment}
-            >
+            <CButton color="primary" disabled={!paymentMethod} onClick={handleConfirmPayment}>
               {loading && <CSpinner size="sm" className="me-2" />}
               {Language.confirm}
             </CButton>
@@ -489,39 +427,35 @@ const OrderCard = ({
         </CModal>
 
         {/* Hidden Receipt Template */}
-        <div style={{ display: "none" }}>
+        <div style={{ display: 'none' }}>
           <div ref={receiptRef}>
             <h3>{Language.receiptTitle}</h3>
             <p>
               {Language.order} #{order.orderNumber}
             </p>
-            <p>Date: {new Date(order.createdAt).toLocaleString()}</p>
+            <p>
+              {Language.date}: {new Date(order.createdAt).toLocaleString()}
+            </p>
             <ul>
               {order.products.map((prod) => (
                 <li key={prod.product._id}>
-                  {prod.product.name} × {prod.quantity} —{" "}
-                  {prod.product.price * prod.quantity}DT
+                  {prod.product.name} × {prod.quantity} — {prod.product.price * prod.quantity}DT
                 </li>
               ))}
             </ul>
             <p>
               <strong>
-                {Language.total}:{" "}
-                {order.products.reduce(
-                  (sum, p) => sum + p.quantity * p.product.price,
-                  0,
-                )}
+                {Language.total}:{' '}
+                {order.products.reduce((sum, p) => sum + p.quantity * p.product.price, 0)}
                 DT
               </strong>
             </p>
-            {order.payed && (
-              <p>Payment Method: {order.paymentMethod?.name || "Unknown"}</p>
-            )}
+            {order.payed && <p>Payment Method: {order.paymentMethod?.name || 'Unknown'}</p>}
           </div>
         </div>
       </CCard>
     </CCol>
-  );
-};
+  )
+}
 
-export default OrderCard;
+export default OrderCard

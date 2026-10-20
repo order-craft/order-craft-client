@@ -80,7 +80,7 @@ const MonthBarChart = () => {
       <div className="pp-card-header">
         <div className="pp-card-header-left">
           <h5 className="pp-card-title">
-            {Language.revenuePerProductMonthBar || 'Revenue per product — ranked'}
+            {Language.RevenuePerProductMonthBar  || 'Revenue per product — ranked'}
           </h5>
           <div className="pp-card-subtitle">
             {Language.totalRevenueMonthHint || 'Total revenue, year to date'}

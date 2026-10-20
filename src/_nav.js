@@ -102,7 +102,7 @@ const NavItems = () => {
         },
         {
           component: CNavItem,
-          name: 'Payment Methods',
+          name: Language.paymentMethod || 'Payment Methods',
           to: '/payment-methods',
           icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
         },
@@ -143,7 +143,7 @@ const NavItems = () => {
         },
         {
           component: CNavItem,
-          name: 'Guru',
+          name: Language?.guru || 'Guru',
           to: '/tables/guru',
           icon: <CIcon icon={cilDiamond} customClassName="nav-icon" />,
         },

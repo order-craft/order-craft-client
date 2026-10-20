@@ -113,7 +113,7 @@ const RevenuePerProduct2dates = () => {
           </div>
         </div>
         <CButton color="primary" onClick={fetchData} disabled={loading}>
-          {Language.Apply || 'Apply'}
+          {Language.apply || 'Apply'}
         </CButton>
       </div>
 

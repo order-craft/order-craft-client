@@ -81,7 +81,9 @@ const StockInventory = () => {
                 {Language.stockInventory || 'Stock Inventory'}
               </h5>
               <div className="si-subtitle">
-                Manage your raw materials, track stock, and build recipes.
+                {Language.manageInventorySubtitle ||
+                  'Manage your raw materials, track stock, and build recipes.'}
+                .
               </div>
             </div>
           </div>

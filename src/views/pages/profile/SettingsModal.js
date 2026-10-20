@@ -11,7 +11,8 @@ import {
   cilWarning,
 } from '@coreui/icons'
 import './profile.css'
-
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 const SettingsModal = ({
   visible,
   onClose,
@@ -30,7 +31,8 @@ const SettingsModal = ({
 }) => {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   useEffect(() => {
     if (visible) {
       setSubmitting(false)
@@ -41,7 +43,7 @@ const SettingsModal = ({
   /* ---------- step 1: request a code ---------- */
   const handleSendCode = async () => {
     if (!oldPassword) {
-      setError('Enter your current password first.')
+      setError(Language.errEnterCurrentPassword || 'Enter your current password first.')
       return
     }
     setError('')
@@ -56,15 +58,15 @@ const SettingsModal = ({
   /* ---------- step 2: submit new password ---------- */
   const handleChangePassword = async () => {
     if (!confirmationCode || confirmationCode.length < 6) {
-      setError('Enter the 6-digit code from your email.')
+      setError(Language.errEnterCode || 'Enter the 6-digit code from your email.')
       return
     }
     if (!newPassword || newPassword.length < 6) {
-      setError('Your new password must be at least 6 characters.')
+      setError(Language.errPasswordTooShort || 'Your new password must be at least 6 characters.')
       return
     }
     if (newPassword !== confirmPassword) {
-      setError("The two passwords don't match.")
+      setError(Language.errPasswordsDontMatch || "The two passwords don't match.")
       return
     }
     setError('')
@@ -89,7 +91,7 @@ const SettingsModal = ({
       <div className="pf-modal-header">
         <h5 className="pf-modal-title">
           <CIcon icon={cilLockLocked} />
-          Account security
+          {Language.accountSecurity || 'Account security'}
         </h5>
         <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
           &times;
@@ -108,19 +110,21 @@ const SettingsModal = ({
         {!emailSent ? (
           /* ----- Step 1: current password ----- */
           <div className="pf-section">
-            <div className="pf-section-title">Step 1 · Verify your identity</div>
+            <div className="pf-section-title">
+              {Language.step1Verify || 'Step 1 · Verify your identity'}
+            </div>
             <p className="pf-modal-hint">
-              For security, we'll send a 6-digit code to the email address on your account before
-              you can change your password.
+              {Language.verifyCodeHint ||
+                "For security, we'll send a 6-digit code to the email address on your account before you can change your password."}
             </p>
 
             <label className="pf-field-label" htmlFor="pf-old-password">
-              Current password
+              {Language.currentPassword || 'Current password'}
             </label>
             <CFormInput
               id="pf-old-password"
               type="password"
-              placeholder="Enter your current password"
+              placeholder={Language.currentPassword || 'Enter your current password'}
               value={oldPassword}
               autoFocus
               autoComplete="current-password"
@@ -133,13 +137,16 @@ const SettingsModal = ({
         ) : (
           /* ----- Step 2: code + new password ----- */
           <div className="pf-section">
-            <div className="pf-section-title">Step 2 · Set a new password</div>
+            <div className="pf-section-title">
+              {Language.step2NewPassword || 'Step 2 · Set a new password'}
+            </div>
             <p className="pf-modal-hint">
-              We've emailed a code to you. Enter it below along with your new password.
+              {Language.checkInbox ||
+                "We've emailed a code to you. Enter it below along with your new password."}
             </p>
 
             <label className="pf-field-label" htmlFor="pf-code">
-              Verification code
+              {Language.verificationCode || 'Verification code'}
             </label>
             <CFormInput
               id="pf-code"
@@ -158,12 +165,12 @@ const SettingsModal = ({
             />
 
             <label className="pf-field-label" htmlFor="pf-new-password" style={{ marginTop: 14 }}>
-              New password
+              {Language.newPassword || 'New password'}
             </label>
             <CFormInput
               id="pf-new-password"
               type="password"
-              placeholder="At least 6 characters"
+              placeholder={Language.newPasswordPlaceholder || 'At least 6 characters'}
               value={newPassword}
               autoComplete="new-password"
               onChange={(e) => {
@@ -177,12 +184,12 @@ const SettingsModal = ({
               htmlFor="pf-confirm-password"
               style={{ marginTop: 14 }}
             >
-              Confirm new password
+              {Language.confirmPassword || 'Confirm new password'}
             </label>
             <CFormInput
               id="pf-confirm-password"
               type="password"
-              placeholder="Repeat the new password"
+              placeholder={Language.confirmNewPasswordPlaceholder || 'Repeat the new password'}
               value={confirmPassword}
               autoComplete="new-password"
               onChange={(e) => {
@@ -200,11 +207,13 @@ const SettingsModal = ({
           <>
             <CButton color="secondary" variant="outline" onClick={onClose} disabled={submitting}>
               <CIcon icon={cilX} className="me-2" />
-              Cancel
+              {Language.cancel || 'Cancel'}
             </CButton>
             <CButton color="primary" onClick={handleSendCode} disabled={submitting || !oldPassword}>
               <CIcon icon={cilEnvelopeOpen} className="me-2" />
-              {submitting ? 'Sending…' : 'Send verification code'}
+              {submitting
+                ? Language.sending || 'Sending…'
+                : Language.sendVerificationCode || 'Send verification code'}
             </CButton>
           </>
         ) : (
@@ -219,7 +228,7 @@ const SettingsModal = ({
               disabled={submitting}
             >
               <CIcon icon={cilArrowLeft} className="me-2" />
-              Back
+              {Language.backBtn || 'Back'}
             </CButton>
             <CButton
               color="success"
@@ -233,7 +242,9 @@ const SettingsModal = ({
               }
             >
               <CIcon icon={cilCheck} className="me-2" />
-              {submitting ? 'Updating…' : 'Update password'}
+              {submitting
+                ? Language.updating || 'Updating…'
+                : Language.updatePassword || 'Update password'}
             </CButton>
           </>
         )}

@@ -94,20 +94,23 @@ const YearlyRevenue = ({ className }) => {
 
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text('Yearly Revenue Report', 14, 18)
-
+    doc.text(Language.yearlyRevenueReport || 'Yearly Revenue Report', 14, 18)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(120)
     doc.text(String(currentYear), 14, 25)
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 31)
-
+    doc.text(
+      `${Language.Generatedon || 'Generated on'}: ${new Date().toLocaleDateString()}`,
+      14,
+      31,
+    )
     doc.setTextColor(0)
     doc.setFontSize(11)
-    doc.text(`Total: ${totalRevenue.toFixed(2)} TND`, pageWidth - 15, 18, { align: 'right' })
-
+    doc.text(`${Language.total || 'Total'}: ${totalRevenue.toFixed(2)} TND`, pageWidth - 15, 18, {
+      align: 'right',
+    })
     doc.autoTable({
-      head: [['Month', 'Revenue (TND)']],
+      head: [[Language.Month || 'Month', `${Language.revenue || 'Revenue'} (TND)`]],
       body: rows.map((r) => [r.month, r.revenue.toFixed(2)]),
       startY: 40,
       headStyles: {
@@ -214,7 +217,7 @@ const YearlyRevenue = ({ className }) => {
                   labels: rows.map((r) => r.shortMonth),
                   datasets: [
                     {
-                      label: 'Monthly revenue',
+                      label: Language.MonthlyRevenue || 'Monthly revenue',
                       backgroundColor: 'rgba(13, 110, 253, 0.1)',
                       borderColor: 'rgba(13, 110, 253, 0.9)',
                       borderWidth: 2,

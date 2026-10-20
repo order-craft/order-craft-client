@@ -20,7 +20,8 @@ import SettingsModal from './SettingsModal'
 import PDVerificationModal from './PDVerificationModal'
 import AlertToast from '../../../components/toast/AlertToast'
 import './profile.css'
-
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 const Profile = () => {
   const token = GetToken()
 
@@ -51,7 +52,8 @@ const Profile = () => {
 
   // personal details flow
   const [PDVerifCode, setPDVerifCode] = useState('')
-
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   /* ---------- fetch ---------- */
   const fetchUserData = async () => {
     setLoading(true)
@@ -254,7 +256,7 @@ const Profile = () => {
           <CIcon icon={cilWarning} />
           <div style={{ flex: 1 }}>{error}</div>
           <CButton size="sm" color="danger" onClick={fetchUserData}>
-            Retry
+            {Language.retry}
           </CButton>
         </CAlert>
       </div>
@@ -286,10 +288,10 @@ const Profile = () => {
             </div>
 
             <div className="pf-identity-body">
-              <div className="pf-name">{data?.fullName || 'Your name'}</div>
+              <div className="pf-name">{data?.fullName || Language.FullName}</div>
               <div className="pf-role">
                 <CIcon icon={cilBuilding} />
-                {data?.placeName || 'Your business'}
+                {data?.placeName || Language.placeName}
               </div>
 
               <div className="pf-info-list">
@@ -298,7 +300,7 @@ const Profile = () => {
                     <CIcon icon={cilEnvelopeOpen} />
                   </div>
                   <div className="pf-info-text">
-                    <div className="pf-info-label">Email</div>
+                    <div className="pf-info-label">{Language.emailAddress}</div>{' '}
                     <div className="pf-info-value">{data?.email || '—'}</div>
                   </div>
                 </div>
@@ -307,7 +309,7 @@ const Profile = () => {
                     <CIcon icon={cilLocationPin} />
                   </div>
                   <div className="pf-info-text">
-                    <div className="pf-info-label">Location</div>
+                    <div className="pf-info-label">{Language.location}</div>{' '}
                     <div className="pf-info-value">{data?.PlaceAddress || '—'}</div>
                   </div>
                 </div>
@@ -322,13 +324,13 @@ const Profile = () => {
           <div className="pf-card">
             <div className="pf-card-header">
               <CIcon icon={cilLockLocked} />
-              <span>Account security</span>
+              <span>{Language.accountSecurity}</span>
             </div>
             <div className="pf-card-body">
-              <p className="pf-card-hint">Change your password and keep your account secure.</p>
+              <p className="pf-card-hint">{Language.passwordHint}</p>
               <CButton color="primary" onClick={() => setVisible(true)} className="pf-btn">
                 <CIcon icon={cilLockLocked} className="me-2" />
-                Change password
+                {Language.changePassword}
               </CButton>
             </div>
           </div>
@@ -337,7 +339,7 @@ const Profile = () => {
           <div className="pf-card">
             <div className="pf-card-header">
               <CIcon icon={cilHome} />
-              <span>Business details</span>
+              <span>{Language.businessDetails}</span>
             </div>
             <div className="pf-card-body">
               <div className="pf-preview-row">
@@ -349,13 +351,11 @@ const Profile = () => {
                   )}
                 </div>
                 <div className="pf-preview-text">
-                  <div className="pf-info-value">{data?.placeName || 'Your business'}</div>
-                  <div className="pf-info-label">{data?.PlaceAddress || 'No address set'}</div>
+                  <div className="pf-info-value">{data?.placeName || Language.placeName}</div>
+                  <div className="pf-info-label">{data?.PlaceAddress || Language.location}</div>
                 </div>
               </div>
-              <p className="pf-card-hint">
-                Update the place name, address, branding, and the order workflow.
-              </p>
+              <p className="pf-card-hint">{Language.businessDetailsHint}</p>
               <CButton
                 color="secondary"
                 variant="outline"
@@ -363,7 +363,7 @@ const Profile = () => {
                 className="pf-btn"
               >
                 <CIcon icon={cilHome} className="me-2" />
-                Edit business details
+                {Language.editBusinessDetails}
               </CButton>
             </div>
           </div>
@@ -372,12 +372,10 @@ const Profile = () => {
           <div className="pf-card">
             <div className="pf-card-header">
               <CIcon icon={cilUser} />
-              <span>Personal information</span>
+              <span>{Language.personalInformation}</span>
             </div>
             <div className="pf-card-body">
-              <p className="pf-card-hint">
-                Update your email and personal phone number. We'll send a verification code.
-              </p>
+              <p className="pf-card-hint">{Language.personalInfoHint}</p>
               <CButton
                 color="secondary"
                 variant="outline"
@@ -385,7 +383,7 @@ const Profile = () => {
                 className="pf-btn"
               >
                 <CIcon icon={cilUser} className="me-2" />
-                Edit personal information
+                {Language.editPersonalInformation}
               </CButton>
             </div>
           </div>

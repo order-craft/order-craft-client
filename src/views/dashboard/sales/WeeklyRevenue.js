@@ -95,20 +95,28 @@ const CurrentWeekRevenue = ({ className }) => {
 
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text('Current Week Revenue', 14, 18)
-
+    doc.text(Language.CurrentWeekRevenue || 'Current Week Revenue', 14, 18)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(120)
     doc.text(`${format(weekStart, 'MMM dd')} → ${format(weekEnd, 'MMM dd, yyyy')}`, 14, 25)
-    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 31)
-
+    doc.text(
+      `${Language.Generatedon || 'Generated on'}: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`,
+      14,
+      31,
+    )
     doc.setTextColor(0)
     doc.setFontSize(11)
-    doc.text(`Total: ${totalWeekRevenue.toFixed(2)} TND`, pageWidth - 15, 18, { align: 'right' })
-
+    doc.text(
+      `${Language.total || 'Total'}: ${totalWeekRevenue.toFixed(2)} TND`,
+      pageWidth - 15,
+      18,
+      { align: 'right' },
+    )
     doc.autoTable({
-      head: [['Day', 'Date', 'Revenue (TND)']],
+      head: [
+        [Language.Day || 'Day', Language.date || 'Date', `${Language.revenue || 'Revenue'} (TND)`],
+      ],
       body: completeWeeklyData.map((item) => [
         item.dayName,
         item.date,
@@ -207,7 +215,10 @@ const CurrentWeekRevenue = ({ className }) => {
                 >
                   <CIcon icon={growthPositive ? cilArrowTop : cilArrowBottom} />
                   {Math.abs(growthRate).toFixed(1)}%
-                  <span style={{ fontWeight: 500, opacity: 0.8 }}>vs last week</span>
+                  <span style={{ fontWeight: 500, opacity: 0.8 }}>
+                    {' '}
+                    {Language.vsLastWeek || 'vs last week'}
+                  </span>
                 </span>
               </div>
             </div>

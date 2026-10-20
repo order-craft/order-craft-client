@@ -196,9 +196,11 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
         <div className="si-section-top-left">
           <h5 className="si-section-title">{Language.inventory || 'Inventory'}</h5>
           <div className="si-section-meta">
-            <strong>{inventory.length}</strong> {inventory.length === 1 ? 'item' : 'items'} tracked
+            <strong>{inventory.length}</strong>{' '}
+            {inventory.length === 1 ? Language.item || 'item' : Language.items || 'items'}{' '}
+            {Language.tracked || 'tracked'}
             {' · '}
-            <strong>{lowStockRaw.length}</strong> low stock
+            <strong>{lowStockRaw.length}</strong> {Language.lowStock || 'low stock'}
           </div>
         </div>
 
@@ -309,7 +311,7 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                         variant="outline"
                         size="sm"
                         onClick={() => openEdit(item)}
-                        aria-label="Edit"
+                        aria-label={Language.edit || 'Edit'}
                       >
                         <CIcon icon={cilPencil} />
                       </CButton>
@@ -318,7 +320,7 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                         variant="outline"
                         size="sm"
                         onClick={() => handleDelete(item._id)}
-                        aria-label="Delete"
+                        aria-label={Language.delete || 'Delete'}
                       >
                         <CIcon icon={cilTrash} />
                       </CButton>
@@ -361,7 +363,8 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                         </strong>
                       </span>
                       <span className="si-row-tag is-danger">
-                        Deficit {item.deficit} {item.rawMaterial?.unit || ''}
+                        {Language.deficit || 'Deficit'} {item.deficit}{' '}
+                        {item.rawMaterial?.unit || ''}
                       </span>
                     </div>
                     <div className="si-inv-progress">
@@ -401,7 +404,7 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
           <button
             className="si-modal-close"
             onClick={closeReceive}
-            aria-label="Close"
+            aria-label={Language.close || 'Close'}
             type="button"
           >
             &times;

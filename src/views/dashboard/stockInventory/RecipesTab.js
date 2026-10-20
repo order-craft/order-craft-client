@@ -114,14 +114,16 @@ const RecipesTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
   /* ---------- validation ---------- */
   const validate = () => {
     const e = {}
-    if (!form.productId) e.productId = 'Please select a product'
-    if (form.rawMaterials.length === 0) e.rawMaterials = 'Add at least one ingredient'
+    if (!form.productId) e.productId = Language.selectProductRequired || 'Please select a product'
+    if (form.rawMaterials.length === 0)
+      e.rawMaterials = Language.addAtLeastOneIngredient || 'Add at least one ingredient'
 
     const perRow = form.rawMaterials.map((row) => {
       const r = {}
-      if (!row.rawMaterialId) r.rawMaterialId = 'Required'
+      if (!row.rawMaterialId) r.rawMaterialId = Language.required || 'Required'
       const qty = parseFloat(row.quantityPerUnit)
-      if (isNaN(qty) || qty <= 0) r.quantityPerUnit = 'Must be > 0'
+      if (isNaN(qty) || qty <= 0)
+        r.quantityPerUnit = Language.mustBeGreaterThanZero || 'Must be > 0'
       return r
     })
 
@@ -199,11 +201,13 @@ const RecipesTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
         <div className="si-section-top-left">
           <h5 className="si-section-title">{Language.recipes || 'Recipes'}</h5>
           <div className="si-section-meta">
-            <strong>{recipes.length}</strong> {recipes.length === 1 ? 'recipe' : 'recipes'}
+            <strong>{recipes.length}</strong>{' '}
+            {recipes.length === 1 ? Language.recipe || 'recipe' : Language.recipes || 'recipes'}
             {' · '}
-            <strong>{totalIngredients}</strong> ingredients
+            <strong>{totalIngredients}</strong> {Language.ingredients || 'ingredients'}
             {' · '}
-            <strong>{productsWithoutRecipe}</strong> products without recipe
+            <strong>{productsWithoutRecipe}</strong>{' '}
+            {Language.productsWithoutRecipe || 'products without recipe'}
           </div>
         </div>
 
@@ -270,7 +274,12 @@ const RecipesTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
               ? Language.editRecipe || 'Edit recipe'
               : Language.addRecipe || 'Add recipe'}
           </h5>
-          <button className="si-modal-close" onClick={closeModal} aria-label="Close" type="button">
+          <button
+            className="si-modal-close"
+            onClick={closeModal}
+            aria-label={Language.close || 'Close'}
+            type="button"
+          >
             &times;
           </button>
         </div>
@@ -346,7 +355,7 @@ const RecipesTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                     size="sm"
                     onClick={() => removeRow(idx)}
                     disabled={form.rawMaterials.length <= 1}
-                    aria-label="Remove ingredient"
+                    aria-label={Language.removeIngredient || 'Remove ingredient'}
                   >
                     <CIcon icon={cilTrash} />
                   </CButton>

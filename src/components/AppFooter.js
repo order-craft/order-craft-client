@@ -1,22 +1,28 @@
 import React from 'react'
 import { CFooter } from '@coreui/react'
+import { useSelector } from 'react-redux'
+import translations from '../app/Language'
 import './AppFooter.css'
 
 const AppFooter = () => {
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   const year = new Date().getFullYear()
 
   return (
     <CFooter className="app-footer">
       <div className="app-footer-left">
-        <span>© {year} Order Craft</span>
+        <span>
+          © {year} {Language.footerBrand}
+        </span>
         <span className="app-footer-dot">·</span>
-        <span>All rights reserved</span>
+        <span>{Language.footerRights}</span>
       </div>
 
       <div className="app-footer-right ms-auto">
-        <span>Built by</span>
+        <span>{Language.footerBuiltBy}</span>
         <a href="https://ordercraft.netlify.app/" target="_blank" rel="noopener noreferrer">
-          Order Craft
+          {Language.footerBrand}
         </a>
       </div>
     </CFooter>

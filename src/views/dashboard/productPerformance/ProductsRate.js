@@ -120,9 +120,11 @@ const ProductsRate = () => {
           </h5>
           <div className="pp-card-subtitle">
             <strong>{productRatings.length}</strong>{' '}
-            {productRatings.length === 1 ? 'product' : 'products'}
+            {productRatings.length === 1
+              ? Language.product || 'product'
+              : Language.products || 'products'}
             {' · '}
-            with ratings and margins
+            {Language.withRatingsAndMargins || 'with ratings and margins'}
           </div>
         </div>
 
@@ -146,7 +148,7 @@ const ProductsRate = () => {
               setItemsPerPage(Number(e.target.value))
               setCurrentPage(1)
             }}
-            aria-label="Rows per page"
+            aria-label={Language.rowsPerPage || 'Rows per page'}
           >
             <option value={5}>5</option>
             <option value={10}>10</option>
@@ -165,7 +167,7 @@ const ProductsRate = () => {
           <CIcon icon={cilWarning} size="xl" />
           <div className="pp-empty-title">{Language.noProductsFound || 'No products yet'}</div>
           <div className="pp-empty-body">
-            {Language.noProductsHint || 'Products with ratings and margins will appear here.'}
+            {Language.noProductsHintRate || 'Products with ratings and margins will appear here.'}
           </div>
         </div>
       ) : (
@@ -256,7 +258,7 @@ const ProductsRate = () => {
               <CPaginationItem
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safePage === 1}
-                aria-label="Previous"
+                aria-label={Language.previous || 'Previous'}
               >
                 &laquo;
               </CPaginationItem>
@@ -279,7 +281,7 @@ const ProductsRate = () => {
               <CPaginationItem
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages}
-                aria-label="Next"
+                aria-label={Language.next || 'Next'}
               >
                 &raquo;
               </CPaginationItem>

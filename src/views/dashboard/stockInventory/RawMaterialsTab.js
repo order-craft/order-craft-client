@@ -77,12 +77,15 @@ const RawMaterialsTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
 
   const validate = () => {
     const e = {}
-    if (!form.name.trim()) e.name = 'Name is required'
-    if (!form.unit.trim()) e.unit = 'Unit is required'
+    if (!form.name.trim()) e.name = Language.nameRequired || 'Name is required'
+    if (!form.unit.trim()) e.unit = Language.unitRequired || 'Unit is required'
     const cost = parseFloat(form.costPerUnit)
-    if (isNaN(cost) || cost < 0) e.costPerUnit = 'Cost must be a positive number'
+    if (isNaN(cost) || cost < 0)
+      e.costPerUnit = Language.costMustBePositive || 'Cost must be a positive number'
     const reorder = parseFloat(form.reorderLevel)
-    if (isNaN(reorder) || reorder < 0) e.reorderLevel = 'Reorder level must be a positive number'
+    if (isNaN(reorder) || reorder < 0)
+      e.reorderLevel =
+        Language.reorderLevelMustBePositive || 'Reorder level must be a positive number'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -150,11 +153,13 @@ const RawMaterialsTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
           <h5 className="si-section-title">{Language.rawMaterials || 'Raw Materials'}</h5>
           <div className="si-section-meta">
             <strong>{rawMaterials.length}</strong>{' '}
-            {rawMaterials.length === 1 ? 'material' : 'materials'}
+            {rawMaterials.length === 1
+              ? Language.material || 'material'
+              : Language.materials || 'materials'}
             {' · '}
-            <strong>{withCost}</strong> with cost set
+            <strong>{withCost}</strong> {Language.withCostSet || 'with cost set'}
             {' · '}
-            <strong>{usedInRecipes}</strong> used in recipes
+            <strong>{usedInRecipes}</strong> {Language.usedInRecipes || 'used in recipes'}
           </div>
         </div>
 
@@ -217,11 +222,13 @@ const RawMaterialsTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                   </span>
                   {material.usedInRecipes > 0 ? (
                     <span className="si-row-tag is-used">
-                      Used in {material.usedInRecipes}{' '}
-                      {material.usedInRecipes === 1 ? 'recipe' : 'recipes'}
+                      {Language.usedIn || 'Used in'} {material.usedInRecipes}{' '}
+                      {material.usedInRecipes === 1
+                        ? Language.recipe || 'recipe'
+                        : Language.recipes || 'recipes'}
                     </span>
                   ) : (
-                    <span className="si-row-tag">Not used</span>
+                    <span className="si-row-tag">{Language.notUsed || 'Not used'}</span>
                   )}
                 </div>
               </div>
@@ -232,7 +239,7 @@ const RawMaterialsTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                   variant="outline"
                   size="sm"
                   onClick={() => openEdit(material)}
-                  aria-label="Edit"
+                  aria-label={Language.edit || 'Edit'}
                 >
                   <CIcon icon={cilPencil} />
                 </CButton>
@@ -242,7 +249,7 @@ const RawMaterialsTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
                   size="sm"
                   onClick={() => handleDelete(material._id)}
                   disabled={material.usedInRecipes > 0}
-                  aria-label="Delete"
+                  aria-label={Language.delete || 'Delete'}
                 >
                   <CIcon icon={cilTrash} />
                 </CButton>

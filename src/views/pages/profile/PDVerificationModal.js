@@ -4,7 +4,8 @@ import { CButton, CFormInput, CModal, CModalBody, CModalFooter } from '@coreui/r
 import CIcon from '@coreui/icons-react'
 import { cilCheckCircle, cilEnvelopeOpen, cilX, cilWarning } from '@coreui/icons'
 import './profile.css'
-
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 const PDVerificationModal = ({
   visible,
   onClose,
@@ -16,7 +17,8 @@ const PDVerificationModal = ({
 }) => {
   const code = String(PDVerifCode || '')
   const canSubmit = code.length === 6 && !loading
-
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   return (
     <CModal
       visible={visible}
@@ -30,9 +32,14 @@ const PDVerificationModal = ({
       <div className="pf-modal-header">
         <h5 className="pf-modal-title">
           <CIcon icon={cilEnvelopeOpen} />
-          Email verification
+          {Language.emailVerification || 'Email verification'}
         </h5>
-        <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="pf-modal-close"
+          onClick={onClose}
+          aria-label={Language.close || 'Close'}
+        >
           &times;
         </button>
       </div>
@@ -40,7 +47,8 @@ const PDVerificationModal = ({
       {/* ---------- Body ---------- */}
       <CModalBody className="pf-modal-body">
         <p className="pf-modal-hint">
-          We've sent a 6-digit code to your email. Enter it below to confirm your new details.
+          {Language.verifyCodeHint ||
+            "We've sent a 6-digit code to your email. Enter it below to confirm your new details."}
         </p>
 
         {error && (
@@ -51,7 +59,7 @@ const PDVerificationModal = ({
         )}
 
         <label className="pf-field-label" htmlFor="pf-code">
-          Verification code
+          {Language.verificationCode || 'Verification code'}
         </label>
         <CFormInput
           id="pf-code"
@@ -65,18 +73,20 @@ const PDVerificationModal = ({
           autoFocus
           className="pf-code-input"
         />
-        <p className="pf-modal-note">Check your email inbox. The code expires in a few minutes.</p>
+        <p className="pf-modal-note">
+          {Language.checkInbox || 'Check your email inbox. The code expires in a few minutes.'}
+        </p>
       </CModalBody>
 
       {/* ---------- Footer ---------- */}
       <CModalFooter className="pf-modal-footer">
         <CButton color="secondary" variant="outline" onClick={onClose} disabled={loading}>
           <CIcon icon={cilX} className="me-2" />
-          Cancel
+          {Language.cancel || 'Cancel'}
         </CButton>
         <CButton color="success" onClick={onConfirm} disabled={!canSubmit}>
           <CIcon icon={cilCheckCircle} className="me-2" />
-          {loading ? 'Verifying…' : 'Verify'}
+          {loading ? Language.verifying || 'Verifying…' : Language.verify || 'Verify'}
         </CButton>
       </CModalFooter>
     </CModal>

@@ -93,20 +93,25 @@ const CurrentMonthRevenue = ({ className }) => {
 
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text('Monthly Revenue Report', 14, 18)
-
+    doc.text(Language.monthlyRevenueReport || 'Monthly Revenue Report', 14, 18)
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(120)
     doc.text(format(new Date(), 'MMMM yyyy'), 14, 25)
-    doc.text(`Generated on: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, 14, 31)
-
+    doc.text(
+      `${Language.Generatedon || 'Generated on'}: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`,
+      14,
+      31,
+    )
     doc.setTextColor(0)
     doc.setFontSize(11)
-    doc.text(`Total: ${totalRevenue.toFixed(2)} TND`, pageWidth - 15, 18, { align: 'right' })
-
+    doc.text(`${Language.total || 'Total'}: ${totalRevenue.toFixed(2)} TND`, pageWidth - 15, 18, {
+      align: 'right',
+    })
     doc.autoTable({
-      head: [['Day', 'Date', 'Revenue (TND)']],
+      head: [
+        [Language.Day || 'Day', Language.date || 'Date', `${Language.revenue || 'Revenue'} (TND)`],
+      ],
       body: completeMonthlyData.map((item) => [item.day, item.date, item.dailyRevenue.toFixed(2)]),
       startY: 40,
       headStyles: {
@@ -209,7 +214,10 @@ const CurrentMonthRevenue = ({ className }) => {
                 >
                   <CIcon icon={growthPositive ? cilArrowTop : cilArrowBottom} />
                   {Math.abs(growth).toFixed(1)}%
-                  <span style={{ fontWeight: 500, opacity: 0.8 }}>vs last month</span>
+                  <span style={{ fontWeight: 500, opacity: 0.8 }}>
+                    {' '}
+                    {Language.vsLastMonth || 'vs last month'}
+                  </span>
                 </span>
                 <span
                   style={{
@@ -235,7 +243,7 @@ const CurrentMonthRevenue = ({ className }) => {
                   labels: completeMonthlyData.map((item) => item.day),
                   datasets: [
                     {
-                      label: 'Daily revenue',
+                      label: Language.DailyRevenue || 'Daily revenue',
                       backgroundColor: 'rgba(13, 110, 253, 0.1)',
                       borderColor: 'rgba(13, 110, 253, 0.9)',
                       borderWidth: 2,

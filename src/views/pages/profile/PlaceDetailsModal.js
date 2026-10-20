@@ -4,10 +4,12 @@ import { CButton, CFormInput, CFormSwitch, CModal, CModalBody, CModalFooter } fr
 import CIcon from '@coreui/icons-react'
 import { cilBuilding, cilLocationPin, cilImage, cilSave, cilX, cilCheck } from '@coreui/icons'
 import './profile.css'
-
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onSave }) => {
   const [saving, setSaving] = useState(false)
-
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   useEffect(() => {
     if (visible) setSaving(false)
   }, [visible])
@@ -37,7 +39,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
       <div className="pf-modal-header">
         <h5 className="pf-modal-title">
           <CIcon icon={cilBuilding} />
-          {data?.placeName ? `Edit ${data.placeName}` : 'Business details'}
+          {data?.placeName ? `${Language.edit} ${data.placeName}` : Language.businessDetails}
         </h5>
         <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
           &times;
@@ -48,12 +50,12 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
       <CModalBody className="pf-modal-body">
         {/* Basic info */}
         <div className="pf-section">
-          <div className="pf-section-title">Basic information</div>
+          <div className="pf-section-title">{Language.basicInfo}</div>
 
           <div className="pf-grid-2">
             <div>
               <label className="pf-field-label" htmlFor="pf-place-name">
-                Place name
+                {Language.placeName}
               </label>
               <CFormInput
                 id="pf-place-name"
@@ -66,7 +68,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
             </div>
             <div>
               <label className="pf-field-label" htmlFor="pf-place-phone">
-                Phone number
+                {Language.phoneNumber}
               </label>
               <CFormInput
                 id="pf-place-phone"
@@ -80,7 +82,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
           </div>
 
           <label className="pf-field-label" htmlFor="pf-place-address" style={{ marginTop: 14 }}>
-            Address
+            {Language.address}
           </label>
           <CFormInput
             id="pf-place-address"
@@ -94,7 +96,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
 
         {/* Brand color */}
         <div className="pf-section">
-          <div className="pf-section-title">Brand color</div>
+          <div className="pf-section-title">{Language.brandColor}</div>
           <div className="pf-color-row">
             <div className="pf-color-preview-wrap">
               <div className="pf-color-preview" style={{ background: brandColor }} />
@@ -109,21 +111,18 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 className="pf-color-input"
                 aria-label="Brand color"
               />
-              <div className="pf-color-hint">
-                Shown to your customers in the ordering app — section tiles, price highlights,
-                buttons.
-              </div>
+              <div className="pf-color-hint">{Language.brandColorHint}</div>
             </div>
           </div>
         </div>
 
         {/* Media */}
         <div className="pf-section">
-          <div className="pf-section-title">Media</div>
+          <div className="pf-section-title">{Language.media}</div>{' '}
           <div className="pf-grid-2">
             <div className="pf-media-cell">
               <label className="pf-field-label" htmlFor="pf-logo-upload">
-                Place logo
+                {Language.placeLogo}
               </label>
               <input
                 id="pf-logo-upload"
@@ -142,16 +141,16 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 ) : (
                   <>
                     <CIcon icon={cilImage} className="pf-upload-icon" />
-                    <span className="pf-upload-text">Click to upload</span>
+                    <span className="pf-upload-text">{Language.clickToUploadShort}</span>{' '}
                   </>
                 )}
               </label>
-              <div className="pf-upload-hint">Square, ideally 200×200px.</div>
+              <div className="pf-upload-hint">{Language.logoUploadHint}</div>{' '}
             </div>
 
             <div className="pf-media-cell">
               <label className="pf-field-label" htmlFor="pf-picture-upload">
-                Place picture
+                {Language.placePicture}
               </label>
               <input
                 id="pf-picture-upload"
@@ -174,7 +173,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                   </>
                 )}
               </label>
-              <div className="pf-upload-hint">Wide landscape, ideally 800×600px.</div>
+              <div className="pf-upload-hint">{Language.pictureUploadHint}</div>{' '}
             </div>
           </div>
         </div>
@@ -182,12 +181,12 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
         {/* Location */}
         <div className="pf-section">
           <div className="pf-section-title">
-            <CIcon icon={cilLocationPin} /> Location
+            <CIcon icon={cilLocationPin} /> {Language.location}
           </div>
           <div className="pf-grid-3">
             <div>
               <label className="pf-field-label" htmlFor="pf-distance">
-                Distance (m)
+                {Language.distanceM} (m)
               </label>
               <CFormInput
                 id="pf-distance"
@@ -200,7 +199,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
             </div>
             <div>
               <label className="pf-field-label" htmlFor="pf-lat">
-                Latitude
+                {Language.latitude}
               </label>
               <CFormInput
                 id="pf-lat"
@@ -213,7 +212,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
             </div>
             <div>
               <label className="pf-field-label" htmlFor="pf-long">
-                Longitude
+                {Language.longitude}
               </label>
               <CFormInput
                 id="pf-long"
@@ -226,21 +225,17 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
             </div>
           </div>
           <p className="pf-modal-note" style={{ textAlign: 'left' }}>
-            Distance is the maximum allowed radius (in meters) between a guest's device and your
-            café when they scan the QR code.
+            {Language.distanceHint}.
           </p>
         </div>
 
         {/* Order workflow */}
         <div className="pf-section">
-          <div className="pf-section-title">Order workflow</div>
+          <div className="pf-section-title">{Language.orderWorkflow}</div>
           <div className="pf-switch-row">
             <div className="pf-switch-text">
-              <div className="pf-switch-title">Enable order status tracking</div>
-              <div className="pf-switch-hint">
-                On: orders flow through Pending → Preparing → Completed. Off: new orders are marked
-                as "Placed" directly and staff only handle payment.
-              </div>
+              <div className="pf-switch-title">{Language.enableStatusFlow}</div>
+              <div className="pf-switch-hint">{Language.statusFlowHint}</div>
             </div>
             <CFormSwitch
               id="statusFlowEnabledSwitch"
@@ -262,15 +257,15 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
       <CModalFooter className="pf-modal-footer">
         <CButton color="secondary" variant="outline" onClick={onClose} disabled={saving}>
           <CIcon icon={cilX} className="me-2" />
-          Cancel
+          {Language.cancel}
         </CButton>
         <CButton color="primary" onClick={handleSave} disabled={saving}>
           {saving ? (
-            <>Saving…</>
+            <>{Language.saving}</>
           ) : (
             <>
               <CIcon icon={cilCheck} className="me-2" />
-              Save changes
+              {Language.saveChanges}
             </>
           )}
         </CButton>

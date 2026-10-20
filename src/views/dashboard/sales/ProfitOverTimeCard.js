@@ -102,7 +102,7 @@ const ProfitOverTimeCard = () => {
             variant="outline"
             onClick={fetchData}
             disabled={loading}
-            aria-label="Refresh"
+            aria-label={Language.refresh || 'Refresh'}
           >
             <CIcon icon={cilReload} />
           </CButton>

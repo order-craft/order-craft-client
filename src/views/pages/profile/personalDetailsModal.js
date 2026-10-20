@@ -4,7 +4,8 @@ import { CButton, CFormInput, CModal, CModalBody, CModalFooter } from '@coreui/r
 import CIcon from '@coreui/icons-react'
 import { cilEnvelopeOpen, cilUser, cilCamera, cilX } from '@coreui/icons'
 import './profile.css'
-
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 const PersonalDetailsModal = ({
   visible,
   onClose,
@@ -19,7 +20,8 @@ const PersonalDetailsModal = ({
   data,
 }) => {
   const [savingPhoto, setSavingPhoto] = useState(false)
-
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
   // reset the saving flag whenever the modal opens
   useEffect(() => {
     if (visible) setSavingPhoto(false)
@@ -50,7 +52,7 @@ const PersonalDetailsModal = ({
       <div className="pf-modal-header">
         <h5 className="pf-modal-title">
           <CIcon icon={cilUser} />
-          Personal details
+          {Language.personalDetails}
         </h5>
         <button type="button" className="pf-modal-close" onClick={onClose} aria-label="Close">
           &times;
@@ -61,7 +63,7 @@ const PersonalDetailsModal = ({
       <CModalBody className="pf-modal-body">
         {/* Profile picture */}
         <div className="pf-section">
-          <div className="pf-section-title">Profile picture</div>
+          <div className="pf-section-title">{Language.profilePicture}</div>
           <div className="pf-photo-row">
             <div className="pf-photo-wrap">
               {previewSrc ? (
@@ -79,7 +81,7 @@ const PersonalDetailsModal = ({
                 style={{ display: 'none' }}
               />
               <label htmlFor="pf-photo-upload" className="pf-photo-btn">
-                Choose photo
+                {Language.choosePhoto}
               </label>
               <CButton
                 color="primary"
@@ -87,19 +89,19 @@ const PersonalDetailsModal = ({
                 disabled={!tempSrcProfile || savingPhoto}
               >
                 <CIcon icon={cilCamera} className="me-2" />
-                {savingPhoto ? 'Saving…' : 'Apply'}
+                {savingPhoto ? Language.saving : Language.applyBtn}
               </CButton>
-              <div className="pf-photo-hint">JPG, PNG or GIF. Max 2 MB.</div>
+              <div className="pf-photo-hint">{Language.photoUploadHint}</div>
             </div>
           </div>
         </div>
 
         {/* Contact info */}
         <div className="pf-section">
-          <div className="pf-section-title">Contact information</div>
+          <div className="pf-section-title">{Language.contactInformation}</div>
 
           <label className="pf-field-label" htmlFor="pf-pd-email">
-            Email address
+            {Language.emailAddress}
           </label>
           <CFormInput
             id="pf-pd-email"
@@ -110,7 +112,7 @@ const PersonalDetailsModal = ({
           />
 
           <label className="pf-field-label" htmlFor="pf-pd-phone" style={{ marginTop: 14 }}>
-            Personal phone number
+            {Language.personalPhone}
           </label>
           <CFormInput
             id="pf-pd-phone"
@@ -121,7 +123,7 @@ const PersonalDetailsModal = ({
           />
 
           <p className="pf-modal-note" style={{ textAlign: 'left' }}>
-            We'll send a verification code to your current email before saving changes.
+            {Language.personalInfoHint}
           </p>
         </div>
       </CModalBody>
@@ -130,11 +132,11 @@ const PersonalDetailsModal = ({
       <CModalFooter className="pf-modal-footer">
         <CButton color="secondary" variant="outline" onClick={onClose}>
           <CIcon icon={cilX} className="me-2" />
-          Close
+          {Language.close}
         </CButton>
         <CButton color="primary" onClick={sendEmailPDVerif}>
           <CIcon icon={cilEnvelopeOpen} className="me-2" />
-          Send verification code
+          {Language.sendVerificationCode}
         </CButton>
       </CModalFooter>
     </CModal>

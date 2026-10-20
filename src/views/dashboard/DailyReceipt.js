@@ -58,7 +58,7 @@ const OrdersComponent = () => {
   /* ---------- data ---------- */
   const fetchOrders = useCallback(async () => {
     if (!token) {
-      setError('Authentication token not found')
+      setError(Language.authTokenNotFound || 'Authentication token not found')
       return
     }
     try {
@@ -73,7 +73,7 @@ const OrdersComponent = () => {
       setTotalTips(tips)
     } catch (error) {
       console.error('Error fetching orders', error)
-      setError(error.response?.data?.message || 'Failed to fetch orders')
+      setError(error.response?.data?.message || Language.fetchError || 'Failed to fetch orders')
     } finally {
       setLoading(false)
     }
@@ -92,12 +92,12 @@ const OrdersComponent = () => {
     // Header
     doc.setFontSize(18)
     doc.setFont('helvetica', 'bold')
-    doc.text('Daily Receipt Summary', 14, 18)
+    doc.text(Language.dailyReceiptSummary || 'Daily Receipt Summary', 14, 18)
 
     doc.setFontSize(10)
     doc.setFont('helvetica', 'normal')
     doc.setTextColor(120)
-    doc.text(`Generated on: ${date}`, 14, 25)
+    doc.text(`${Language.Generatedon || 'Generated on'}: ${date}`, 14, 25)
 
     // Totals block (right aligned)
     const revenue = closedOrders.reduce(
@@ -108,16 +108,24 @@ const OrdersComponent = () => {
 
     doc.setTextColor(0)
     doc.setFontSize(11)
-    doc.text(`Total Revenue: ${revenue.toFixed(2)} TND`, pageWidth - 15, 18, {
-      align: 'right',
-    })
-    doc.text(`Total Tips: ${tips.toFixed(2)} TND`, pageWidth - 15, 25, {
+    doc.text(
+      `${Language.totalRevenue || 'Total Revenue'}: ${revenue.toFixed(2)} TND`,
+      pageWidth - 15,
+      18,
+      {
+        align: 'right',
+      },
+    )
+    doc.text(`${Language.totalTips || 'Total Tips'}: ${tips.toFixed(2)} TND`, pageWidth - 15, 25, {
       align: 'right',
     })
     doc.setFont('helvetica', 'bold')
-    doc.text(`Grand Total: ${(revenue + tips).toFixed(2)} TND`, pageWidth - 15, 32, {
-      align: 'right',
-    })
+    doc.text(
+      `${Language.grandTotal || 'Grand Total'}: ${(revenue + tips).toFixed(2)} TND`,
+      pageWidth - 15,
+      32,
+      { align: 'right' },
+    )
 
     // Table
     const tableData = closedOrders.flatMap((order) =>
@@ -132,7 +140,16 @@ const OrdersComponent = () => {
     )
 
     doc.autoTable({
-      head: [['Product', 'Qty', 'Unit Price', 'Total', 'Tips', 'Date']],
+      head: [
+        [
+          Language.product || 'Product',
+          Language.quantity || 'Qty',
+          Language.unitPrice || 'Unit Price',
+          Language.total || 'Total',
+          Language.tips || 'Tips',
+          Language.date || 'Date',
+        ],
+      ],
       body: tableData,
       startY: 40,
       headStyles: {
@@ -151,7 +168,7 @@ const OrdersComponent = () => {
 
   const handleCloseOrdersAndPrintReceipt = useCallback(async () => {
     if (!token) {
-      setError('Authentication token not found')
+      setError(Language.authTokenNotFound || 'Authentication token not found')
       return
     }
     setClosing(true)
@@ -164,7 +181,8 @@ const OrdersComponent = () => {
       await fetchOrders()
     } catch (error) {
       console.error('Error closing orders', error)
-      const msg = error.response?.data?.message || 'Failed to close orders'
+      const msg =
+        error.response?.data?.message || Language.failedToCloseOrders || 'Failed to close orders'
       setError(msg)
       showToast(msg, 'danger')
     } finally {
@@ -177,7 +195,7 @@ const OrdersComponent = () => {
     try {
       return format(new Date(dateString), 'yyyy-MM-dd HH:mm')
     } catch {
-      return dateString || 'N/A'
+      return dateString || Language.notAvailable || 'N/A'
     }
   }
 
@@ -205,7 +223,8 @@ const OrdersComponent = () => {
             <div className="rc-header-left">
               <h5 className="rc-title">{Language.dailyReceipt || 'Daily receipt'}</h5>
               <div className="rc-subtitle">
-                <strong>{orders.length}</strong> {orders.length === 1 ? 'order' : 'orders'}
+                <strong>{orders.length}</strong>{' '}
+                {orders.length === 1 ? Language.order || 'order' : Language.orders || 'orders'}
                 {' · '}
                 {format(new Date(), 'MMMM d, yyyy')}
               </div>
@@ -312,7 +331,9 @@ const OrdersComponent = () => {
                         <div className="rc-meta">
                           <span>{formatDate(order.timestamp)}</span>
                           {order.tips > 0 && (
-                            <span className="rc-tip">+{Number(order.tips).toFixed(2)} TND tip</span>
+                            <span className="rc-tip">
+                              +{Number(order.tips).toFixed(2)} TND {Language.tips || 'tip'}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -329,10 +350,10 @@ const OrdersComponent = () => {
                         <table>
                           <thead>
                             <tr>
-                              <th>Item</th>
-                              <th className="num">Qty</th>
-                              <th className="num">Unit</th>
-                              <th className="num">Total</th>
+                              <th>{Language.item || 'Item'}</th>
+                              <th className="num">{Language.quantity || 'Qty'}</th>
+                              <th className="num">{Language.unit || 'Unit'}</th>
+                              <th className="num">{Language.total || 'Total'}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -342,7 +363,7 @@ const OrdersComponent = () => {
                               const total = Number(p.totalPrice || unit * qty)
                               return (
                                 <tr key={i}>
-                                  <td>{p.productName || p.name || 'Item'}</td>
+                                  <td>{p.productName || p.name || Language.item || 'Item'}</td>{' '}
                                   <td className="num">{qty}</td>
                                   <td className="num">{unit.toFixed(2)}</td>
                                   <td className="num">{total.toFixed(2)}</td>

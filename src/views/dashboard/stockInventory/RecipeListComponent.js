@@ -81,16 +81,27 @@ const RecipeListComponent = ({ recipes, rawMaterials = [], onEdit, onDelete, loa
                   <div className="si-rec-card-title">
                     {recipe.product?.name || 'Unknown product'}
                   </div>
+                  <div className="si-rec-card-title">
+                    {recipe.product?.name || Language.unknownProduct || 'Unknown product'}
+                  </div>
                   <div className="si-rec-card-sub">
-                    {ingredientsCount} {ingredientsCount === 1 ? 'ingredient' : 'ingredients'}
+                    {ingredientsCount}{' '}
+                    {ingredientsCount === 1
+                      ? Language.ingredient || 'ingredient'
+                      : Language.ingredients || 'ingredients'}
                     {unitCost > 0 && (
                       <>
                         {' · '}
-                        <span className="si-rec-cost">{unitCost.toFixed(2)} TND / unit</span>
+                        <span className="si-rec-cost">
+                          {unitCost.toFixed(2)} TND / {Language.unit || 'unit'}
+                        </span>
                       </>
                     )}
                     {anyPriceMissing && (
-                      <span className="si-rec-cost-missing"> (some prices missing)</span>
+                      <span className="si-rec-cost-missing">
+                        {' '}
+                        ({Language.somePricesMissing || 'some prices missing'})
+                      </span>
                     )}
                   </div>
                 </div>
@@ -123,7 +134,7 @@ const RecipeListComponent = ({ recipes, rawMaterials = [], onEdit, onDelete, loa
                   {recipe.rawMaterials.slice(0, 3).map((rm, idx) => (
                     <div className="si-rec-preview-line" key={idx}>
                       <span className="si-rec-preview-name">
-                        {rm.rawMaterial?.name || 'Unknown'}
+                        {rm.rawMaterial?.name || Language.unknown || 'Unknown'}
                       </span>
                       <span className="si-rec-preview-qty">
                         {rm.quantityPerUnit} {rm.rawMaterial?.unit || ''}
@@ -131,7 +142,9 @@ const RecipeListComponent = ({ recipes, rawMaterials = [], onEdit, onDelete, loa
                     </div>
                   ))}
                   {ingredientsCount > 3 && !expanded && (
-                    <div className="si-rec-more">+{ingredientsCount - 3} more</div>
+                    <div className="si-rec-more">
+                      +{ingredientsCount - 3} {Language.more || 'more'}
+                    </div>
                   )}
                 </div>
 
@@ -162,7 +175,9 @@ const RecipeListComponent = ({ recipes, rawMaterials = [], onEdit, onDelete, loa
                     <CTableBody>
                       {recipe.rawMaterials.map((rm, idx) => (
                         <CTableRow key={idx}>
-                          <CTableDataCell>{rm.rawMaterial?.name || 'Unknown'}</CTableDataCell>
+                          <CTableDataCell>
+                            {rm.rawMaterial?.name || Language.unknown || 'Unknown'}
+                          </CTableDataCell>{' '}
                           <CTableDataCell className="text-end">
                             {rm.quantityPerUnit} {rm.rawMaterial?.unit || ''}
                           </CTableDataCell>

@@ -128,7 +128,8 @@ const MonthPieChart = () => {
       <div className="pp-card-header">
         <div className="pp-card-header-left">
           <h5 className="pp-card-title">
-            {Language.revenuePerProductMonth || 'Revenue per product — year to date'}
+            {Language.RevenuePerProductMonth ||
+              'Revenue per product — year to date'}
           </h5>
           <div className="pp-card-subtitle">
             {Language.shareOfTotal || 'Share of total revenue'}

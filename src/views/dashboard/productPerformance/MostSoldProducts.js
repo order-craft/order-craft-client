@@ -51,8 +51,11 @@ const MostSoldProducts = () => {
             {Language.mostSoldProducts || 'Most sold products'}
           </h5>
           <div className="pp-card-subtitle">
-            <strong>{mostSold.length}</strong> {mostSold.length === 1 ? 'product' : 'products'}{' '}
-            ranked by units sold
+            <strong>{mostSold.length}</strong>{' '}
+            {mostSold.length === 1
+              ? Language.product || 'product'
+              : Language.products || 'products'}{' '}
+            {Language.rankedByUnitsSold || 'ranked by units sold'}
           </div>
         </div>
       </div>

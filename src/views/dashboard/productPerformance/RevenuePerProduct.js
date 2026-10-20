@@ -21,7 +21,8 @@ const RevenuePerProduct = () => {
           <div className="pp-card-header-left">
             <h5 className="pp-card-title">
               <CIcon icon={cilChart} />
-              {Language.revenuePerProductWeek || 'Revenue per product — this week'}
+              {Language.RevenuePerProduct + ' - ' + Language.thisWeek ||
+                'Revenue per product — this week'}
             </h5>
             <div className="pp-card-subtitle">{Language.dailyView || 'Day by day, this week'}</div>
           </div>

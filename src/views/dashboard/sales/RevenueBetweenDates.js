@@ -105,7 +105,7 @@ const RevenueBetweenDates = ({ className }) => {
   const handleDateChange = (e) => {
     const { name, value } = e.target
     if (name === 'endDate' && value && new Date(value) > new Date()) {
-      setErrorMessage("End date can't be greater than today.")
+      setErrorMessage(Language.endDateAfterToday || "End date can't be greater than today.")
       return
     }
     setErrorMessage('')
@@ -131,7 +131,9 @@ const RevenueBetweenDates = ({ className }) => {
             {Language.RevenueBetweenDates || 'Custom range'}
           </h5>
           <div className="sales-card-subtitle">
-            {startDate && endDate ? `${startDate} → ${endDate}` : 'Pick a date range'}
+            {startDate && endDate
+              ? `${startDate} → ${endDate}`
+              : Language.pickRange || 'Pick a date range'}
           </div>
         </div>
 
@@ -217,7 +219,7 @@ const RevenueBetweenDates = ({ className }) => {
                   labels: completeRevenueData.map((d) => d.shortLabel),
                   datasets: [
                     {
-                      label: 'Daily revenue',
+                      label: Language.DailyRevenue || 'Daily revenue',
                       backgroundColor: 'rgba(13, 110, 253, 0.1)',
                       borderColor: 'rgba(13, 110, 253, 0.9)',
                       borderWidth: 2,

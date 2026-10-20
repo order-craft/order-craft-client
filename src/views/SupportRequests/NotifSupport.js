@@ -73,15 +73,12 @@ const NotifSupport = () => {
   const handleAnswerCall = () => {
     stopRingtone()
     setIsModalOpen(false)
-    alert(`Answered call from table ${activeTable}`)
-    console.log(supporId)
     socket.emit('supportCallAnswered', { tableNumber: activeTable, supporId: supporId })
   }
 
   const handleDismissCall = () => {
     stopRingtone()
     setIsModalOpen(false)
-    alert(`Dismissed call from table ${activeTable}`)
   }
   //language
   const t = useSelector((state) => state.language)
@@ -99,11 +96,13 @@ const NotifSupport = () => {
               {supportRequests.length > 0 ? (
                 <CListGroup>
                   {supportRequests.map((tableNumber, index) => (
-                    <CListGroupItem key={index}>{tableNumber} called for support</CListGroupItem>
+                    <CListGroupItem key={index}>
+                      {Language.table} {tableNumber} — {Language.request}
+                    </CListGroupItem>
                   ))}
                 </CListGroup>
               ) : (
-                <p>No support requests at the moment.</p>
+                <p>{Language.Nosupportrequestsatthemoment}</p>
               )}
             </CCardBody>
           </CCard>
@@ -112,14 +111,18 @@ const NotifSupport = () => {
 
       {/* Modal for incoming support call */}
       <CModal visible={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <CModalHeader>pst Table {activeTable}</CModalHeader>
-        <CModalBody>t {activeTable} is calling for support. What would you like to do?</CModalBody>
+        <CModalHeader>
+          {Language.request} — {Language.table} {activeTable}
+        </CModalHeader>
+        <CModalBody>
+          {Language.table} {activeTable} · {Language.request}
+        </CModalBody>
         <CModalFooter>
           <CButton color="primary" onClick={handleAnswerCall}>
-            Answer
+            {Language.answerCall}
           </CButton>
           <CButton color="danger" onClick={handleDismissCall}>
-            Dismiss
+            {Language.dismissCall}
           </CButton>
         </CModalFooter>
       </CModal>
