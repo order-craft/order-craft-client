@@ -7,7 +7,6 @@ import './scss/style.scss'
 import PrivateRoute from './helpers/PrivateRoute'
 import { AuthProvider } from './context/AuthContext'
 import GlobalNotification from './components/GlobalNotification'
-import '@coreui/coreui/dist/css/coreui.min.css'
 // Containers
 const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 

@@ -152,7 +152,7 @@
   font-weight: 700;
   color: #fff;
   font-size: 1.1rem;
-  background: #0d6efd;
+  background: var(--cui-primary, #b5502b);
 }
 
 /* Info */

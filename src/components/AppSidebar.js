@@ -8,7 +8,6 @@ import {
   CSidebarFooter,
   CSidebarHeader,
   CSidebarToggler,
-  useColorModes,
 } from '@coreui/react'
 
 import { AppSidebarNav } from './AppSidebarNav'
@@ -22,7 +21,6 @@ const AppSidebar = () => {
   const dispatch = useDispatch()
   const unfoldable = useSelector((state) => state.sidebarUnfoldable)
   const sidebarShow = useSelector((state) => state.sidebarShow)
-  const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
   const t = useSelector((state) => state.language)
   const Language = translations[t]
   const navigation = NavItems()
@@ -30,7 +28,7 @@ const AppSidebar = () => {
   return (
     <CSidebar
       className="border-end app-sidebar"
-      colorScheme={colorMode === 'dark' ? 'dark' : 'light'}
+      colorScheme="dark"
       position="fixed"
       unfoldable={unfoldable}
       visible={sidebarShow}
@@ -44,7 +42,7 @@ const AppSidebar = () => {
         </CSidebarBrand>
         <CCloseButton
           className="d-lg-none"
-          dark
+          white
           onClick={() => dispatch({ type: 'set', sidebarShow: false })}
         />
       </CSidebarHeader>

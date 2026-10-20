@@ -13,12 +13,21 @@ import {
   CToastBody,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilSearch, cilPlus, cilPencil, cilTrash, cilPeople, cilWarning } from '@coreui/icons'
+import {
+  cilSearch,
+  cilPlus,
+  cilPencil,
+  cilTrash,
+  cilPeople,
+  cilWarning,
+  cilGrid,
+} from '@coreui/icons'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
+import AssignTablesModal from './AssignTablesModal'
 import './users.css'
 
 const avatarPalette = ['#0d6efd', '#6610f2', '#d63384', '#fd7e14', '#198754', '#20c997', '#0dcaf0']
@@ -53,6 +62,12 @@ const Dashboard = () => {
   const [confirmTarget, setConfirmTarget] = useState(null)
   const [deleting, setDeleting] = useState(false)
 
+  // Responsibilities & table assignment
+  const [staffOverview, setStaffOverview] = useState({})
+  const [attentionTables, setAttentionTables] = useState([])
+  const [assignTarget, setAssignTarget] = useState(null)
+  const [respBusyIds, setRespBusyIds] = useState(new Set())
+
   const [toasts, setToasts] = useState([])
   const showToast = (msg, color = 'success') => {
     const id = Date.now() + Math.random()
@@ -81,8 +96,33 @@ const Dashboard = () => {
     }
   }
 
+  const fetchOverview = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      const [overviewRes, tablesRes] = await Promise.all([
+        axios.get(`${BaseUrl}/auth/superClient/staff-overview`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        axios.get(`${BaseUrl}/tables/assignments/overview`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+      const map = {}
+      ;(overviewRes.data.staff || []).forEach((s) => {
+        map[s._id] = s
+      })
+      setStaffOverview(map)
+      setAttentionTables((tablesRes.data.tables || []).filter((tb) => tb.needsAttention))
+    } catch (err) {
+      // Non-fatal — the base staff list above already loaded. This only
+      // enriches rows with responsibilities/assignments.
+      console.error('Failed to fetch staff overview:', err)
+    }
+  }
+
   useEffect(() => {
     fetchClients()
+    fetchOverview()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -132,6 +172,108 @@ const Dashboard = () => {
         return next
       })
     }
+  }
+
+  /* ---------- preparation responsibility ---------- */
+  const togglePrepare = async (client) => {
+    const overview = staffOverview[client._id]
+    const current = !!overview?.canPrepare
+    const next = !current
+
+    if (!client.verified && next) {
+      showToast(
+        Language.cannotAssignInactive || 'Cannot assign responsibilities to an inactive account',
+        'danger',
+      )
+      return
+    }
+
+    setStaffOverview((prev) => ({
+      ...prev,
+      [client._id]: { ...prev[client._id], canPrepare: next },
+    }))
+    setRespBusyIds((prev) => new Set(prev).add(client._id))
+
+    try {
+      const token = localStorage.getItem('token')
+      await axios.patch(
+        `${BaseUrl}/auth/superClient/${client._id}/responsibilities`,
+        { canPrepare: next },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+    } catch (err) {
+      setStaffOverview((prev) => ({
+        ...prev,
+        [client._id]: { ...prev[client._id], canPrepare: current },
+      }))
+      showToast(err.response?.data?.message || Language.saveError || 'Failed to update', 'danger')
+    } finally {
+      setRespBusyIds((prev) => {
+        const nextSet = new Set(prev)
+        nextSet.delete(client._id)
+        return nextSet
+      })
+    }
+  }
+
+  /* ---------- delivery ("service-enabled") responsibility ---------- */
+  const toggleDeliver = async (client) => {
+    const overview = staffOverview[client._id]
+    const current = !!overview?.canDeliver
+    const next = !current
+
+    if (!client.verified && next) {
+      showToast(
+        Language.cannotAssignInactive || 'Cannot assign responsibilities to an inactive account',
+        'danger',
+      )
+      return
+    }
+
+    setStaffOverview((prev) => ({
+      ...prev,
+      [client._id]: { ...prev[client._id], canDeliver: next },
+    }))
+    setRespBusyIds((prev) => new Set(prev).add(client._id))
+
+    try {
+      const token = localStorage.getItem('token')
+      await axios.patch(
+        `${BaseUrl}/auth/superClient/${client._id}/responsibilities`,
+        { canDeliver: next },
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+    } catch (err) {
+      setStaffOverview((prev) => ({
+        ...prev,
+        [client._id]: { ...prev[client._id], canDeliver: current },
+      }))
+      showToast(err.response?.data?.message || Language.saveError || 'Failed to update', 'danger')
+    } finally {
+      setRespBusyIds((prev) => {
+        const nextSet = new Set(prev)
+        nextSet.delete(client._id)
+        return nextSet
+      })
+    }
+  }
+
+  /* ---------- table assignment ---------- */
+  const openAssign = (client) => {
+    if (!client.verified) {
+      showToast(
+        Language.cannotAssignInactive || 'Cannot assign responsibilities to an inactive account',
+        'danger',
+      )
+      return
+    }
+    setAssignTarget(client)
+  }
+  const closeAssign = () => setAssignTarget(null)
+  const handleAssignSaved = () => {
+    setAssignTarget(null)
+    fetchOverview()
+    showToast(Language.tablesAssigned || 'Table assignments updated')
   }
 
   /* ---------- edit ---------- */
@@ -232,6 +374,33 @@ const Dashboard = () => {
         ))}
       </CToaster>
 
+      {attentionTables.length > 0 && (
+        <div className="staff-attention">
+          <CIcon icon={cilWarning} size="lg" />
+          <div>
+            <div className="staff-attention-title">
+              {(
+                Language.unassignedTablesTitle || '{count} table(s) need a table-service assignee'
+              ).replace('{count}', attentionTables.length)}
+            </div>
+            <div>
+              {Language.unassignedTablesHint ||
+                'These tables have no active assigned server. Orders still work and preparation still sees them — assign a server so they get routed and notified.'}
+            </div>
+            <div className="staff-attention-list">
+              {attentionTables.map((tb) => (
+                <span className="staff-attention-chip" key={tb._id}>
+                  {Language.table || 'Table'} {tb.number}
+                  {tb.assignedTo && !tb.assignedTo.verified
+                    ? ` (${Language.inactive || 'Inactive'})`
+                    : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <CCard className="mb-4">
         <div className="ut-header">
           <div className="ut-header-inner">
@@ -307,6 +476,106 @@ const Dashboard = () => {
                     <div className="ut-info">
                       <p className="ut-name">{client.fullName}</p>
                       <div className="ut-email">{client.email}</div>
+                    </div>
+
+                    <div className="resp-cell">
+                      <div className="resp-pills">
+                        {respBusyIds.has(client._id) ? (
+                          <CSpinner size="sm" />
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              className={`resp-pill ${
+                                staffOverview[client._id]?.canPrepare ? 'is-prep' : 'is-none'
+                              }`}
+                              onClick={() => togglePrepare(client)}
+                              title={
+                                Language.togglePreparation || 'Toggle preparation responsibility'
+                              }
+                            >
+                              {Language.preparation || 'Preparation'}
+                            </button>
+                            <button
+                              type="button"
+                              className={`resp-pill ${
+                                staffOverview[client._id]?.canDeliver ? 'is-deliver' : 'is-none'
+                              }`}
+                              onClick={() => toggleDeliver(client)}
+                              title={
+                                Language.toggleDelivery ||
+                                'Toggle delivery responsibility (shared delivery mode)'
+                              }
+                            >
+                              {Language.delivery || 'Delivery'}
+                            </button>
+                            <button
+                              type="button"
+                              className={`resp-pill ${
+                                staffOverview[client._id]?.assignedTables?.length
+                                  ? 'is-tables'
+                                  : 'is-none'
+                              }`}
+                              onClick={() => openAssign(client)}
+                            >
+                              {staffOverview[client._id]?.assignedTables?.length
+                                ? `${staffOverview[client._id].assignedTables.length} ${
+                                    Language.tables || 'tables'
+                                  }`
+                                : Language.noTables || 'No tables'}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      {staffOverview[client._id]?.assignedTables?.length > 0 && (
+                        <div className="resp-tables-list">
+                          {Language.table || 'Table'}{' '}
+                          {staffOverview[client._id].assignedTables
+                            .map((tb) => tb.number)
+                            .join(', ')}
+                        </div>
+                      )}
+                      {staffOverview[client._id]?.tableService && (
+                        <div className="resp-workload">
+                          <span title={Language.activeOrders || 'Active orders'}>
+                            {staffOverview[client._id].tableService.activeOrders}{' '}
+                            {Language.active || 'active'}
+                          </span>
+                          {staffOverview[client._id].tableService.readyAwaitingDelivery > 0 && (
+                            <span className="resp-workload-warn">
+                              {staffOverview[client._id].tableService.readyAwaitingDelivery}{' '}
+                              {Language.awaitingDelivery || 'awaiting delivery'}
+                            </span>
+                          )}
+                          <span className="text-muted">
+                            {staffOverview[client._id].tableService.deliveredToday}{' '}
+                            {Language.deliveredToday || 'delivered today'}
+                            {staffOverview[client._id].tableService.avgDeliveryMinutes != null &&
+                              ` · ${Language.avg || 'avg'} ${staffOverview[client._id].tableService.avgDeliveryMinutes}${Language.minutesShort || 'min'}`}
+                          </span>
+                        </div>
+                      )}
+                      {staffOverview[client._id]?.preparation && (
+                        <div className="resp-workload">
+                          <span>
+                            {staffOverview[client._id].preparation.pendingOrders}{' '}
+                            {Language.pending || 'pending'} ·{' '}
+                            {staffOverview[client._id].preparation.preparingOrders}{' '}
+                            {Language.preparing || 'preparing'}{' '}
+                            <span className="text-muted">
+                              ({Language.kitchenQueueShared || 'shared kitchen queue'})
+                            </span>
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        className="resp-assign-btn"
+                        onClick={() => openAssign(client)}
+                      >
+                        <CIcon icon={cilGrid} className="me-1" />
+                        {Language.assignTables || 'Assign tables'}
+                      </button>
                     </div>
 
                     <span className={`ut-status ${client.verified ? 'is-active' : 'is-inactive'}`}>
@@ -468,6 +737,14 @@ const Dashboard = () => {
           </div>
         </CModal>
       </CCard>
+
+      <AssignTablesModal
+        visible={!!assignTarget}
+        staff={assignTarget}
+        onClose={closeAssign}
+        onSaved={handleAssignSaved}
+        Language={Language}
+      />
     </>
   )
 }

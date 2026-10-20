@@ -1,5 +1,7 @@
 import React from 'react'
 import PropTypes from 'prop-types'
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 import {
   CModal,
   CModalHeader,
@@ -16,11 +18,18 @@ import {
   CCardBody,
   CFormText,
   CFormSwitch,
+  CFormSelect,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilLocationPin, cilBuilding, cilImage, cilSave, cilX } from '@coreui/icons'
 
 const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onSave }) => {
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+  // When status tracking is off, every order is already born "completed"
+  // regardless of preparationMode (see createOrder) — the setting has no
+  // effect, so disable it instead of letting the admin pick a no-op value.
+  const statusFlowOn = data?.statusFlowEnabled === undefined ? true : data.statusFlowEnabled
   return (
     <CModal
       visible={visible}
@@ -227,6 +236,118 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 }
               />
             </div>
+
+            <hr className="my-4" />
+
+            <div className="pe-3 mb-2">
+              <div className="fw-bold">Order delivery mode</div>
+              <CFormText>
+                <strong>Existing Workflow</strong> keeps today&apos;s behavior — a ready order is
+                delivered by its assigned table server (or an admin).{' '}
+                <strong>Shared Delivery Workflow</strong> lets any active, service-enabled staff
+                member claim a ready order regardless of table assignment — first to accept it owns
+                the delivery.
+              </CFormText>
+            </div>
+            <CFormSelect
+              id="orderWorkflowModeSelect"
+              value={data?.orderWorkflowMode || 'existing'}
+              onChange={(e) =>
+                onChange({
+                  target: {
+                    name: 'orderWorkflowMode',
+                    value: e.target.value,
+                  },
+                })
+              }
+            >
+              <option value="existing">Existing Workflow (currently active by default)</option>
+              <option value="shared_delivery">Shared Delivery Workflow</option>
+            </CFormSelect>
+            <div className="mt-2" style={{ fontSize: '0.85rem', color: '#6c757d' }}>
+              Active mode:{' '}
+              <strong>
+                {data?.orderWorkflowMode === 'shared_delivery'
+                  ? 'Shared Delivery Workflow'
+                  : 'Existing Workflow'}
+              </strong>
+            </div>
+
+            <hr className="my-4" />
+
+            <div className="pe-3 mb-2">
+              <div className="fw-bold">
+                {Language?.preparationWorkflow || 'Preparation Workflow'}
+              </div>
+              <CFormText>
+                {Language?.preparationModeHint ||
+                  'Preparation Required keeps the kitchen workflow — preparation staff mark orders ready before service staff are notified. Direct Service skips that step: orders become eligible for service the moment they are placed.'}
+              </CFormText>
+              {!statusFlowOn && (
+                <CFormText className="d-block mt-1" style={{ color: '#a06a1f' }}>
+                  Disabled while &quot;Enable order status tracking&quot; is off — every order is
+                  already placed directly, so this setting has no effect.
+                </CFormText>
+              )}
+            </div>
+            <CFormSelect
+              id="preparationModeSelect"
+              value={data?.preparationMode || 'required'}
+              disabled={!statusFlowOn}
+              onChange={(e) =>
+                onChange({
+                  target: {
+                    name: 'preparationMode',
+                    value: e.target.value,
+                  },
+                })
+              }
+            >
+              <option value="required">
+                {Language?.preparationRequired || 'Preparation Required'}
+              </option>
+              <option value="direct_service">
+                {Language?.directService || 'Direct Service (No Preparation Step)'}
+              </option>
+            </CFormSelect>
+            <div className="mt-2" style={{ fontSize: '0.85rem', color: '#6c757d' }}>
+              Active mode:{' '}
+              <strong>
+                {!statusFlowOn
+                  ? Language?.placed || 'Placed'
+                  : data?.preparationMode === 'direct_service'
+                    ? Language?.directService || 'Direct Service (No Preparation Step)'
+                    : Language?.preparationRequired || 'Preparation Required'}
+              </strong>
+            </div>
+          </CCardBody>
+        </CCard>
+
+        <CCard className="shadow-sm mt-4">
+          <CCardBody>
+            <h5 className="mb-3 text-info">Staff Participation</h5>
+            <div className="d-flex justify-content-between align-items-center">
+              <div className="pe-3">
+                <div className="fw-bold">Notify me like staff</div>
+                <CFormText>
+                  When on, you&apos;ll be notified for &quot;need something&quot; requests from
+                  tables assigned to you, and for new-order/order-ready alerts on those tables, the
+                  same way a staff member is.
+                </CFormText>
+              </div>
+              <CFormSwitch
+                id="participatesInServiceSwitch"
+                checked={!!data?.participatesInService}
+                onChange={(e) =>
+                  onChange({
+                    target: {
+                      name: 'participatesInService',
+                      value: e.target.checked,
+                    },
+                  })
+                }
+              />
+            </div>
           </CCardBody>
         </CCard>
       </CModalBody>
@@ -262,6 +383,9 @@ PlaceDetailsModal.propTypes = {
     long: PropTypes.string,
     statusFlowEnabled: PropTypes.bool,
     brandColor: PropTypes.string,
+    participatesInService: PropTypes.bool,
+    orderWorkflowMode: PropTypes.string,
+    preparationMode: PropTypes.string,
   }),
 }
 

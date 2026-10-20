@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   CCard,
   CCardBody,
@@ -34,9 +34,13 @@ import {
   cilX,
 } from '@coreui/icons'
 import { formatDistanceToNow } from 'date-fns'
+import { jwtDecode } from 'jwt-decode'
+import { getDateLocale } from '../../helpers/dateLocale'
+import { useSocket } from '../../context/SocketContext'
 import './OrdersList.css'
 
 const OrdersList = () => {
+  const { reportSoundBlocked } = useSocket() || {}
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeKey, setActiveKey] = useState(1)
@@ -50,9 +54,45 @@ const OrdersList = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedRows, setExpandedRows] = useState({})
 
+  // Responsibility-based view scope (who this order list belongs to).
+  // Also mirrored into refs because the socket listeners below are
+  // attached once (mount-only effect) and would otherwise always read the
+  // initial render's values — see belongsToMyScope.
+  const [viewScope, setViewScope] = useState('all')
+  const [assignedTables, setAssignedTables] = useState([])
+  const [canPrepare, setCanPrepare] = useState(null)
+  const [deliveringIds, setDeliveringIds] = useState(new Set())
+  const viewScopeRef = useRef('all')
+  const assignedTablesRef = useRef([])
+  const canPrepareRef = useRef(null)
+
+  // "shared_delivery" workflow mode. meCanDeliver is the CALLER's own
+  // service-enabled flag — distinct from the per-row `canDeliver` computed
+  // further down in renderOrderRow (whether THIS order's existing-mode
+  // Deliver button should show), which is unrelated and untouched. No ref
+  // needed for either: unlike viewScope/assignedTables/canPrepare, neither
+  // is read inside the mount-only socket effect below, only at render time.
+  const [orderWorkflowMode, setOrderWorkflowMode] = useState('existing')
+  const [meCanDeliver, setMeCanDeliver] = useState(null)
+  // "direct_service" tenants skip the "preparing" stage entirely: an order
+  // goes straight from "pending" (labeled "Placed") to "completed" with one
+  // click, and the Preparing tab is hidden since nothing ever lands there.
+  const [preparationMode, setPreparationMode] = useState('required')
+  const [claimingIds, setClaimingIds] = useState(new Set())
+
   const token = GetToken()
   const t = useSelector((state) => state.language)
   const Language = translations[t]
+  const dateLocale = getDateLocale(t)
+
+  const myIdentity = (() => {
+    try {
+      const decoded = jwtDecode(token)
+      return { userId: decoded.userId, role: decoded.role }
+    } catch {
+      return { userId: null, role: null }
+    }
+  })()
 
   const [toasts, setToasts] = useState([])
 
@@ -66,11 +106,46 @@ const OrdersList = () => {
       setOrders(response.data.orders)
       setAvailablePlans(response.data.plans)
       setStatusFlowEnabled(response.data.statusFlowEnabled !== false)
+      const scope = response.data.viewScope || 'all'
+      const myTables = response.data.assignedTables || []
+      setViewScope(scope)
+      setAssignedTables(myTables)
+      setCanPrepare(response.data.canPrepare)
+      setOrderWorkflowMode(response.data.orderWorkflowMode || 'existing')
+      setMeCanDeliver(response.data.canDeliver)
+      setPreparationMode(response.data.preparationMode || 'required')
+      viewScopeRef.current = scope
+      assignedTablesRef.current = myTables
+      canPrepareRef.current = response.data.canPrepare
     } catch (error) {
       console.error('Failed to fetch orders:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  // Backend already filters the initial REST fetch by view scope; live
+  // socket pushes are broadcast tenant-wide (preparation/admin need every
+  // order), so a table-service-only "mine" view must apply the same
+  // filter client-side or a live update would leak another server's table.
+  // Reads from refs, not state, because the socket listeners are attached
+  // once on mount and would otherwise close over stale initial values.
+  const belongsToMyScope = (order) => {
+    if (viewScopeRef.current !== 'mine') return true
+    const tableId = order?.table?._id || order?.table
+    if (!tableId) return false
+    return assignedTablesRef.current.some((tb) => tb._id === tableId || tb._id === String(tableId))
+  }
+
+  // True when this order's table is one of MY assigned tables — independent
+  // of viewScope. A staffer who both preps and owns tables (viewScope
+  // 'all', e.g. real account "mahmoud" with canPrepare + assigned tables)
+  // still personally receives SocketContext's targeted notification:new
+  // sound for their own tables, so this order must not also sound here.
+  const isMyAssignedTable = (order) => {
+    const tableId = order?.table?._id || order?.table
+    if (!tableId) return false
+    return assignedTablesRef.current.some((tb) => tb._id === tableId || tb._id === String(tableId))
   }
 
   useEffect(() => {
@@ -79,6 +154,7 @@ const OrdersList = () => {
 
     socket.on('newOrder', (newOrder) => {
       if (typeof newOrder === 'string' || !newOrder?._id) return
+      if (!belongsToMyScope(newOrder)) return
       setOrders((prev) => {
         const idx = prev.findIndex((o) => o._id === newOrder._id)
         if (idx > -1) {
@@ -94,7 +170,25 @@ const OrdersList = () => {
           return next
         })
       }, 10000)
-      playRingtone()
+      // Skip when I'm personally the targeted recipient of this same order's
+      // notification:new event — my own assigned table (new_order), or any
+      // order at all if I'm prep staff (new_order_prep now fires, with
+      // sound, for every new order) — those paths already play a sound in
+      // SocketContext. Everyone else (someone else's table, an unassigned
+      // table, takeaway, seen by a non-prep table-service/admin view) has no
+      // targeted notification, so this broadcast sound is the only cue and
+      // must play.
+      if (!isMyAssignedTable(newOrder) && !canPrepareRef.current) playRingtone()
+    })
+
+    socket.on('orderUpdated', (updated) => {
+      if (!updated?._id) return
+      if (!belongsToMyScope(updated)) return
+      setOrders((prev) => {
+        const idx = prev.findIndex((o) => o._id === updated._id)
+        if (idx === -1) return prev
+        return prev.map((o, i) => (i === idx ? { ...o, ...updated } : o))
+      })
     })
 
     socket.on('deleteOrder', (deletedOrderId) => {
@@ -116,7 +210,14 @@ const OrdersList = () => {
     stopRingtone()
     const audio = new Audio('/newOrder.mp3')
     audio.loop = false
-    audio.play().catch(() => {})
+    audio.play().catch((err) => {
+      if (err && err.name === 'NotAllowedError') {
+        console.warn('[OrdersList] New-order sound blocked by autoplay policy:', err)
+        reportSoundBlocked?.()
+      } else {
+        console.error('[OrdersList] New-order sound failed to play:', err)
+      }
+    })
     setRingtone(audio)
   }
   const stopRingtone = () => {
@@ -206,6 +307,63 @@ const OrdersList = () => {
     }
   }
 
+  const markDelivered = async (orderId) => {
+    setDeliveringIds((prev) => new Set(prev).add(orderId))
+    try {
+      const response = await axios.patch(
+        `${BaseUrl}/order/${orderId}/deliver`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      const updated = response.data.order
+      setOrders((prev) =>
+        prev.map((order) => (order._id === orderId ? { ...order, ...updated } : order)),
+      )
+      showAlert(Language.orderDelivered || 'Order marked as delivered', 'success')
+    } catch (error) {
+      console.error('Failed to mark order delivered:', error)
+      showAlert(error.response?.data?.error || Language.saveError || 'Failed to update', 'danger')
+    } finally {
+      setDeliveringIds((prev) => {
+        const next = new Set(prev)
+        next.delete(orderId)
+        return next
+      })
+    }
+  }
+
+  // "shared_delivery" mode only — claims a ready, unclaimed order for the
+  // caller. The backend enforces the atomic first-come-first-served rule;
+  // a 409 here means someone else claimed it a moment earlier.
+  const claimDelivery = async (orderId) => {
+    setClaimingIds((prev) => new Set(prev).add(orderId))
+    try {
+      const response = await axios.patch(
+        `${BaseUrl}/order/${orderId}/claim-delivery`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } },
+      )
+      const updated = response.data.order
+      setOrders((prev) =>
+        prev.map((order) => (order._id === orderId ? { ...order, ...updated } : order)),
+      )
+      showAlert(response.data.message || 'Order claimed', 'success')
+    } catch (error) {
+      console.error('Failed to claim delivery:', error)
+      if (error.response?.status === 409) {
+        // Someone else won the race — refresh so it drops out of the queue.
+        fetchOrders()
+      }
+      showAlert(error.response?.data?.error || Language.saveError || 'Failed to update', 'danger')
+    } finally {
+      setClaimingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(orderId)
+        return next
+      })
+    }
+  }
+
   const deleteAllCancelledOrders = async () => {
     if (!confirm(Language.confirmDeleteAllCancelled || 'Delete all cancelled orders?')) return
     setLoading(true)
@@ -277,9 +435,15 @@ const OrdersList = () => {
 
   const filteredOrders = getFilteredOrders()
 
-  const getTabCount = (status) => filteredOrders.filter((o) => o.status === status).length
+  const getTabCount = (status) =>
+    status === '__available__'
+      ? filteredOrders.filter(
+          (o) => o.status === 'completed' && !o.deliveryClaimedBy && !o.deliveredAt,
+        ).length
+      : filteredOrders.filter((o) => o.status === status).length
 
   const safeActiveKey = (() => {
+    if (preparationMode === 'direct_service' && activeKey === 2) return 1
     if (statusFlowEnabled) return activeKey
     if (activeKey === 1 && getTabCount('pending') === 0) return 3
     if (activeKey === 2 && getTabCount('preparing') === 0) return 3
@@ -317,18 +481,37 @@ const OrdersList = () => {
     }
   }
 
-  const statusLabel = (status) => {
-    if (status === 'pending') return Language.pending || 'Pending'
+  // True for an order that was born already "completed" because
+  // statusFlowEnabled is off — distinguished from a normally-completed
+  // order using the existing statusTimestamps data (no schema change
+  // needed): a real pending→...→completed order always has a "pending"
+  // stamp, a born-completed order never does.
+  const skippedPreparation = (order) =>
+    order.status === 'completed' && !order.statusTimestamps?.pending
+
+  const statusLabel = (order) => {
+    const status = order.status
+    if (status === 'pending') {
+      // "direct_service" tenants never see a "Preparing" stage — the order
+      // just sits here, labeled "Placed", until someone completes it directly.
+      return directService ? Language.placed || 'Placed' : Language.pending || 'Pending'
+    }
     if (status === 'preparing') return Language.preparing || 'Preparing'
-    if (status === 'completed')
-      return statusFlowEnabled ? Language.completed || 'Completed' : Language.placed || 'Placed'
+    if (status === 'completed') {
+      return !statusFlowEnabled || skippedPreparation(order)
+        ? Language.placed || 'Placed'
+        : Language.completed || 'Completed'
+    }
     if (status === 'cancelled') return Language.cancelled || 'Cancelled'
     return status
   }
 
-  const statusPillClass = (status) => {
-    if (!statusFlowEnabled && status === 'completed') return 'placed'
-    return status
+  const statusPillClass = (order) => {
+    if (order.status === 'completed' && (!statusFlowEnabled || skippedPreparation(order))) {
+      return 'placed'
+    }
+    if (order.status === 'pending' && directService) return 'placed'
+    return order.status
   }
 
   const formatDuration = (ms) => {
@@ -380,32 +563,49 @@ const OrdersList = () => {
       order.status !== 'completed' &&
       order.status !== 'cancelled'
 
+    // Accepting an order into preparation, or marking it ready, is a
+    // preparation-staff action — a service/delivery-only staffer (canDeliver,
+    // no canPrepare) must not see it, only Accept/claim it afterward (see
+    // claimButton below) once it's already Completed. That split holds in
+    // "direct_service" mode too: prep still completes it, delivery still
+    // only claims it — direct_service just removes the "Preparing" stage.
+    const canAdvanceStatus = canPrepare === true || myIdentity.role === 'superClient'
+
+    // "direct_service" skips "preparing" entirely: a pending ("Placed")
+    // order goes straight to "completed" in one click.
+    const nextStatus = directService
+      ? 'completed'
+      : order.status === 'pending'
+        ? 'preparing'
+        : 'completed'
+
     const statusButtons = canMove ? (
       <>
-        <CButton
-          color={order.status === 'pending' ? 'info' : 'success'}
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            const newStatus = order.status === 'pending' ? 'preparing' : 'completed'
-            updateOrderStatus(order._id, newStatus)
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <CSpinner size="sm" />
-          ) : order.status === 'pending' ? (
-            <>
-              <CIcon icon={cilFire} className="me-1" />
-              {Language.moveToPreparing || 'Preparing'}
-            </>
-          ) : (
-            <>
-              <CIcon icon={cilCheckCircle} className="me-1" />
-              {Language.moveToCompleted || 'Completed'}
-            </>
-          )}
-        </CButton>
+        {canAdvanceStatus && (
+          <CButton
+            color={nextStatus === 'preparing' ? 'info' : 'success'}
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              updateOrderStatus(order._id, nextStatus)
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <CSpinner size="sm" />
+            ) : nextStatus === 'preparing' ? (
+              <>
+                <CIcon icon={cilFire} className="me-1" />
+                {Language.moveToPreparing || 'Preparing'}
+              </>
+            ) : (
+              <>
+                <CIcon icon={cilCheckCircle} className="me-1" />
+                {Language.moveToCompleted || 'Completed'}
+              </>
+            )}
+          </CButton>
+        )}
         {order.status === 'pending' && (
           <CButton
             color="danger"
@@ -422,6 +622,83 @@ const OrdersList = () => {
           </CButton>
         )}
       </>
+    ) : null
+
+    // Who may mark a ready order delivered: an admin, the table's assigned
+    // server, or — only when that table has no assigned server — anyone
+    // with table-service responsibility, so a ready order can never get
+    // stuck with no one permitted to deliver it. Enforced for real on the
+    // backend; this only decides whether to show the button.
+    //
+    // A prior delivery claim (e.g. from "shared_delivery" mode, before the
+    // tenant switched to "existing") overrides table assignment entirely:
+    // the claimer can always finish it, and nobody else can take it from
+    // them, regardless of who the table is currently assigned to.
+    const claimedById = order.deliveryClaimedBy?._id || order.deliveryClaimedBy || null
+    const iAmClaimer = claimedById && String(claimedById) === String(myIdentity.userId || '')
+    const claimedBySomeoneElse = claimedById && !iAmClaimer
+    const assignedServerId = order.table?.user ? String(order.table.user) : null
+    const canDeliver =
+      orderWorkflowMode !== 'shared_delivery' &&
+      order.status === 'completed' &&
+      !order.deliveredAt &&
+      !claimedBySomeoneElse &&
+      (myIdentity.role === 'superClient' ||
+        iAmClaimer ||
+        assignedServerId === String(myIdentity.userId || '') ||
+        (!assignedServerId && assignedTables.length > 0))
+
+    const deliverButton = canDeliver ? (
+      <CButton
+        color="primary"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation()
+          markDelivered(order._id)
+        }}
+        disabled={deliveringIds.has(order._id)}
+      >
+        {deliveringIds.has(order._id) ? (
+          <CSpinner size="sm" />
+        ) : (
+          <>
+            <CIcon icon={cilCheckCircle} className="me-1" />
+            {Language.delivered || 'Delivered'}
+          </>
+        )}
+      </CButton>
+    ) : null
+
+    // "shared_delivery" mode: the Accept action only ever appears inside
+    // the "Available Deliveries" tab itself (visibleTab is a closure over
+    // the current render, safe to read here) — every other tab only shows
+    // the read-only "Claimed by" pill above once claimed.
+    const canClaim =
+      visibleTab.status === '__available__' &&
+      order.status === 'completed' &&
+      !order.deliveryClaimedBy &&
+      !order.deliveredAt &&
+      (myIdentity.role === 'superClient' || meCanDeliver === true)
+
+    const claimButton = canClaim ? (
+      <CButton
+        color="primary"
+        size="sm"
+        onClick={(e) => {
+          e.stopPropagation()
+          claimDelivery(order._id)
+        }}
+        disabled={claimingIds.has(order._id)}
+      >
+        {claimingIds.has(order._id) ? (
+          <CSpinner size="sm" />
+        ) : (
+          <>
+            <CIcon icon={cilCheckCircle} className="me-1" />
+            {Language.accept || 'Accept'}
+          </>
+        )}
+      </CButton>
     ) : null
 
     return (
@@ -443,10 +720,16 @@ const OrdersList = () => {
                       ? Language.togo || 'To-go'
                       : Language.delivery || 'Delivery'
                   }${order.orderNumber ? ` #${order.orderNumber}` : ''}`}
-              <span className={`ol-pill ${statusPillClass(order.status)}`}>
+              <span className={`ol-pill ${statusPillClass(order)}`}>
                 {getStatusIcon(order.status)}
-                {statusLabel(order.status)}
+                {statusLabel(order)}
               </span>
+              {order.deliveryClaimedBy && (
+                <span className="ol-pill completed">
+                  <CIcon icon={cilCheckCircle} className="me-1" />
+                  {Language.claimedBy || 'Claimed by'} {order.deliveryClaimedBy.fullName || '—'}
+                </span>
+              )}
               {duration && (
                 <span className="ol-duration">
                   <CIcon icon={cilClock} className="me-1" />
@@ -465,6 +748,7 @@ const OrdersList = () => {
               <span>
                 {formatDistanceToNow(new Date(order.timestamp || order.createdAt), {
                   addSuffix: true,
+                  locale: dateLocale,
                 })}
               </span>
             </div>
@@ -472,7 +756,11 @@ const OrdersList = () => {
 
           <div className="ol-row-price">{totalPrice} TND</div>
 
-          <div className="ol-row-actions">{statusButtons}</div>
+          <div className="ol-row-actions">
+            {statusButtons}
+            {deliverButton}
+            {claimButton}
+          </div>
 
           <button
             type="button"
@@ -572,11 +860,17 @@ const OrdersList = () => {
   }
 
   /* ---------- tab list ---------- */
+  const directService = preparationMode === 'direct_service'
   const tabs = []
   if (statusFlowEnabled || getTabCount('pending') > 0) {
-    tabs.push({ key: 1, icon: cilClock, label: Language.pending || 'Pending', status: 'pending' })
+    tabs.push({
+      key: 1,
+      icon: cilClock,
+      label: directService ? Language.placed || 'Placed' : Language.pending || 'Pending',
+      status: 'pending',
+    })
   }
-  if (statusFlowEnabled || getTabCount('preparing') > 0) {
+  if (!directService && (statusFlowEnabled || getTabCount('preparing') > 0)) {
     tabs.push({
       key: 2,
       icon: cilFire,
@@ -591,9 +885,29 @@ const OrdersList = () => {
     status: 'completed',
   })
   tabs.push({ key: 4, icon: cilBan, label: Language.cancelled || 'Cancelled', status: 'cancelled' })
+  // "shared_delivery" mode only, and only for staff who can actually act on
+  // it (admin, or a service-enabled staffer) — a prep-only staffer already
+  // sees every completed order via the tab above, so this would just be a
+  // duplicate list with a button they can't use.
+  if (
+    orderWorkflowMode === 'shared_delivery' &&
+    (meCanDeliver || myIdentity.role === 'superClient')
+  ) {
+    tabs.push({
+      key: 5,
+      icon: cilListRich,
+      label: Language.availableDeliveries || 'Available Deliveries',
+      status: '__available__',
+    })
+  }
 
   const visibleTab = tabs.find((t) => t.key === safeActiveKey) || tabs[0]
-  const visibleOrders = filteredOrders.filter((o) => o.status === visibleTab.status)
+  const visibleOrders =
+    visibleTab.status === '__available__'
+      ? filteredOrders.filter(
+          (o) => o.status === 'completed' && !o.deliveryClaimedBy && !o.deliveredAt,
+        )
+      : filteredOrders.filter((o) => o.status === visibleTab.status)
 
   return (
     <>
@@ -631,6 +945,17 @@ const OrdersList = () => {
                 </strong>{' '}
                 cancelled
               </div>
+              {viewScope === 'mine' && assignedTables.length > 0 && (
+                <div className="ol-scope-badge">
+                  {Language.showingYourTables || 'Showing your tables:'}{' '}
+                  {assignedTables.map((tb) => tb.number).join(', ')}
+                </div>
+              )}
+              {viewScope === 'all' && canPrepare && (
+                <div className="ol-scope-badge is-prep">
+                  {Language.showingAllPreparation || 'All orders — preparation access'}
+                </div>
+              )}
             </div>
 
             <div className="ol-top-right">

@@ -1,36 +1,47 @@
 import React from 'react'
-import { CCol, CRow, CCard, CCardBody, CCardHeader, CContainer } from '@coreui/react'
+import { useSelector } from 'react-redux'
+import { CCard, CCardBody, CCardHeader } from '@coreui/react'
 import { CIcon } from '@coreui/icons-react'
-import { cilCalendar, cilChart } from '@coreui/icons'
+import { cilDescription } from '@coreui/icons'
+import translations from '../../../app/Language'
+import DashboardSectionHeader from '../../../components/DashboardSectionHeader'
 import BillForCurrentUser from './BillForCurrentUser'
 import TransactionsCards from './TransactionsTimeline'
 
-// Reusable Card Component to avoid repetition
-const RevenueCard = ({ icon, title, children }) => (
-  <CRow className="w-100 mb-4 justify-content-center">
-    <CCol xs={12} md={8} lg={8}>
-      <CCard>
-        <CCardHeader className="d-flex align-items-center justify-content-center">
-          <CIcon icon={icon} className="me-2" />
-          <strong>{title}</strong>
-        </CCardHeader>
-        <CCardBody>{children}</CCardBody>
-      </CCard>
-    </CCol>
-  </CRow>
-)
+const Bill = () => {
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
 
-const Sales = () => {
   return (
-    <CContainer className="d-flex flex-column align-items-center">
-      <RevenueCard icon={cilChart} title="Order Craft Bill">
-        <BillForCurrentUser />
-      </RevenueCard>
-      <RevenueCard icon={cilChart} title="Bill History Payment">
-        <TransactionsCards />
-      </RevenueCard>
-    </CContainer>
+    <>
+      <DashboardSectionHeader
+        icon={cilDescription}
+        accent="#3d7a5c"
+        title={Language.bills}
+        subtitle={Language.billsHubDesc}
+      />
+
+      <CCard className="mb-4">
+        <CCardHeader className="d-flex align-items-center">
+          <CIcon icon={cilDescription} className="me-2" />
+          <strong>{Language.OrderCraftBill}</strong>
+        </CCardHeader>
+        <CCardBody>
+          <BillForCurrentUser />
+        </CCardBody>
+      </CCard>
+
+      <CCard className="mb-4">
+        <CCardHeader className="d-flex align-items-center">
+          <CIcon icon={cilDescription} className="me-2" />
+          <strong>{Language.BillHistoryPayment}</strong>
+        </CCardHeader>
+        <CCardBody>
+          <TransactionsCards />
+        </CCardBody>
+      </CCard>
+    </>
   )
 }
 
-export default Sales
+export default Bill

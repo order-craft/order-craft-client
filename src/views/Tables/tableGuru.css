@@ -84,7 +84,7 @@
 }
 
 .tg-stat-value.is-primary {
-  color: #0d6efd;
+  color: var(--cui-primary, #b5502b);
 }
 .tg-stat-value.is-success {
   color: #198754;

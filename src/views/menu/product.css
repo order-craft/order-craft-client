@@ -394,7 +394,7 @@
 }
 
 .pd-upload:hover {
-  border-color: #0d6efd;
+  border-color: var(--cui-primary, #b5502b);
   background: #f8f9fc;
 }
 

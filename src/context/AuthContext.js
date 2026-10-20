@@ -35,6 +35,10 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", newToken);
     setToken(newToken);
     setUser(decodeToken(newToken));
+    // SocketProvider mounts above this provider (at the app root, before
+    // any token exists) and has no other way to learn a same-tab login
+    // just happened — the "storage" event only fires for OTHER tabs.
+    window.dispatchEvent(new Event("oc:auth-token-changed"));
     navigate("/admin");
   };
 
@@ -42,6 +46,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    window.dispatchEvent(new Event("oc:auth-token-changed"));
     navigate("/login");
     window.location.reload();
   };

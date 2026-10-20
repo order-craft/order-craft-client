@@ -247,7 +247,7 @@
 .pp-top3-count {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #0d6efd;
+  color: var(--cui-primary, #b5502b);
 }
 
 .pp-top3-unit {

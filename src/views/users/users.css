@@ -81,7 +81,7 @@
 
 .ut-row {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
@@ -106,7 +106,7 @@
   font-weight: 800;
   color: #fff;
   font-size: 0.95rem;
-  background: #0d6efd;
+  background: var(--cui-primary, #b5502b);
   flex-shrink: 0;
 }
 
@@ -369,6 +369,9 @@
     grid-column: 2 / 3;
     justify-self: start;
   }
+  .ut-row > .resp-cell {
+    grid-column: 2 / 3;
+  }
   .ut-row-actions {
     grid-column: 2 / 3;
     justify-content: flex-end;
@@ -388,4 +391,168 @@
   .ut-modal-footer {
     padding: 12px 16px;
   }
+}
+
+/* =========================================================================
+   Staff responsibilities & table assignment (at- / resp- namespace)
+   ========================================================================= */
+
+.at-table-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  padding: 6px;
+}
+
+.at-table-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.at-table-row:hover {
+  background: var(--oc-surface-sunken);
+}
+
+.at-table-number {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--oc-ink);
+}
+
+.at-table-note {
+  margin-left: auto;
+  font-size: 0.74rem;
+  color: #a06a1f;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.at-change-note {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: var(--cui-primary);
+  font-weight: 600;
+}
+
+/* ---- Responsibilities + assigned tables on each staff row ---- */
+.resp-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.resp-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.resp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.resp-pill.is-prep {
+  background: rgba(47, 143, 174, 0.14);
+  color: #2f8fae;
+}
+
+.resp-pill.is-deliver {
+  background: rgba(142, 68, 173, 0.14);
+  color: #8e44ad;
+}
+
+.resp-pill.is-tables {
+  background: rgba(181, 80, 43, 0.12);
+  color: var(--cui-primary);
+}
+
+.resp-pill.is-none {
+  background: var(--oc-surface-sunken);
+  color: var(--oc-ink-soft);
+}
+
+.resp-tables-list {
+  font-size: 0.76rem;
+  color: var(--oc-ink-soft);
+}
+
+.resp-assign-btn {
+  border: 1px solid var(--oc-border);
+  background: var(--oc-surface);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--oc-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.resp-assign-btn:hover {
+  border-color: var(--cui-primary);
+  color: var(--cui-primary);
+}
+
+/* ---- Unassigned / attention panel ---- */
+.staff-attention {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--oc-radius);
+  background: rgba(198, 67, 47, 0.08);
+  color: #8a3321;
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+.staff-attention-title {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.staff-attention-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.staff-attention-chip {
+  background: rgba(198, 67, 47, 0.14);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.resp-workload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.74rem;
+  color: var(--oc-ink-soft);
+}
+
+.resp-workload-warn {
+  color: #a06a1f;
+  font-weight: 700;
 }

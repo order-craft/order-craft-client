@@ -120,9 +120,9 @@ const ProductsRate = () => {
           </h5>
           <div className="pp-card-subtitle">
             <strong>{productRatings.length}</strong>{' '}
-            {productRatings.length === 1 ? 'product' : 'products'}
+            {productRatings.length === 1 ? Language.product : Language.products}
             {' · '}
-            with ratings and margins
+            {Language.withRatingsAndMargins}
           </div>
         </div>
 

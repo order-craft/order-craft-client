@@ -1,15 +1,157 @@
 /* =========================================================================
-   AppSidebar — visual polish + section labels
+   Order Craft — design tokens
+   A small set of CSS variables layered on top of CoreUI's own so bespoke
+   component CSS (per-page files under src/views/**) can share one warm,
+   contemporary visual language without re-declaring colors everywhere.
    ========================================================================= */
 
-.app-sidebar {
-  background-color: #fafbfc;
+:root {
+  /* Tells the browser this page is light-only, so engines that
+     auto-dark-theme pages lacking this declaration (noticeably more
+     aggressive in private/incognito windows on some browsers) don't
+     invert the background on their own. */
+  color-scheme: light;
+  --oc-surface: #ffffff;
+  --oc-surface-sunken: #faf8f5;
+  --oc-ink: #211912;
+  --oc-ink-soft: #5b5248;
+  --oc-border: #e8e1d9;
+  --oc-shadow-sm: 0 1px 2px rgba(33, 25, 18, 0.05);
+  --oc-shadow: 0 4px 16px rgba(33, 25, 18, 0.08);
+  --oc-shadow-lg: 0 16px 40px rgba(33, 25, 18, 0.14);
+  --oc-radius: 0.875rem;
+  --oc-radius-lg: 1.125rem;
+  --oc-display-font: 'Fraunces', 'Plus Jakarta Sans', Georgia, serif;
+
+  /* Permanent dark "espresso" sidebar identity — independent of the
+     app's own light/dark color mode, same idea as Stripe/Linear's
+     fixed-dark-nav-on-light-canvas pattern. */
+  --oc-side-bg: #1c130c;
+  --oc-side-bg-raised: #241a11;
+  --oc-side-ink: #f4ece2;
+  --oc-side-ink-soft: rgba(244, 236, 226, 0.58);
+  --oc-side-border: rgba(244, 236, 226, 0.09);
+  --oc-side-hover: rgba(244, 236, 226, 0.06);
+  --oc-side-accent: #e8a06c;
+  --oc-side-accent-bg: rgba(232, 160, 108, 0.16);
+}
+
+/* A few hero moments (login headline, dashboard greeting) get a warm
+   display serif so the product has typographic personality beyond a
+   single geometric sans used everywhere else. */
+.oc-display {
+  font-family: var(--oc-display-font);
+  font-weight: 600;
+}
+
+@if $enable-dark-mode {
+  @include color-mode(dark) {
+    :root {
+      --oc-surface: var(--cui-dark-bg-subtle, #27241f);
+      --oc-surface-sunken: var(--cui-body-bg);
+      --oc-ink: var(--cui-body-color);
+      --oc-ink-soft: var(--cui-secondary-color);
+      --oc-border: var(--cui-border-color);
+      --oc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+      --oc-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      --oc-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+  }
+}
+
+body {
+  background-color: var(--oc-surface-sunken);
+}
+
+/* Cards read as calm, elevated surfaces rather than flat Bootstrap boxes. */
+.card {
+  box-shadow: var(--oc-shadow-sm);
+}
+
+.wrapper {
+  width: 100%;
+  @include ltr-rtl('padding-left', var(--cui-sidebar-occupy-start, 0));
+  @include ltr-rtl('padding-right', var(--cui-sidebar-occupy-end, 0));
+  will-change: auto;
+  @include transition(padding 0.15s);
+}
+
+.header > .container-fluid,
+.sidebar-header {
+  min-height: calc(4rem + 1px); // stylelint-disable-line function-disallowed-list
+}
+
+.sidebar-brand-full {
+  margin-left: 3px;
+}
+
+.sidebar-header {
+  .nav-underline-border {
+    --cui-nav-underline-border-link-padding-x: 1rem;
+    --cui-nav-underline-border-gap: 0;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    min-height: calc(4rem + 1px); // stylelint-disable-line function-disallowed-list
+  }
+}
+
+.sidebar-toggler {
+  @include ltr-rtl('margin-left', auto);
+}
+
+.sidebar-narrow,
+.sidebar-narrow-unfoldable:not(:hover) {
+  .sidebar-toggler {
+    @include ltr-rtl('margin-right', auto);
+  }
+}
+
+.header > .container-fluid + .container-fluid {
+  min-height: 3rem;
+}
+
+.footer {
+  min-height: calc(3rem + 1px); // stylelint-disable-line function-disallowed-list
+}
+
+@if $enable-dark-mode {
+  @include color-mode(dark) {
+    body {
+      background-color: var(--cui-dark-bg-subtle);
+    }
+
+    .footer {
+      --cui-footer-bg: var(--cui-body-bg);
+    }
+  }
+}
+
+/* =========================================================================
+   AppSidebar — permanent dark "espresso" brand identity
+   Overrides CoreUI's own .sidebar-dark variables (normally a cool
+   blue-gray) with our warm palette. Scoped entirely to the sidebar, so
+   the rest of the app stays on the light canvas regardless of this.
+   ========================================================================= */
+
+.app-sidebar.sidebar-dark {
+  --cui-body-bg: var(--oc-side-bg);
+  --cui-body-color: var(--oc-side-ink);
+  --cui-emphasis-color: var(--oc-side-ink);
+  --cui-secondary-color: var(--oc-side-ink-soft);
+  --cui-secondary-bg: var(--oc-side-bg-raised);
+  --cui-tertiary-color: var(--oc-side-ink-soft);
+  --cui-tertiary-bg: var(--oc-side-bg-raised);
+  --cui-border-color: var(--oc-side-border);
+  background-color: var(--oc-side-bg);
 }
 
 /* ---- Brand header ---- */
 .app-sidebar-header {
-  padding: 14px 16px !important;
-  background-color: #fafbfc;
+  padding: 18px 16px !important;
+  background-color: var(--oc-side-bg);
 }
 
 .app-sidebar-brand {
@@ -26,6 +168,9 @@
   max-width: 100px;
   height: auto;
   object-fit: contain;
+  /* Source mark is drawn for light backgrounds — show it in white
+     against the dark sidebar instead of swapping the asset. */
+  filter: brightness(0) invert(1);
 }
 
 /* ---- Section labels ---- */
@@ -35,7 +180,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #8a93a0;
+  color: var(--oc-side-ink-soft);
   user-select: none;
 }
 
@@ -45,22 +190,54 @@
   padding-top: 10px;
 }
 
-/* ---- Nav links: softer hover, left accent on active ---- */
+/* ---- Nav links: softer hover, amber accent on active ---- */
 .sidebar .nav-link {
   position: relative;
-  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  border-radius: 8px;
   margin: 2px 8px;
   padding: 8px 12px;
+  font-weight: 500;
+  color: var(--oc-side-ink-soft);
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* Longer translated labels (e.g. French "Disponibilité des produits")
+   truncate with an ellipsis instead of overflowing past the sidebar's
+   right-hand border. */
+.sidebar .nav-link .nav-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sidebar .nav-link .nav-icon,
+.sidebar .nav-link .nav-icon-bullet {
+  flex-shrink: 0;
+  color: var(--oc-side-ink-soft);
+}
+
 .sidebar .nav-link:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--oc-side-hover);
+  color: var(--oc-side-ink);
+}
+
+.sidebar .nav-link:hover .nav-icon {
+  color: var(--oc-side-ink);
 }
 
 .sidebar .nav-link.active {
-  background-color: rgba(13, 110, 253, 0.08);
-  color: #0d6efd !important;
+  background-color: var(--oc-side-accent-bg);
+  color: var(--oc-side-accent) !important;
+  font-weight: 600;
+}
+
+.sidebar .nav-link.active .nav-icon {
+  color: var(--oc-side-accent);
+  opacity: 1;
 }
 
 .sidebar .nav-link.active::before {
@@ -71,7 +248,7 @@
   bottom: 6px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background-color: #0d6efd;
+  background-color: var(--oc-side-accent);
 }
 
 /* Nested items under a group */
@@ -82,13 +259,21 @@
 
 /* ---- Footer ---- */
 .app-sidebar .sidebar-footer {
-  background-color: #fafbfc;
+  background-color: var(--oc-side-bg);
+}
+
+.app-sidebar .sidebar-toggler {
+  color: var(--oc-side-ink-soft);
+}
+
+.app-sidebar .sidebar-toggler:hover {
+  color: var(--oc-side-ink);
 }
 
 /* ---- Mobile: sidebar shows as overlay ---- */
 @media (max-width: 991.98px) {
   .app-sidebar {
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--oc-shadow-lg);
   }
 
   .nav-section-label {
@@ -107,11 +292,196 @@
   padding: 8px 0;
   text-align: center;
   font-size: 0;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  border-top: 1px solid var(--oc-side-border);
   margin: 6px 12px 0 12px;
 }
 
 .sidebar.sidebar-narrow .nav-section-label:first-child {
   border-top: none;
   margin-top: 0;
+}
+
+/* =========================================================================
+   AppHeader
+   ========================================================================= */
+
+.app-header {
+  background-color: var(--oc-surface);
+}
+
+.app-header .border-bottom {
+  border-color: var(--oc-border) !important;
+}
+
+/* =========================================================================
+   Shared "hub card" building blocks — used by the Dashboard landing page
+   and the Login screen so both share the same premium surface language.
+   ========================================================================= */
+
+.oc-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  box-shadow: var(--oc-shadow-sm);
+  padding: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.oc-hub-card:hover,
+.oc-hub-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--oc-shadow);
+  border-color: rgba(var(--cui-primary-rgb), 0.3);
+}
+
+.oc-hub-card-icon {
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.oc-hub-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  margin: 0;
+}
+
+.oc-hub-card-desc {
+  font-size: 0.82rem;
+  color: var(--oc-ink-soft);
+  margin: 0;
+}
+
+.oc-stat-card {
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  box-shadow: var(--oc-shadow-sm);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.oc-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.oc-stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--oc-ink-soft);
+  margin: 0 0 2px 0;
+}
+
+.oc-stat-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+/* =========================================================================
+   Shared section header for hub-only sub-dashboards
+   ========================================================================= */
+
+.oc-section-header {
+  margin-bottom: 20px;
+}
+
+.oc-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--oc-ink-soft);
+  text-decoration: none;
+  margin-bottom: 12px;
+  transition: color 0.15s ease;
+}
+
+.oc-back-link:hover {
+  color: var(--cui-primary);
+}
+
+.oc-back-link svg {
+  width: 13px;
+  height: 13px;
+}
+
+.oc-section-header-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.oc-section-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.oc-section-title {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--oc-ink);
+  margin: 0;
+}
+
+.oc-section-subtitle {
+  font-size: 0.86rem;
+  color: var(--oc-ink-soft);
+  margin: 2px 0 0 0;
+}
+
+/* ---- Honest "not built yet" empty state ---- */
+.oc-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 48px 24px;
+  color: var(--oc-ink-soft);
+}
+
+.oc-soon svg {
+  color: var(--oc-border);
+  margin-bottom: 4px;
+}
+
+.oc-soon-title {
+  font-weight: 700;
+  color: var(--oc-ink);
+  font-size: 0.95rem;
+}
+
+.oc-soon-body {
+  font-size: 0.85rem;
+  max-width: 320px;
 }

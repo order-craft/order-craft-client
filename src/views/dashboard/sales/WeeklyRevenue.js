@@ -225,7 +225,9 @@ const CurrentWeekRevenue = ({ className }) => {
                       <div className="sales-breakdown-top">
                         <span className="sales-breakdown-name">
                           {isToday ? (
-                            <strong style={{ color: '#0d6efd' }}>{day.shortDayName}</strong>
+                            <strong style={{ color: 'var(--cui-primary, #b5502b)' }}>
+                              {day.shortDayName}
+                            </strong>
                           ) : (
                             day.shortDayName
                           )}
@@ -241,7 +243,7 @@ const CurrentWeekRevenue = ({ className }) => {
                           className="sales-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: isToday ? '#0d6efd' : '#4dabf7',
+                            background: isToday ? 'var(--cui-primary, #b5502b)' : '#d8a98a',
                           }}
                         />
                       </div>

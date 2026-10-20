@@ -1,42 +1,323 @@
+/* =========================================================================
+   Dashboard landing hub
+   ========================================================================= */
+
+.dh-page {
+  padding: 4px 4px 24px 4px;
+}
+
+.dh-head {
+  margin-bottom: 20px;
+}
+
+.dh-greeting {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--oc-ink);
+  margin: 0 0 2px 0;
+}
+
+.dh-subtitle {
+  font-size: 0.9rem;
+  color: var(--oc-ink-soft);
+  margin: 0;
+}
+
+/* ---- Stat strip ---- */
+.dh-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+@media (max-width: 767.98px) {
+  .dh-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dh-stat-skeleton {
+  width: 70px;
+  height: 1.35rem;
+  border-radius: 6px;
+  background: var(--oc-border);
+  animation: dh-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dh-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.dh-stat-sub {
+  font-size: 0.74rem;
+  color: var(--oc-ink-soft);
+  margin-top: 2px;
+}
+
+/* ---- Section label ---- */
+.dh-section-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--oc-ink-soft);
+  margin-bottom: 12px;
+}
+
+/* ---- Navigation hub grid ---- */
 .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
-    padding: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 16px;
+}
+
+.dashboard-item-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.dh-hub-arrow {
+  margin-left: auto;
+  align-self: center;
+  color: var(--oc-ink-soft);
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.oc-hub-card:hover .dh-hub-arrow {
+  transform: translateX(3px);
+  opacity: 1;
+  color: var(--cui-primary);
+}
+
+/* ---- Stat card used as a <button> (clickable quick-action tiles) ---- */
+.dh-stat-clickable {
+  width: 100%;
+  border: 1px solid var(--oc-border);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dh-stat-clickable:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--oc-shadow);
+}
+
+.dh-stat-arrow {
+  margin-left: auto;
+  color: var(--oc-ink-soft);
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.dh-stat-skeleton-card {
+  height: 74px;
+  border-radius: var(--oc-radius);
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  animation: dh-pulse 1.4s ease-in-out infinite;
+}
+
+/* ---- "All caught up" calm state ---- */
+.dh-allclear {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: var(--oc-radius);
+  background: rgba(47, 143, 91, 0.1);
+  color: #1f6b3f;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 28px;
+}
+
+/* ---- Performance grid: revenue tile + recent-orders card ---- */
+.dh-perf-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 2fr;
+  gap: 14px;
+  margin-bottom: 28px;
+  align-items: start;
+}
+
+@media (max-width: 767.98px) {
+  .dh-perf-grid {
+    grid-template-columns: 1fr;
   }
-  
-  .dashboard-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 150px;
-    border-radius: 10px;
-    color: white;
-    cursor: pointer;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s, box-shadow 0.3s;
-  }
-  
-  .dashboard-item:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
-  }
-  
-  .dashboard-item-content h3 {
-    text-align: center;
-    margin: 0;
-    font-size: 18px;
-  }
-  .dashboard-item-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .dashboard-item-image {
-    width: 100px; /* Adjust size as needed */
-    height: 100px; /* Adjust size as needed */
-    margin-bottom: 10px; /* Space between image and title */
-  }
-  
+}
+
+/* ---- Generic dashboard content card (recent orders / best sellers) ---- */
+.dh-card {
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  box-shadow: var(--oc-shadow-sm);
+  padding: 16px 18px;
+  margin-bottom: 28px;
+}
+
+.dh-perf-grid .dh-card {
+  margin-bottom: 0;
+}
+
+.dh-card-wide {
+  max-width: 560px;
+}
+
+.dh-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dh-card-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+}
+
+.dh-card-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--cui-primary);
+  cursor: pointer;
+}
+
+.dh-card-link:hover {
+  text-decoration: underline;
+}
+
+.dh-card-empty {
+  font-size: 0.85rem;
+  color: var(--oc-ink-soft);
+  padding: 12px 0;
+}
+
+.dh-list-skeleton {
+  height: 120px;
+  border-radius: 8px;
+  background: var(--oc-surface-sunken);
+  animation: dh-pulse 1.4s ease-in-out infinite;
+}
+
+/* ---- Recent orders ---- */
+.dh-order-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dh-order-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--oc-border);
+}
+
+.dh-order-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.dh-order-pill {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dh-order-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dh-order-name {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--oc-ink);
+}
+
+.dh-order-time {
+  font-size: 0.74rem;
+  color: var(--oc-ink-soft);
+}
+
+.dh-order-price {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+/* ---- Best sellers ---- */
+.dh-seller-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.dh-seller-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 0;
+}
+
+.dh-seller-rank {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--oc-surface-sunken);
+  color: var(--oc-ink-soft);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dh-seller-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--oc-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dh-seller-count {
+  font-size: 0.78rem;
+  color: var(--oc-ink-soft);
+  flex-shrink: 0;
+}

@@ -14,6 +14,11 @@ import {
   cilHouse,
   cilCreditCard,
   cilHistory,
+  cilChartLine,
+  cilListRich,
+  cilRestaurant,
+  cilPeople,
+  cilDescription,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem } from '@coreui/react'
 import { jwtDecode } from 'jwt-decode'
@@ -59,6 +64,45 @@ const NavItems = () => {
           name: Language?.productAvailability || "Product's availability",
           to: '/product/availability',
           icon: <CIcon icon={cilBraille} customClassName="nav-icon" />,
+        },
+      ],
+    },
+    {
+      // These five pages used to be reachable only through the Dashboard's
+      // navigation tiles, with no sidebar entry and no way back except a
+      // link on the page itself. Giving them first-class nav items makes
+      // them directly navigable and jump-between-able like everything else.
+      label: Language.sectionAnalytics || 'Analytics',
+      items: [
+        {
+          component: CNavItem,
+          name: Language?.salesStatistic || 'Sales',
+          to: '/Sales',
+          icon: <CIcon icon={cilChartLine} customClassName="nav-icon" />,
+        },
+        {
+          component: CNavItem,
+          name: Language?.orderManagement || 'Order Management',
+          to: '/order-management',
+          icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
+        },
+        {
+          component: CNavItem,
+          name: Language?.productPerformance || 'Product Performance',
+          to: '/product-performance',
+          icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
+        },
+        {
+          component: CNavItem,
+          name: Language?.EmployeePerformance || 'Employee Performance',
+          to: '/employee-performance',
+          icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+        },
+        {
+          component: CNavItem,
+          name: Language?.bills || 'Bills',
+          to: '/bill',
+          icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
         },
       ],
     },
@@ -154,6 +198,11 @@ const NavItems = () => {
   // ---- Role filter ----
   const SUPERCLIENT_ONLY_ROUTES = new Set([
     '/dashboard',
+    '/Sales',
+    '/order-management',
+    '/product-performance',
+    '/employee-performance',
+    '/bill',
     '/menu/sections',
     '/users/usersList',
     '/users/createUser',

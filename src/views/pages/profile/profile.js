@@ -66,6 +66,9 @@ const Profile = () => {
         statusFlowEnabled:
           response.data.statusFlowEnabled === undefined ? true : response.data.statusFlowEnabled,
         brandColor: response.data.brandColor || '#8B5A2B',
+        participatesInService: !!response.data.participatesInService,
+        orderWorkflowMode: response.data.orderWorkflowMode || 'existing',
+        preparationMode: response.data.preparationMode || 'required',
       })
       setUserDate(userData)
       setEmail(response.data.email)
