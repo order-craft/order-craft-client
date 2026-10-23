@@ -1,21 +1,51 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import { CButton, CFormInput, CFormSwitch, CModal, CModalBody, CModalFooter } from '@coreui/react'
+import { CButton, CFormInput, CFormSelect, CModal, CModalBody, CModalFooter } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilBuilding, cilLocationPin, cilImage, cilSave, cilX, cilCheck } from '@coreui/icons'
+import { cilBuilding, cilLocationPin, cilImage, cilCheck, cilX } from '@coreui/icons'
 import './profile.css'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+
+const FLOW_OPTIONS = [
+  {
+    key: 'two-step',
+    labelKey: 'orderFlowTwoStepLabel',
+    hintKey: 'orderFlowTwoStepHint',
+  },
+  {
+    key: 'three-step',
+    labelKey: 'orderFlowThreeStepLabel',
+    hintKey: 'orderFlowThreeStepHint',
+  },
+  {
+    key: 'four-step',
+    labelKey: 'orderFlowFourStepLabel',
+    hintKey: 'orderFlowFourStepHint',
+  },
+  {
+    key: 'delivery-only',
+    labelKey: 'orderFlowDeliveryOnlyLabel',
+    hintKey: 'orderFlowDeliveryOnlyHint',
+  },
+]
+
 const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onSave }) => {
   const [saving, setSaving] = useState(false)
   const t = useSelector((state) => state.language)
   const Language = translations[t]
+
   useEffect(() => {
     if (visible) setSaving(false)
   }, [visible])
 
   const brandColor = data?.brandColor || '#8B5A2B'
-  const statusFlow = data?.statusFlowEnabled === undefined ? true : data.statusFlowEnabled
+  const orderFlow = data?.orderFlow || 'three-step'
+  const editWindow = data?.customerEditWindow || {
+    enabled: true,
+    minutes: 3,
+    from: 'placed',
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -24,6 +54,23 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
     } finally {
       setSaving(false)
     }
+  }
+
+  const pickFlow = (key) => {
+    onChange({ target: { name: 'orderFlow', value: key } })
+  }
+
+  const handleWindowChange = (field) => (e) => {
+    const raw = e.target.value
+    onChange({
+      target: {
+        name: 'customerEditWindow',
+        value: {
+          ...editWindow,
+          [field]: field === 'minutes' ? Number(raw) : field === 'enabled' ? e.target.checked : raw,
+        },
+      },
+    })
   }
 
   return (
@@ -118,7 +165,8 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
 
         {/* Media */}
         <div className="pf-section">
-          <div className="pf-section-title">{Language.media}</div>{' '}
+          <div className="pf-section-title">{Language.media}</div>
+
           <div className="pf-grid-2">
             <div className="pf-media-cell">
               <label className="pf-field-label" htmlFor="pf-logo-upload">
@@ -141,11 +189,11 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 ) : (
                   <>
                     <CIcon icon={cilImage} className="pf-upload-icon" />
-                    <span className="pf-upload-text">{Language.clickToUploadShort}</span>{' '}
+                    <span className="pf-upload-text">{Language.clickToUploadShort}</span>
                   </>
                 )}
               </label>
-              <div className="pf-upload-hint">{Language.logoUploadHint}</div>{' '}
+              <div className="pf-upload-hint">{Language.logoUploadHint}</div>
             </div>
 
             <div className="pf-media-cell">
@@ -169,11 +217,11 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
                 ) : (
                   <>
                     <CIcon icon={cilImage} className="pf-upload-icon" />
-                    <span className="pf-upload-text">Click to upload</span>
+                    <span className="pf-upload-text">{Language.clickToUploadShort}</span>
                   </>
                 )}
               </label>
-              <div className="pf-upload-hint">{Language.pictureUploadHint}</div>{' '}
+              <div className="pf-upload-hint">{Language.pictureUploadHint}</div>
             </div>
           </div>
         </div>
@@ -229,26 +277,81 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
           </p>
         </div>
 
-        {/* Order workflow */}
+        {/* ── Order flow (replaces the old status flow switch) ── */}
         <div className="pf-section">
-          <div className="pf-section-title">{Language.orderWorkflow}</div>
-          <div className="pf-switch-row">
+          <div className="pf-section-title">{Language.orderFlowTitle}</div>
+          <div className="pf-flow-hint">{Language.orderFlowHint}</div>
+
+          <div className="pf-flow-grid">
+            {FLOW_OPTIONS.map((opt) => {
+              const active = orderFlow === opt.key
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  className={`pf-flow-card ${active ? 'is-active' : ''}`}
+                  onClick={() => pickFlow(opt.key)}
+                  aria-pressed={active}
+                >
+                  <div className="pf-flow-card-head">
+                    <span className="pf-flow-radio" aria-hidden="true" />
+                    <span className="pf-flow-label">{Language[opt.labelKey]}</span>
+                  </div>
+                  <div className="pf-flow-desc">{Language[opt.hintKey]}</div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Customer edit window ── */}
+        <div className="pf-section">
+          <div className="pf-section-title">{Language.customerEditWindowTitle}</div>
+          <div className="pf-flow-hint">{Language.customerEditWindowHint}</div>
+
+          <div className="pf-switch-row" style={{ marginTop: 10 }}>
             <div className="pf-switch-text">
-              <div className="pf-switch-title">{Language.enableStatusFlow}</div>
-              <div className="pf-switch-hint">{Language.statusFlowHint}</div>
+              <div className="pf-switch-title">{Language.customerEditWindowEnabledLabel}</div>
             </div>
-            <CFormSwitch
-              id="statusFlowEnabledSwitch"
-              checked={statusFlow}
-              onChange={(e) =>
-                onChange({
-                  target: {
-                    name: 'statusFlowEnabled',
-                    value: e.target.checked,
-                  },
-                })
-              }
-            />
+            <label className="pf-toggle">
+              <input
+                type="checkbox"
+                checked={!!editWindow.enabled}
+                onChange={handleWindowChange('enabled')}
+              />
+              <span className="pf-toggle-slider" />
+            </label>
+          </div>
+
+          <div className="pf-grid-2" style={{ marginTop: 14 }}>
+            <div>
+              <label className="pf-field-label" htmlFor="pf-edit-minutes">
+                {Language.customerEditWindowMinutesLabel}
+              </label>
+              <CFormInput
+                id="pf-edit-minutes"
+                type="number"
+                min="0"
+                step="1"
+                value={editWindow.minutes ?? 3}
+                onChange={handleWindowChange('minutes')}
+                disabled={!editWindow.enabled}
+              />
+            </div>
+            <div>
+              <label className="pf-field-label" htmlFor="pf-edit-from">
+                {Language.customerEditWindowFromLabel}
+              </label>
+              <CFormSelect
+                id="pf-edit-from"
+                value={editWindow.from || 'placed'}
+                onChange={handleWindowChange('from')}
+                disabled={!editWindow.enabled}
+              >
+                <option value="placed">{Language.customerEditWindowFromPlaced}</option>
+                <option value="preparing">{Language.customerEditWindowFromPreparing}</option>
+              </CFormSelect>
+            </div>
           </div>
         </div>
       </CModalBody>
@@ -289,8 +392,13 @@ PlaceDetailsModal.propTypes = {
     picturePreview: PropTypes.string,
     lat: PropTypes.string,
     long: PropTypes.string,
-    statusFlowEnabled: PropTypes.bool,
     brandColor: PropTypes.string,
+    orderFlow: PropTypes.oneOf(['two-step', 'three-step', 'four-step', 'delivery-only']),
+    customerEditWindow: PropTypes.shape({
+      enabled: PropTypes.bool,
+      minutes: PropTypes.number,
+      from: PropTypes.oneOf(['placed', 'preparing']),
+    }),
   }),
 }
 

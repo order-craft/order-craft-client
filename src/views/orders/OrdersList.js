@@ -24,7 +24,86 @@ import {
 import { formatDistanceToNow } from 'date-fns'
 import './OrdersList.css'
 import { useToast } from '../../components/toast/ToastProvider'
+import { useAuth } from '../../context/AuthContext'
+
+// ─────────────────────────────────────────────────────────────
+// Flow helpers — mirror the server-side state machine
+// ─────────────────────────────────────────────────────────────
+const ALL_STATUSES = [
+  'placed',
+  'pending',
+  'preparing',
+  'ready',
+  'delivered',
+  'completed',
+  'archived',
+  'cancelled',
+]
+
+const ACTIVE_TABS_BY_FLOW = {
+  'two-step': ['placed'],
+  'three-step': ['pending', 'preparing', 'completed'],
+  'four-step': ['pending', 'preparing', 'ready', 'delivered'],
+  'delivery-only': ['placed', 'delivered'],
+}
+
+const buildTabStatuses = (flow, orders) => {
+  const wanted = new Set(ACTIVE_TABS_BY_FLOW[flow] || ['pending', 'preparing', 'completed'])
+
+  ;(orders || []).forEach((o) => {
+    if (o.status && o.status !== 'archived') wanted.add(o.status)
+  })
+
+  // Show "cancelled" only when it has orders
+  if ((orders || []).some((o) => o.status === 'cancelled')) {
+    wanted.add('cancelled')
+  }
+
+  return ALL_STATUSES.filter((s) => wanted.has(s))
+}
+
+const flowForOrder = (order, tenantFlow) => {
+  if (order?.flowAtCreation) return order.flowAtCreation
+  if (['pending', 'preparing', 'ready'].includes(order?.status)) {
+    return order.status === 'ready' ? 'four-step' : 'three-step'
+  }
+  if (order?.status === 'completed') return 'three-step'
+  if (order?.status === 'delivered') return 'delivery-only'
+  if (order?.status === 'placed') return 'two-step'
+  return tenantFlow || 'three-step'
+}
+
+const nextActionsFor = (order, role, tenantFlow) => {
+  const flow = flowForOrder(order, tenantFlow)
+  const s = order.status
+  const actions = []
+
+  const isPrep = role === 'preparer' || role === 'both' || role === 'superClient'
+  const isDel = role === 'deliverer' || role === 'both' || role === 'superClient'
+
+  if (flow === 'three-step') {
+    if (s === 'pending' && isPrep) actions.push({ to: 'preparing', kind: 'info' })
+    if (s === 'preparing' && isPrep) actions.push({ to: 'completed', kind: 'success' })
+  } else if (flow === 'four-step') {
+    if (s === 'pending' && isPrep) actions.push({ to: 'preparing', kind: 'info' })
+    if (s === 'preparing' && isPrep) actions.push({ to: 'ready', kind: 'success' })
+    if (s === 'ready' && isDel) actions.push({ to: 'delivered', kind: 'success' })
+  } else if (flow === 'delivery-only') {
+    if (s === 'placed' && isDel) actions.push({ to: 'delivered', kind: 'success' })
+  }
+
+  if ((s === 'pending' || s === 'preparing' || s === 'placed') && role === 'superClient') {
+    actions.push({ to: 'cancelled', kind: 'danger' })
+  }
+  if (s === 'ready' && role === 'superClient') {
+    actions.push({ to: 'cancelled', kind: 'danger' })
+  }
+
+  return actions
+}
+
 const OrdersList = () => {
+  // ── React state ────────────────────────────────────────────
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeKey, setActiveKey] = useState(1)
@@ -37,12 +116,22 @@ const OrdersList = () => {
   const [statusFlowEnabled, setStatusFlowEnabled] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedRows, setExpandedRows] = useState({})
+  const [ringtone, setRingtone] = useState(null)
 
+  // ── Hooks ──────────────────────────────────────────────────
   const token = GetToken()
   const t = useSelector((state) => state.language)
   const Language = translations[t]
+  const { role, staffRole, orderFlow } = useAuth()
+  const effectiveRole = role === 'superClient' ? 'superClient' : staffRole || 'both'
+  const { showToast } = useToast()
+  const showAlert = (msg, color = 'success') => showToast(msg, color)
 
-  /* ---------- data ---------- */
+  // Effective flow of the tenant. Prefer the new `orderFlow` from context;
+  // fall back to the legacy `statusFlowEnabled` flag from the last fetch.
+  const tenantFlow = orderFlow || (statusFlowEnabled ? 'three-step' : 'two-step')
+
+  // ── Data ───────────────────────────────────────────────────
   const fetchOrders = async () => {
     setLoading(true)
     try {
@@ -88,7 +177,9 @@ const OrdersList = () => {
     })
 
     socket.on('tenantConfigChanged', (cfg) => {
-      setStatusFlowEnabled(cfg.statusFlowEnabled !== false)
+      if (typeof cfg?.statusFlowEnabled === 'boolean') {
+        setStatusFlowEnabled(cfg.statusFlowEnabled)
+      }
       fetchOrders()
     })
 
@@ -96,8 +187,7 @@ const OrdersList = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /* ---------- ringtone ---------- */
-  const [ringtone, setRingtone] = useState(null)
+  // ── Ringtone ───────────────────────────────────────────────
   const playRingtone = () => {
     stopRingtone()
     const audio = new Audio('/newOrder.mp3')
@@ -112,12 +202,7 @@ const OrdersList = () => {
     }
   }
 
-  /* ---------- toasts ---------- */
-  /* ---------- toasts ---------- */
-  const { showToast } = useToast()
-  const showAlert = (msg, color = 'success') => showToast(msg, color)
-
-  /* ---------- status update ---------- */
+  // ── Status updates ─────────────────────────────────────────
   const cancelOrder = (orderId) => {
     if (confirm(Language.confirmCancelOrder || 'Cancel this order?')) {
       updateOrderStatus(orderId, 'cancelled')
@@ -202,7 +287,7 @@ const OrdersList = () => {
     }
   }
 
-  /* ---------- filters ---------- */
+  // ── Filtering ──────────────────────────────────────────────
   const isToday = (isoString) => {
     const d = new Date(isoString)
     const now = new Date()
@@ -220,7 +305,7 @@ const OrdersList = () => {
     return d >= weekStart
   }
 
-  const getFilteredOrders = () => {
+  const filteredOrders = (() => {
     let filtered = orders
 
     filtered = filtered.filter((order) => {
@@ -254,26 +339,76 @@ const OrdersList = () => {
     }
 
     return filtered
-  }
-
-  const filteredOrders = getFilteredOrders()
+  })()
 
   const getTabCount = (status) => filteredOrders.filter((o) => o.status === status).length
 
+  // ── Status maps (MUST be declared before `tabs`) ───────────
+  const statusIcons = {
+    placed: cilCheckCircle,
+    pending: cilClock,
+    preparing: cilFire,
+    ready: cilCheckCircle,
+    delivered: cilCheckCircle,
+    completed: cilCheckCircle,
+    cancelled: cilBan,
+  }
+
+  const statusLabels = {
+    placed: Language.placed || 'Placed',
+    pending: Language.pending || 'Pending',
+    preparing: Language.preparing || 'Preparing',
+    ready: Language.ready || 'Ready',
+    delivered: Language.delivered || 'Delivered',
+    completed: statusFlowEnabled ? Language.completed || 'Completed' : Language.placed || 'Placed',
+    cancelled: Language.cancelled || 'Cancelled',
+  }
+
+  // ── Tab derivation (order matters) ─────────────────────────
+  const tabStatuses = buildTabStatuses(tenantFlow, filteredOrders)
+  const tabs = tabStatuses.map((status, idx) => ({
+    key: idx + 1,
+    status,
+    icon: statusIcons[status] || cilInfo,
+    label: statusLabels[status] || status,
+    count: getTabCount(status),
+  }))
+
   const safeActiveKey = (() => {
-    if (statusFlowEnabled) return activeKey
-    if (activeKey === 1 && getTabCount('pending') === 0) return 3
-    if (activeKey === 2 && getTabCount('preparing') === 0) return 3
+    if (tabs.some((tab) => tab.key === activeKey)) return activeKey
+    const currentTab = tabs.find((tab) => tab.key === activeKey)
+    if (!currentTab) return tabs[0]?.key || 1
+    if (
+      ['pending', 'preparing'].includes(currentTab.status) &&
+      getTabCount(currentTab.status) === 0
+    ) {
+      const fallback =
+        tabs.find((tab) => tab.status === 'completed') ||
+        tabs.find((tab) => tab.count > 0) ||
+        tabs[0]
+      return fallback?.key || activeKey
+    }
     return activeKey
   })()
 
-  /* ---------- helpers ---------- */
+  const safeTab =
+    tabs.find((tab) => tab.key === safeActiveKey) || tabs.find((tab) => tab.count > 0) || tabs[0]
+
+  const visibleOrders = safeTab ? filteredOrders.filter((o) => o.status === safeTab.status) : []
+
+  // ── Helpers used inside JSX ────────────────────────────────
   const getStatusColor = (status) => {
     switch (status) {
+      case 'placed':
+        return 'primary'
       case 'pending':
         return 'warning'
       case 'preparing':
         return 'info'
+      case 'ready':
+        return 'success'
+      case 'delivered':
+        return 'success'
       case 'completed':
         return 'success'
       case 'cancelled':
@@ -285,10 +420,14 @@ const OrdersList = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
+      case 'placed':
+        return <CIcon icon={cilCheckCircle} className="me-1" />
       case 'pending':
         return <CIcon icon={cilClock} className="me-1" />
       case 'preparing':
         return <CIcon icon={cilFire} className="me-1" />
+      case 'ready':
+      case 'delivered':
       case 'completed':
         return <CIcon icon={cilCheckCircle} className="me-1" />
       case 'cancelled':
@@ -298,14 +437,7 @@ const OrdersList = () => {
     }
   }
 
-  const statusLabel = (status) => {
-    if (status === 'pending') return Language.pending || 'Pending'
-    if (status === 'preparing') return Language.preparing || 'Preparing'
-    if (status === 'completed')
-      return statusFlowEnabled ? Language.completed || 'Completed' : Language.placed || 'Placed'
-    if (status === 'cancelled') return Language.cancelled || 'Cancelled'
-    return status
-  }
+  const statusLabel = (status) => statusLabels[status] || status
 
   const statusPillClass = (status) => {
     if (!statusFlowEnabled && status === 'completed') return 'placed'
@@ -337,7 +469,7 @@ const OrdersList = () => {
     setExpandedRows((prev) => ({ ...prev, [orderId]: !prev[orderId] }))
   }
 
-  /* ---------- render ---------- */
+  // ── Row renderer ───────────────────────────────────────────
   const renderOrderRow = (order) => {
     if (!order) return null
 
@@ -356,54 +488,57 @@ const OrdersList = () => {
     const isExpanded = !!expandedRows[order._id]
     const duration = currentStatusDuration(order)
 
-    const canMove =
-      (statusFlowEnabled || order.status === 'pending' || order.status === 'preparing') &&
-      order.status !== 'completed' &&
-      order.status !== 'cancelled'
+    const actions = nextActionsFor(order, effectiveRole, tenantFlow)
 
-    const statusButtons = canMove ? (
-      <>
-        <CButton
-          color={order.status === 'pending' ? 'info' : 'success'}
-          size="sm"
-          onClick={(e) => {
-            e.stopPropagation()
-            const newStatus = order.status === 'pending' ? 'preparing' : 'completed'
-            updateOrderStatus(order._id, newStatus)
-          }}
-          disabled={loading}
-        >
-          {loading ? (
-            <CSpinner size="sm" />
-          ) : order.status === 'pending' ? (
-            <>
-              <CIcon icon={cilFire} className="me-1" />
-              {Language.moveToPreparing || 'Preparing'}
-            </>
-          ) : (
-            <>
-              <CIcon icon={cilCheckCircle} className="me-1" />
-              {Language.moveToCompleted || 'Completed'}
-            </>
-          )}
-        </CButton>
-        {order.status === 'pending' && (
-          <CButton
-            color="danger"
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              cancelOrder(order._id)
-            }}
-            disabled={loading}
-          >
-            <CIcon icon={cilBan} className="me-1" />
-            {Language.cancelOrder || 'Cancel'}
-          </CButton>
-        )}
-      </>
-    ) : null
+    const actionLabel = (to) => {
+      if (to === 'preparing') return Language.startPreparing || 'Start preparing'
+      if (to === 'ready') return Language.markReady || 'Mark ready'
+      if (to === 'delivered') return Language.markDelivered || 'Mark delivered'
+      if (to === 'completed') return Language.moveToCompleted || 'Completed'
+      if (to === 'cancelled') return Language.cancelOrder || 'Cancel'
+      return to
+    }
+
+    const actionIcon = (to) => {
+      if (to === 'preparing') return cilFire
+      if (to === 'ready') return cilCheckCircle
+      if (to === 'delivered') return cilCheckCircle
+      if (to === 'completed') return cilCheckCircle
+      if (to === 'cancelled') return cilBan
+      return cilInfo
+    }
+
+    const statusButtons =
+      actions.length > 0 ? (
+        <>
+          {actions.map((a) => (
+            <CButton
+              key={a.to}
+              color={a.kind === 'danger' ? 'danger' : a.kind === 'info' ? 'info' : 'success'}
+              variant={a.kind === 'danger' ? 'outline' : undefined}
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (a.to === 'cancelled') {
+                  cancelOrder(order._id)
+                } else {
+                  updateOrderStatus(order._id, a.to)
+                }
+              }}
+              disabled={loading}
+            >
+              {loading ? (
+                <CSpinner size="sm" />
+              ) : (
+                <>
+                  <CIcon icon={actionIcon(a.to)} className="me-1" />
+                  {actionLabel(a.to)}
+                </>
+              )}
+            </CButton>
+          ))}
+        </>
+      ) : null
 
     return (
       <React.Fragment key={order._id}>
@@ -470,7 +605,6 @@ const OrdersList = () => {
 
         {isExpanded && (
           <div className="ol-expand">
-            {/* Items */}
             <div className="ol-expand-section">
               <div className="ol-expand-title">{Language.items || 'Items'}</div>
               <table className="ol-items">
@@ -516,7 +650,6 @@ const OrdersList = () => {
               </table>
             </div>
 
-            {/* Time-in-status (only when flow enabled) */}
             {statusFlowEnabled && order.statusDurations && (
               <div className="ol-expand-section">
                 <div className="ol-expand-title">{Language.timeSpent || 'Time spent'}</div>
@@ -536,7 +669,6 @@ const OrdersList = () => {
               </div>
             )}
 
-            {/* Comment */}
             {order.comment && (
               <div className="ol-expand-section">
                 <div className="ol-expand-title">{Language.comment || 'Comment'}</div>
@@ -544,42 +676,19 @@ const OrdersList = () => {
               </div>
             )}
 
-            {/* Mobile-only action buttons */}
-            {canMove && <div className="ol-expand-actions d-lg-none">{statusButtons}</div>}
+            {actions.length > 0 && (
+              <div className="ol-expand-actions d-lg-none">{statusButtons}</div>
+            )}
           </div>
         )}
       </React.Fragment>
     )
   }
 
-  /* ---------- tab list ---------- */
-  const tabs = []
-  if (statusFlowEnabled || getTabCount('pending') > 0) {
-    tabs.push({ key: 1, icon: cilClock, label: Language.pending || 'Pending', status: 'pending' })
-  }
-  if (statusFlowEnabled || getTabCount('preparing') > 0) {
-    tabs.push({
-      key: 2,
-      icon: cilFire,
-      label: Language.preparing || 'Preparing',
-      status: 'preparing',
-    })
-  }
-  tabs.push({
-    key: 3,
-    icon: cilCheckCircle,
-    label: statusFlowEnabled ? Language.completed || 'Completed' : Language.placed || 'Placed',
-    status: 'completed',
-  })
-  tabs.push({ key: 4, icon: cilBan, label: Language.cancelled || 'Cancelled', status: 'cancelled' })
-
-  const visibleTab = tabs.find((t) => t.key === safeActiveKey) || tabs[0]
-  const visibleOrders = filteredOrders.filter((o) => o.status === visibleTab.status)
-
+  // ── Final render ───────────────────────────────────────────
   return (
     <>
       <CCard className="mb-4">
-        {/* ---- Header ---- */}
         <div className="ol-header">
           <div className="ol-header-top">
             <div>
@@ -634,7 +743,6 @@ const OrdersList = () => {
             </div>
           </div>
 
-          {/* Filters row: mode + plan/type */}
           <div className="ol-header-top" style={{ paddingTop: 0 }}>
             <div className="d-flex gap-2 flex-wrap align-items-center">
               <CButton
@@ -689,7 +797,6 @@ const OrdersList = () => {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="ol-tabs" role="tablist">
             {tabs.map((tab) => (
               <button
@@ -723,7 +830,7 @@ const OrdersList = () => {
             </div>
           ) : (
             <>
-              {safeActiveKey === 4 && visibleOrders.length > 0 && (
+              {safeTab?.status === 'cancelled' && visibleOrders.length > 0 && (
                 <div className="d-flex justify-content-end mb-3">
                   <CButton color="danger" onClick={deleteAllCancelledOrders}>
                     <CIcon icon={cilTrash} className="me-1" />

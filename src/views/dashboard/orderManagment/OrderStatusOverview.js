@@ -17,6 +17,7 @@ import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
 import './orderManagement.css'
+import { useAuth } from '../../../context/AuthContext'
 
 /* ---------- helpers ---------- */
 const convertMinutesToDHM = (minutes) => {
@@ -30,7 +31,55 @@ const convertMinutesToDHM = (minutes) => {
   if (mins > 0 || parts.length === 0) parts.push(`${mins}m`)
   return parts.join(' ')
 }
+// ─────────────────────────────────────────────────────────────
+// Flow helpers (kept in sync with OrdersList.js and the backend)
+// ─────────────────────────────────────────────────────────────
+const ACTIVE_TABS_BY_FLOW = {
+  'two-step': ['placed'],
+  'three-step': ['pending', 'preparing', 'completed'],
+  'four-step': ['pending', 'preparing', 'ready', 'delivered'],
+  'delivery-only': ['placed', 'delivered'],
+}
 
+const buildTabStatuses = (flow, orders) => {
+  const wanted = new Set(ACTIVE_TABS_BY_FLOW[flow] || ['pending', 'preparing', 'completed'])
+  ;(orders || []).forEach((o) => {
+    if (o.status && o.status !== 'archived') wanted.add(o.status)
+  })
+  const order = ['placed', 'pending', 'preparing', 'ready', 'delivered', 'completed']
+  return order.filter((s) => wanted.has(s))
+}
+
+const flowForOrder = (order, tenantFlow) => {
+  if (order?.flowAtCreation) return order.flowAtCreation
+  if (['pending', 'preparing', 'ready'].includes(order?.status)) {
+    return order.status === 'ready' ? 'four-step' : 'three-step'
+  }
+  if (order?.status === 'completed') return 'three-step'
+  if (order?.status === 'delivered') return 'delivery-only'
+  if (order?.status === 'placed') return 'two-step'
+  return tenantFlow || 'three-step'
+}
+
+const nextActionsFor = (order, role, tenantFlow) => {
+  const flow = flowForOrder(order, tenantFlow)
+  const s = order.status
+  const actions = []
+  const isPrep = role === 'preparer' || role === 'both' || role === 'superClient'
+  const isDel = role === 'deliverer' || role === 'both' || role === 'superClient'
+
+  if (flow === 'three-step') {
+    if (s === 'pending' && isPrep) actions.push({ to: 'preparing' })
+    if (s === 'preparing' && isPrep) actions.push({ to: 'completed' })
+  } else if (flow === 'four-step') {
+    if (s === 'pending' && isPrep) actions.push({ to: 'preparing' })
+    if (s === 'preparing' && isPrep) actions.push({ to: 'ready' })
+    if (s === 'ready' && isDel) actions.push({ to: 'delivered' })
+  } else if (flow === 'delivery-only') {
+    if (s === 'placed' && isDel) actions.push({ to: 'delivered' })
+  }
+  return actions
+}
 const STATUS_TONES = {
   pending: {
     pill: { background: '#fff3cd', color: '#664d03' },
@@ -52,6 +101,21 @@ const STATUS_TONES = {
     bar: '#6c757d',
     icon: cilInfo,
   },
+  ready: {
+    pill: { background: '#dcfce7', color: '#14532d' },
+    bar: '#16a34a',
+    icon: cilCheckCircle,
+  },
+  delivered: {
+    pill: { background: '#d1fae5', color: '#064e3b' },
+    bar: '#059669',
+    icon: cilCheckCircle,
+  },
+  placed: {
+    pill: { background: '#cfe2ff', color: '#084298' },
+    bar: '#0d6efd',
+    icon: cilClock,
+  },
 }
 
 /* ---------- main ---------- */
@@ -59,7 +123,8 @@ const OrderStatusOverview = () => {
   const token = GetToken()
   const t = useSelector((state) => state.language)
   const Language = translations[t]
-
+  const { role, staffRole, orderFlow } = useAuth()
+  const effectiveRole = role === 'superClient' ? 'superClient' : staffRole || 'both'
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeKey, setActiveKey] = useState(1)
@@ -130,42 +195,58 @@ const OrderStatusOverview = () => {
 
   /* ---------- tab visibility (respect flow) ---------- */
   const tabs = useMemo(() => {
-    const list = []
-    if (statusFlowEnabled || pendingOrders.length > 0) {
-      list.push({
-        key: 1,
-        icon: cilClock,
-        label: Language.pending || 'Pending',
-        count: pendingOrders.length,
-      })
-    }
-    if (statusFlowEnabled || preparingOrders.length > 0) {
-      list.push({
-        key: 2,
-        icon: cilFire,
-        label: Language.preparing || 'Preparing',
-        count: preparingOrders.length,
-      })
-    }
-    list.push({
-      key: 3,
-      icon: cilCheckCircle,
-      label: statusFlowEnabled ? Language.completed || 'Completed' : Language.placed || 'Placed',
-      count: completedOrders.length,
-    })
-    return list
-  }, [
-    statusFlowEnabled,
-    pendingOrders.length,
-    preparingOrders.length,
-    completedOrders.length,
-    Language,
-  ])
+    const tenantFlow = orderFlow || (statusFlowEnabled ? 'three-step' : 'two-step')
+    const statuses = buildTabStatuses(tenantFlow, filteredOrders)
 
-  const safeActiveKey = tabs.some((t) => t.key === activeKey) ? activeKey : tabs[0]?.key || 3
+    const iconFor = (s) => {
+      if (s === 'pending' || s === 'placed') return cilClock
+      if (s === 'preparing') return cilFire
+      return cilCheckCircle
+    }
+    const labelFor = (s) => {
+      if (s === 'placed') return Language.placed || 'Placed'
+      if (s === 'pending') return Language.pending || 'Pending'
+      if (s === 'preparing') return Language.preparing || 'Preparing'
+      if (s === 'ready') return Language.ready || 'Ready'
+      if (s === 'delivered') return Language.delivered || 'Delivered'
+      if (s === 'completed')
+        return statusFlowEnabled ? Language.completed || 'Completed' : Language.placed || 'Placed'
+      return s
+    }
 
-  const visibleOrders =
-    safeActiveKey === 1 ? pendingOrders : safeActiveKey === 2 ? preparingOrders : completedOrders
+    return statuses.map((status, idx) => ({
+      key: idx + 1,
+      status,
+      icon: iconFor(status),
+      label: labelFor(status),
+      count: filteredOrders.filter((o) => o.status === status).length,
+    }))
+  }, [statusFlowEnabled, filteredOrders, Language])
+
+  const safeActiveKey = (() => {
+    if (tabs.some((tab) => tab.key === activeKey)) return activeKey
+
+    const currentTab = tabs.find((tab) => tab.key === activeKey)
+    if (!currentTab) return tabs[0]?.key || 1
+
+    if (
+      ['pending', 'preparing'].includes(currentTab.status) &&
+      filteredOrders.filter((o) => o.status === currentTab.status).length === 0
+    ) {
+      const fallback =
+        tabs.find((tab) => tab.status === 'completed') ||
+        tabs.find((tab) => tab.count > 0) ||
+        tabs[0]
+      return fallback?.key || activeKey
+    }
+
+    return activeKey
+  })()
+
+  const safeTab =
+    tabs.find((tab) => tab.key === safeActiveKey) || tabs.find((tab) => tab.count > 0) || tabs[0]
+
+  const visibleOrders = safeTab ? filteredOrders.filter((o) => o.status === safeTab.status) : []
 
   /* ---------- render order card ---------- */
   const renderOrderCard = (order) => {

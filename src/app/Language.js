@@ -893,6 +893,37 @@ const translations = {
     unitPrice: 'Unit Price',
     failedToCloseOrders: 'Failed to close orders',
     notAvailable: 'N/A',
+
+    orderFlowTitle: 'Order workflow',
+    orderFlowHint:
+      'Choose the flow your team uses to move orders from the moment they are placed until they are paid.',
+    orderFlowTwoStepLabel: 'Direct pay (placed → archived)',
+    orderFlowTwoStepHint:
+      'Staff only confirm payment. No kitchen workflow. Best for takeaway counters.',
+    orderFlowThreeStepLabel: 'Kitchen (pending → preparing → completed)',
+    orderFlowThreeStepHint:
+      'Classic kitchen flow. Orders go pending → preparing → completed → archived when paid.',
+    orderFlowFourStepLabel: 'Kitchen + delivery (pending → preparing → ready → delivered)',
+    orderFlowFourStepHint:
+      'Adds "ready" (prep done) and "delivered" (handed to the table) so preppers and deliverers can coordinate.',
+    orderFlowDeliveryOnlyLabel: 'Delivery only (placed → delivered)',
+    orderFlowDeliveryOnlyHint:
+      'No kitchen workflow, but you still want to separate orders waiting to be delivered from delivered ones.',
+    customerEditWindowTitle: 'Customer edit window',
+    customerEditWindowHint:
+      'How long a guest can modify or cancel their order before it is locked.',
+    customerEditWindowEnabledLabel: 'Allow customers to edit / cancel',
+    customerEditWindowMinutesLabel: 'Window duration (minutes)',
+    customerEditWindowFromLabel: 'Starts from',
+    customerEditWindowFromPlaced: 'When placed',
+    customerEditWindowFromPreparing: 'When the kitchen starts',
+
+    ready: 'Ready',
+    delivered: 'Delivered',
+    readyForPickup: 'Ready for pickup',
+    markReady: 'Mark ready',
+    markDelivered: 'Mark delivered',
+    startPreparing: 'Start preparing',
   },
 
   French: {
@@ -1776,6 +1807,36 @@ const translations = {
     unitPrice: 'Prix unitaire',
     failedToCloseOrders: 'Impossible de clôturer les commandes',
     notAvailable: 'N/D',
+
+    orderFlowTitle: 'Flux de commande',
+    orderFlowHint:
+      "Choisissez le flux utilisé par votre équipe pour faire avancer les commandes, du placement jusqu'au paiement.",
+    orderFlowTwoStepLabel: 'Paiement direct (passée → archivée)',
+    orderFlowTwoStepHint:
+      'Le personnel confirme uniquement le paiement. Pas de flux cuisine. Idéal pour un comptoir à emporter.',
+    orderFlowThreeStepLabel: 'Cuisine (en attente → en préparation → terminée)',
+    orderFlowThreeStepHint:
+      'Flux cuisine classique. Les commandes passent par en attente → en préparation → terminée → archivée au paiement.',
+    orderFlowFourStepLabel: 'Cuisine + livraison (en attente → en préparation → prête → livrée)',
+    orderFlowFourStepHint:
+      'Ajoute « prête » (préparation terminée) et « livrée » (remise à la table) pour coordonner préparation et service.',
+    orderFlowDeliveryOnlyLabel: 'Livraison uniquement (passée → livrée)',
+    orderFlowDeliveryOnlyHint:
+      'Pas de flux cuisine, mais vous voulez séparer les commandes à livrer de celles déjà livrées.',
+    customerEditWindowTitle: 'Fenêtre de modification client',
+    customerEditWindowHint:
+      "Combien de temps un client peut modifier ou annuler sa commande avant qu'elle ne soit verrouillée.",
+    customerEditWindowEnabledLabel: 'Autoriser la modification / annulation',
+    customerEditWindowMinutesLabel: 'Durée (minutes)',
+    customerEditWindowFromLabel: 'Débute à',
+    customerEditWindowFromPlaced: 'Au placement',
+    customerEditWindowFromPreparing: 'Au démarrage en cuisine',
+    ready: 'Prête',
+    delivered: 'Livrée',
+    readyForPickup: 'Prête à servir',
+    markReady: 'Marquer prête',
+    markDelivered: 'Marquer livrée',
+    startPreparing: 'Démarrer la préparation',
   },
 
   Italian: {
@@ -2660,6 +2721,35 @@ const translations = {
     unitPrice: 'Prezzo unitario',
     failedToCloseOrders: 'Impossibile chiudere gli ordini',
     notAvailable: 'N/D',
+    orderFlowTitle: 'Flusso ordini',
+    orderFlowHint:
+      "Scegli il flusso usato dal tuo team per far avanzare gli ordini dal momento dell'invio fino al pagamento.",
+    orderFlowTwoStepLabel: 'Pagamento diretto (effettuato → archiviato)',
+    orderFlowTwoStepHint:
+      'Il personale conferma solo il pagamento. Nessun flusso di cucina. Ideale per un banco da asporto.',
+    orderFlowThreeStepLabel: 'Cucina (in attesa → in preparazione → completato)',
+    orderFlowThreeStepHint:
+      'Flusso di cucina classico. Gli ordini passano in attesa → in preparazione → completato → archiviato al pagamento.',
+    orderFlowFourStepLabel: 'Cucina + consegna (in attesa → in preparazione → pronto → consegnato)',
+    orderFlowFourStepHint:
+      'Aggiunge "pronto" (preparazione terminata) e "consegnato" (consegnato al tavolo) per coordinare cucina e servizio.',
+    orderFlowDeliveryOnlyLabel: 'Solo consegna (effettuato → consegnato)',
+    orderFlowDeliveryOnlyHint:
+      'Nessun flusso di cucina, ma vuoi comunque separare gli ordini da consegnare da quelli già consegnati.',
+    customerEditWindowTitle: 'Finestra di modifica cliente',
+    customerEditWindowHint:
+      "Quanto tempo un cliente può modificare o annullare l'ordine prima che venga bloccato.",
+    customerEditWindowEnabledLabel: 'Consenti modifica / annullamento',
+    customerEditWindowMinutesLabel: 'Durata (minuti)',
+    customerEditWindowFromLabel: 'Inizia da',
+    customerEditWindowFromPlaced: "All'invio",
+    customerEditWindowFromPreparing: "All'avvio in cucina",
+    ready: 'Pronto',
+    delivered: 'Consegnato',
+    readyForPickup: 'Pronto per il servizio',
+    markReady: 'Segna pronto',
+    markDelivered: 'Segna consegnato',
+    startPreparing: 'Inizia preparazione',
   },
 }
 

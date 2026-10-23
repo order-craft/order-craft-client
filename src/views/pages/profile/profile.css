@@ -653,3 +653,132 @@
   color: var(--cui-secondary-color, #6c757d);
   line-height: 1.5;
 }
+/* =========================================================================
+   Order flow picker + edit window (added for Feature 3)
+   ========================================================================= */
+
+.pf-flow-hint {
+  font-size: 0.82rem;
+  color: var(--cui-secondary-color, #6c757d);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.pf-flow-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .pf-flow-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pf-flow-card {
+  text-align: left;
+  background: #fff;
+  border: 1.5px solid var(--cui-border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.pf-flow-card:hover {
+  border-color: #cbd5e0;
+}
+
+.pf-flow-card.is-active {
+  border-color: #0d6efd;
+  background: rgba(13, 110, 253, 0.04);
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.12);
+}
+
+.pf-flow-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pf-flow-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #cbd5e0;
+  background: #fff;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.pf-flow-card.is-active .pf-flow-radio {
+  border-color: #0d6efd;
+}
+
+.pf-flow-card.is-active .pf-flow-radio::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: #0d6efd;
+}
+
+.pf-flow-label {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #1a1a1a;
+}
+
+.pf-flow-desc {
+  font-size: 0.78rem;
+  color: var(--cui-secondary-color, #6c757d);
+  line-height: 1.45;
+}
+
+/* Toggle switch */
+.pf-toggle {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.pf-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.pf-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #cbd5e0;
+  border-radius: 999px;
+  transition: background-color 0.15s ease;
+}
+
+.pf-toggle-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.15s ease;
+}
+
+.pf-toggle input:checked + .pf-toggle-slider {
+  background: #0d6efd;
+}
+
+.pf-toggle input:checked + .pf-toggle-slider::after {
+  transform: translateX(20px);
+}

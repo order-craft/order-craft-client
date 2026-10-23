@@ -74,8 +74,15 @@ const Profile = () => {
         picturePreview: user.placePicture,
         long: user.placeLocation?.long,
         lat: user.placeLocation?.lat,
-        statusFlowEnabled: user.statusFlowEnabled === undefined ? true : user.statusFlowEnabled,
         brandColor: user.brandColor || '#8B5A2B',
+        // New: order flow config. Fall back to legacy flag if the server hasn't
+        // returned orderFlow yet (e.g. older backend).
+        orderFlow: user.orderFlow || (user.statusFlowEnabled === false ? 'two-step' : 'three-step'),
+        customerEditWindow: user.customerEditWindow || {
+          enabled: true,
+          minutes: 3,
+          from: 'placed',
+        },
       })
     } catch (err) {
       console.error('Error fetching user data:', err.response?.data || err.message)
@@ -171,9 +178,26 @@ const Profile = () => {
   const updateBusinessDetails = async () => {
     setLoading(true)
     try {
+      // Forward only the fields the backend now understands.
+      // `statusFlowEnabled` is derived on the backend from `orderFlow`,
+      // so we don't send it anymore.
+      const payload = {
+        placeName: placeData.placeName,
+        PlaceAddress: placeData.PlaceAddress,
+        phoneNumber: placeData.phoneNumber,
+        distance: placeData.distance,
+        lat: placeData.lat,
+        long: placeData.long,
+        logoPreview: placeData.logoPreview,
+        picturePreview: placeData.picturePreview,
+        brandColor: placeData.brandColor,
+        orderFlow: placeData.orderFlow,
+        customerEditWindow: placeData.customerEditWindow,
+      }
+
       const response = await axios.post(
         `${BaseUrl}/auth/superClient/update-business-details`,
-        { placeData },
+        { placeData: payload },
         { headers: { Authorization: `Bearer ${token}` } },
       )
       setMessage(response.data.message || 'Business details updated.')

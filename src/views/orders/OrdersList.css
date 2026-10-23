@@ -517,3 +517,16 @@
     font-size: 0.92rem;
   }
 }
+/* New statuses for Feature 4 */
+.ol-pill.ready {
+  background: #dcfce7;
+  color: #14532d;
+}
+.ol-pill.delivered {
+  background: #d1fae5;
+  color: #064e3b;
+}
+.ol-pill.placed {
+  background: #cfe2ff;
+  color: #084298;
+}
