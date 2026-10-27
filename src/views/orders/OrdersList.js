@@ -20,6 +20,8 @@ import {
   cilChevronBottom,
   cilChevronTop,
   cilSearch,
+  cilUser,
+  cilInbox,
 } from '@coreui/icons'
 import { formatDistanceToNow } from 'date-fns'
 import './OrdersList.css'
@@ -188,17 +190,31 @@ const OrdersList = () => {
 
     socket.on('orderReady', (payload) => {
       if (!payload || !payload.orderId) return
+      // The order just became ready — refetch so the "Ready" tab is accurate.
+      fetchOrders()
       if (payload.playSound !== false) playRingtone()
-      // Optionally show a toast:
-      showToast(
-        `${Language.readyForPickup || 'Ready for pickup'}: ${Language.table || 'Table'} ${payload.tableNumber}`,
-        'info',
-      )
+      if (payload.tableNumber) {
+        showToast(
+          `${Language.orderReadyToast || 'Order ready for pickup'} · ${Language.table || 'Table'} ${payload.tableNumber}`,
+          'info',
+        )
+      }
     })
 
     socket.on('orderDelivered', (payload) => {
       if (!payload || !payload.orderId) return
+      fetchOrders()
+      // Delivery should be quiet for the person who delivered it: play only
+      // if the server flagged it (superClient / prep staff) — the deliverer's
+      // own action doesn't emit `playSound` because it goes only to the tenant
+      // and their own `user` room which they are in.
       if (payload.playSound !== false) playRingtone()
+      if (payload.tableNumber) {
+        showToast(
+          `${Language.orderDeliveredToast || 'Order delivered'} · ${Language.table || 'Table'} ${payload.tableNumber}`,
+          'success',
+        )
+      }
     })
     socket.on('orderUpdated', (payload) => {
       if (!payload) return
@@ -692,6 +708,70 @@ const OrdersList = () => {
               </table>
             </div>
 
+            {/* Handoff panel — who prepped, who delivered */}
+            {(order.preparedBy || order.deliveredBy) && (
+              <div className="ol-expand-section">
+                <div className="ol-expand-title">{Language.handoffTitle || 'Handoff'}</div>
+                <div className="ol-handoff">
+                  {order.preparedBy && (
+                    <div className="ol-handoff-row">
+                      <CIcon icon={cilUser} />
+                      <span>
+                        {Language.preparedBy || 'Prepared by'}:{' '}
+                        <strong>
+                          {order.preparedBy?.fullName ||
+                            order.preparedBy?.name ||
+                            Language.unknownStaff ||
+                            'Unknown'}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                  {order.statusTimestamps?.ready && (
+                    <div className="ol-handoff-row">
+                      <CIcon icon={cilClock} />
+                      <span>
+                        {Language.readySince || 'Ready for'}:{' '}
+                        <strong>
+                          {formatDuration(
+                            Math.max(
+                              0,
+                              Date.now() - new Date(order.statusTimestamps.ready).getTime(),
+                            ),
+                          )}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                  {order.deliveredBy && (
+                    <div className="ol-handoff-row">
+                      <CIcon icon={cilUser} />
+                      <span>
+                        {Language.deliveredBy || 'Delivered by'}:{' '}
+                        <strong>
+                          {order.deliveredBy?.fullName ||
+                            order.deliveredBy?.name ||
+                            Language.unknownStaff ||
+                            'Unknown'}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                  {order.statusTimestamps?.delivered && (
+                    <div className="ol-handoff-row">
+                      <CIcon icon={cilClock} />
+                      <span>
+                        {Language.deliveredAt || 'Delivered'}:{' '}
+                        <strong>
+                          {new Date(order.statusTimestamps.delivered).toLocaleTimeString()}
+                        </strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {statusFlowEnabled && order.statusDurations && (
               <div className="ol-expand-section">
                 <div className="ol-expand-title">{Language.timeSpent || 'Time spent'}</div>
@@ -880,6 +960,59 @@ const OrdersList = () => {
                   </CButton>
                 </div>
               )}
+
+              {/* Ready queue banner — visible only in the "ready" tab.
+                  This is the deliverer's "what do I need to pick up next" view. */}
+              {safeTab?.status === 'ready' && visibleOrders.length > 0 && (
+                <div className="ol-ready-queue">
+                  <div className="ol-ready-queue-head">
+                    <div className="ol-ready-queue-title">
+                      <CIcon icon={cilInbox} />
+                      {Language.readyQueueTitle || 'Orders ready to deliver'}
+                    </div>
+                    <div className="ol-ready-queue-hint">
+                      {Language.readyQueueHint || 'Pick up and deliver these to the table.'}
+                    </div>
+                  </div>
+                  <div className="ol-ready-queue-list">
+                    {visibleOrders.map((o) => {
+                      const readyAt = o.statusTimestamps?.ready
+                      const elapsed = readyAt
+                        ? Math.max(0, Date.now() - new Date(readyAt).getTime())
+                        : null
+                      return (
+                        <div className="ol-ready-queue-row" key={o._id}>
+                          <div className="ol-ready-queue-label">
+                            {o.table
+                              ? `${Language.table || 'Table'} ${o.table.number}`
+                              : `${
+                                  o.orderType === 'to-go'
+                                    ? Language.togo || 'To-go'
+                                    : Language.delivery || 'Delivery'
+                                }${o.orderNumber ? ` #${o.orderNumber}` : ''}`}
+                          </div>
+                          <div className="ol-ready-queue-time">
+                            {elapsed != null
+                              ? `${formatDuration(elapsed)} ${Language.readySince || 'ready'}`
+                              : ''}
+                          </div>
+                          <CButton
+                            size="sm"
+                            color="success"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              updateOrderStatus(o._id, 'delivered')
+                            }}
+                          >
+                            {Language.markDelivered || 'Mark delivered'}
+                          </CButton>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="ol-list">{visibleOrders.map(renderOrderRow)}</div>
             </>
           )}

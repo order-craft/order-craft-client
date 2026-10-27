@@ -965,6 +965,17 @@ const translations = {
     staffPrefsHint:
       "Choose which events you want to hear about. You'll still see everything in the app.",
     prefsSaved: 'Preferences saved',
+    handoffTitle: 'Handoff',
+    preparedBy: 'Prepared by',
+    deliveredBy: 'Delivered by',
+    preparedAt: 'Prepared',
+    deliveredAt: 'Delivered',
+    unknownStaff: 'Unknown',
+    readyQueueTitle: 'Orders ready to deliver',
+    readyQueueHint: 'Pick up and deliver these to the table.',
+    readySince: 'Ready for',
+    orderDeliveredToast: 'Order delivered',
+    orderReadyToast: 'Order ready for pickup',
   },
 
   French: {
@@ -1917,6 +1928,17 @@ const translations = {
     staffPrefsHint:
       "Choisissez les événements pour lesquels vous voulez être averti. Vous verrez toujours tout dans l'application.",
     prefsSaved: 'Préférences enregistrées',
+    handoffTitle: 'Passation',
+    preparedBy: 'Préparée par',
+    deliveredBy: 'Livrée par',
+    preparedAt: 'Préparée le',
+    deliveredAt: 'Livrée le',
+    unknownStaff: 'Inconnu',
+    readyQueueTitle: 'Commandes prêtes à servir',
+    readyQueueHint: 'Récupérez-les et servez-les à la table.',
+    readySince: 'Prête depuis',
+    orderDeliveredToast: 'Commande livrée',
+    orderReadyToast: 'Commande prête à servir',
   },
 
   Italian: {
@@ -2869,6 +2891,17 @@ const translations = {
     staffPrefsHint:
       "Scegli gli eventi per cui vuoi essere avvisato. Vedrai comunque tutto nell'app.",
     prefsSaved: 'Preferenze salvate',
+    handoffTitle: 'Passaggio',
+    preparedBy: 'Preparato da',
+    deliveredBy: 'Consegnato da',
+    preparedAt: 'Preparato',
+    deliveredAt: 'Consegnato',
+    unknownStaff: 'Sconosciuto',
+    readyQueueTitle: 'Ordini pronti per la consegna',
+    readyQueueHint: 'Prendili e consegnali al tavolo.',
+    readySince: 'Pronto da',
+    orderDeliveredToast: 'Ordine consegnato',
+    orderReadyToast: 'Ordine pronto per la consegna',
   },
 }
 

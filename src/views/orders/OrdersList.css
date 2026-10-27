@@ -530,3 +530,114 @@
   background: #cfe2ff;
   color: #084298;
 }
+/* =========================================================================
+   Handoff panel + ready queue (Feature 9)
+   ========================================================================= */
+
+/* Handoff summary under the items table */
+.ol-handoff {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f0f4ff;
+  border: 1px solid #dbe4ff;
+}
+
+@media (min-width: 640px) {
+  .ol-handoff {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ol-handoff-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #1e3a8a;
+}
+
+.ol-handoff-row strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.ol-handoff-row svg {
+  width: 14px;
+  height: 14px;
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+/* Ready queue banner */
+.ol-ready-queue {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+.ol-ready-queue-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.ol-ready-queue-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 800;
+  color: #065f46;
+  font-size: 0.9rem;
+}
+
+.ol-ready-queue-title svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ol-ready-queue-hint {
+  font-size: 0.78rem;
+  color: #047857;
+}
+
+.ol-ready-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ol-ready-queue-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #d1fae5;
+  font-size: 0.85rem;
+}
+
+.ol-ready-queue-label {
+  font-weight: 700;
+  color: #065f46;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ol-ready-queue-time {
+  font-size: 0.75rem;
+  color: #047857;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
