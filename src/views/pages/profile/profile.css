@@ -782,3 +782,51 @@
 .pf-toggle input:checked + .pf-toggle-slider::after {
   transform: translateX(20px);
 }
+/* =========================================================================
+   Notification preferences card + modal
+   ========================================================================= */
+
+.pf-prefs-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 640px) {
+  .pf-prefs-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.pf-pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fafbfc;
+  border: 1px solid var(--cui-border-color, #eef0f3);
+  border-radius: 12px;
+}
+
+.pf-pref-text {
+  min-width: 0;
+}
+
+.pf-pref-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.pf-pref-hint {
+  font-size: 0.78rem;
+  color: var(--cui-secondary-color, #6c757d);
+  line-height: 1.45;
+}
+
+/* Reuse the switch look from the flow picker */
+.pf-pref-row .pf-toggle {
+  flex-shrink: 0;
+}

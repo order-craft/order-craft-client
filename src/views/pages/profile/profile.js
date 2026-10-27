@@ -10,6 +10,7 @@ import {
   cilLockLocked,
   cilHome,
   cilWarning,
+  cilBell,
 } from '@coreui/icons'
 import axios from 'axios'
 import { GetToken } from '../../../helpers/GetToken'
@@ -22,6 +23,8 @@ import AlertToast from '../../../components/toast/AlertToast'
 import './profile.css'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import NotificationPreferencesModal from './NotificationPreferencesModal'
+import StaffNotificationPreferences from './StaffNotificationPreferences'
 const Profile = () => {
   const token = GetToken()
 
@@ -30,6 +33,7 @@ const Profile = () => {
   const [detailsVisible, setDetailsVisible] = useState(false)
   const [visiblePDModal, setVisiblePDModal] = useState(false)
   const [pDVerifModal, setPDVerifModal] = useState(false)
+  const [notifPrefsVisible, setNotifPrefsVisible] = useState(false)
 
   // loading / errors
   const [loading, setLoading] = useState(true)
@@ -359,6 +363,34 @@ const Profile = () => {
             </div>
           </div>
 
+          {/* Notifications — superClient */}
+          {data?.role === 'superClient' && (
+            <div className="pf-card">
+              <div className="pf-card-header">
+                <CIcon icon={cilBell} />
+                <span>{Language.notificationPrefsTitle || 'Notification preferences'}</span>
+              </div>
+              <div className="pf-card-body">
+                <p className="pf-card-hint">
+                  {Language.notificationPrefsHint ||
+                    'Choose which events you want to be notified about.'}
+                </p>
+                <CButton
+                  color="secondary"
+                  variant="outline"
+                  onClick={() => setNotifPrefsVisible(true)}
+                  className="pf-btn"
+                >
+                  <CIcon icon={cilBell} className="me-2" />
+                  {Language.notificationPrefsTitle || 'Notification preferences'}
+                </CButton>
+              </div>
+            </div>
+          )}
+
+          {/* Notifications — staff (client) */}
+          {data?.role === 'client' && <StaffNotificationPreferences />}
+
           {/* Business */}
           <div className="pf-card">
             <div className="pf-card-header">
@@ -430,6 +462,11 @@ const Profile = () => {
         setEmailSent={setEmailSent}
         sendPwdVerificationCode={sendPwdVerificationCode}
         changePassword={changePassword}
+      />
+
+      <NotificationPreferencesModal
+        visible={notifPrefsVisible}
+        onClose={() => setNotifPrefsVisible(false)}
       />
 
       <PlaceDetailsModal

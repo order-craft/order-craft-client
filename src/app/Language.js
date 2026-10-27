@@ -951,6 +951,20 @@ const translations = {
     notifyOrderReady: 'Orders ready for delivery',
     notifyOrderDelivered: 'Orders delivered',
     staffRoleRequired: 'Please pick a role',
+    // Notification preferences
+    notificationPrefsTitle: 'Notification preferences',
+    notificationPrefsHint:
+      "Choose which events you want to be notified about. You'll still see everything in the app — this only controls sound and toasts.",
+    ownerNotifyOrders: 'Order events',
+    ownerNotifyOrdersHint: 'New orders, ready, delivered, payments.',
+    ownerNotifySupport: 'Support requests',
+    ownerNotifySupportHint: 'When a guest calls a waiter.',
+    ownerNotifyStaff: 'Staff events',
+    ownerNotifyStaffHint: 'Assignments, shifts, and other staff changes.',
+    staffPrefsTitle: 'My notification preferences',
+    staffPrefsHint:
+      "Choose which events you want to hear about. You'll still see everything in the app.",
+    prefsSaved: 'Preferences saved',
   },
 
   French: {
@@ -1890,6 +1904,19 @@ const translations = {
     notifyOrderReady: 'Commandes prêtes à servir',
     notifyOrderDelivered: 'Commandes livrées',
     staffRoleRequired: 'Veuillez choisir un rôle',
+    notificationPrefsTitle: 'Préférences de notification',
+    notificationPrefsHint:
+      "Choisissez les événements pour lesquels vous voulez être notifié. Vous verrez toujours tout dans l'application — cela contrôle uniquement le son et les notifications visuelles.",
+    ownerNotifyOrders: 'Événements de commande',
+    ownerNotifyOrdersHint: 'Nouvelles commandes, prêtes, livrées, paiements.',
+    ownerNotifySupport: 'Demandes de support',
+    ownerNotifySupportHint: 'Quand un client appelle un serveur.',
+    ownerNotifyStaff: 'Événements du personnel',
+    ownerNotifyStaffHint: 'Affectations, services et autres changements de personnel.',
+    staffPrefsTitle: 'Mes préférences de notification',
+    staffPrefsHint:
+      "Choisissez les événements pour lesquels vous voulez être averti. Vous verrez toujours tout dans l'application.",
+    prefsSaved: 'Préférences enregistrées',
   },
 
   Italian: {
@@ -2829,6 +2856,19 @@ const translations = {
     notifyOrderReady: 'Ordini pronti per la consegna',
     notifyOrderDelivered: 'Ordini consegnati',
     staffRoleRequired: 'Scegli un ruolo',
+    notificationPrefsTitle: 'Preferenze di notifica',
+    notificationPrefsHint:
+      "Scegli gli eventi per cui vuoi essere notificato. Vedrai comunque tutto nell'app — questo controlla solo suoni e avvisi.",
+    ownerNotifyOrders: 'Eventi degli ordini',
+    ownerNotifyOrdersHint: 'Nuovi ordini, pronti, consegnati, pagamenti.',
+    ownerNotifySupport: 'Richieste di supporto',
+    ownerNotifySupportHint: 'Quando un cliente chiama un cameriere.',
+    ownerNotifyStaff: 'Eventi del personale',
+    ownerNotifyStaffHint: 'Assegnazioni, turni e altri cambi del personale.',
+    staffPrefsTitle: 'Le mie preferenze di notifica',
+    staffPrefsHint:
+      "Scegli gli eventi per cui vuoi essere avvisato. Vedrai comunque tutto nell'app.",
+    prefsSaved: 'Preferenze salvate',
   },
 }
 
