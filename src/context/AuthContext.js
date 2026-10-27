@@ -207,9 +207,30 @@ export const AuthProvider = ({ children }) => {
     }
 
     socket.on('tenantConfigChanged', onTenantConfig)
+    const onAssignmentChanged = async () => {
+      try {
+        const res = await fetch(`${BaseUrl}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const me = await res.json()
+          if (me.role === 'client') {
+            if (me.staffRole) setStaffRole(me.staffRole)
+            if (Array.isArray(me.assignedPlanIds)) setAssignedPlanIds(me.assignedPlanIds)
+            if (Array.isArray(me.assignedTableIds)) setAssignedTableIds(me.assignedTableIds)
+            if (me.notifications) setStaffNotifications(me.notifications)
+          }
+        }
+      } catch {}
+      socket.disconnect()
+      socket.connect()
+    }
 
+    socket.on('staffAssignmentChanged', onAssignmentChanged)
     return () => {
       socket.off('tenantConfigChanged', onTenantConfig)
+      socket.off('staffAssignmentChanged', onAssignmentChanged)
+
       socket.disconnect()
     }
   }, [token, setOrderFlow, setCustomerEditWindow])

@@ -600,6 +600,13 @@ const TablesDashboard = () => {
                                 <div className="tl-card-meta">
                                   {busy ? (
                                     <>
+                                      <span
+                                        className="tl-card-orders"
+                                        title={`orderCount=${table.orderCount}`}
+                                      >
+                                        {table.orderCount}{' '}
+                                        {table.orderCount === 1 ? 'order' : 'orders'}
+                                      </span>
                                       <span className="tl-card-orders">
                                         {table.orderCount}{' '}
                                         {table.orderCount === 1 ? 'order' : 'orders'}

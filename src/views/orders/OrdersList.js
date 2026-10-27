@@ -154,6 +154,7 @@ const OrdersList = () => {
 
     socket.on('newOrder', (newOrder) => {
       if (typeof newOrder === 'string' || !newOrder?._id) return
+
       setOrders((prev) => {
         const idx = prev.findIndex((o) => o._id === newOrder._id)
         if (idx > -1) {
@@ -169,7 +170,9 @@ const OrdersList = () => {
           return next
         })
       }, 10000)
-      playRingtone()
+      if (newOrder.playSound !== false) {
+        playRingtone()
+      }
     })
 
     socket.on('deleteOrder', (deletedOrderId) => {
@@ -181,6 +184,45 @@ const OrdersList = () => {
         setStatusFlowEnabled(cfg.statusFlowEnabled)
       }
       fetchOrders()
+    })
+
+    socket.on('orderReady', (payload) => {
+      if (!payload || !payload.orderId) return
+      if (payload.playSound !== false) playRingtone()
+      // Optionally show a toast:
+      showToast(
+        `${Language.readyForPickup || 'Ready for pickup'}: ${Language.table || 'Table'} ${payload.tableNumber}`,
+        'info',
+      )
+    })
+
+    socket.on('orderDelivered', (payload) => {
+      if (!payload || !payload.orderId) return
+      if (payload.playSound !== false) playRingtone()
+    })
+    socket.on('orderUpdated', (payload) => {
+      if (!payload) return
+      // Payload can be a full order (from updateOrderStatus / updateOrder)
+      // or a partial { _id, payed, status } (from confirm* handlers).
+      const orderId = payload._id
+      if (!orderId) {
+        // Partial update; just refetch.
+        fetchOrders()
+        return
+      }
+
+      setOrders((prev) => {
+        const idx = prev.findIndex((o) => o._id === orderId)
+        if (idx === -1) {
+          // Order isn't in the list — refetch to pick it up if it's a new one.
+          fetchOrders()
+          return prev
+        }
+        // Full order vs partial — merge shallowly
+        return prev.map((o, i) => (i === idx ? { ...o, ...payload } : o))
+      })
+
+      if (payload.playSound !== false) playRingtone()
     })
 
     return () => socket.disconnect()
