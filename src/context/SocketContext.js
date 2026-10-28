@@ -3,7 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
 import { BaseUrl } from '../helpers/BaseUrl'
 import { GetToken } from '../helpers/GetToken'
-import PropTypes from 'prop-types' 
+import PropTypes from 'prop-types'
 const SocketContext = createContext()
 
 export const SocketProvider = ({ children }) => {
@@ -14,7 +14,6 @@ export const SocketProvider = ({ children }) => {
   const [RequestTypeName, setRequestTypeName] = useState('')
 
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [ringtone, setRingtone] = useState(null)
   const socket = io(BaseUrl, { auth: { token } })
 
   useEffect(() => {
@@ -24,12 +23,10 @@ export const SocketProvider = ({ children }) => {
       setActiveSupportRequest(data.supportId)
       setRequestTypeName(data.requestTypeName)
       setIsModalOpen(true)
-      playRingtone()
     })
 
     socket.on('callAnswered', (data) => {
       if (data.tableNumber === activeTable) {
-        stopRingtone()
         setIsModalOpen(false)
         setSupportRequests((prevRequests) =>
           prevRequests.filter((tableNumber) => tableNumber !== data.tableNumber),
@@ -42,22 +39,7 @@ export const SocketProvider = ({ children }) => {
     }
   }, [activeTable, token])
 
-  const playRingtone = () => {
-    const audio = new Audio('/ringtone.mp3')
-    audio.loop = true
-    audio.play()
-    setRingtone(audio)
-  }
-
-  const stopRingtone = () => {
-    if (ringtone) {
-      ringtone.pause()
-      ringtone.currentTime = 0
-    }
-  }
-
   const handleAnswerCall = () => {
-    stopRingtone()
     setIsModalOpen(false)
     console.log(activeSupportRequest)
     socket.emit('supportCallAnswered', {
@@ -67,7 +49,6 @@ export const SocketProvider = ({ children }) => {
   }
 
   const handleDismissCall = () => {
-    stopRingtone()
     setIsModalOpen(false)
   }
 

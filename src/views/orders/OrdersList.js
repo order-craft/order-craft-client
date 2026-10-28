@@ -118,7 +118,6 @@ const OrdersList = () => {
   const [statusFlowEnabled, setStatusFlowEnabled] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedRows, setExpandedRows] = useState({})
-  const [ringtone, setRingtone] = useState(null)
 
   // ── Hooks ──────────────────────────────────────────────────
   const token = GetToken()
@@ -192,13 +191,12 @@ const OrdersList = () => {
       if (!payload || !payload.orderId) return
       // The order just became ready — refetch so the "Ready" tab is accurate.
       fetchOrders()
-      if (payload.playSound !== false) playRingtone()
-      if (payload.tableNumber) {
-        showToast(
-          `${Language.orderReadyToast || 'Order ready for pickup'} · ${Language.table || 'Table'} ${payload.tableNumber}`,
-          'info',
-        )
-      }
+      // if (payload.tableNumber) {
+      //   showToast(
+      //     `${Language.orderReadyToast || 'Order ready for pickup'} · ${Language.table || 'Table'} ${payload.tableNumber}`,
+      //     'info',
+      //   )
+      // }
     })
 
     socket.on('orderDelivered', (payload) => {
@@ -208,13 +206,12 @@ const OrdersList = () => {
       // if the server flagged it (superClient / prep staff) — the deliverer's
       // own action doesn't emit `playSound` because it goes only to the tenant
       // and their own `user` room which they are in.
-      if (payload.playSound !== false) playRingtone()
-      if (payload.tableNumber) {
-        showToast(
-          `${Language.orderDeliveredToast || 'Order delivered'} · ${Language.table || 'Table'} ${payload.tableNumber}`,
-          'success',
-        )
-      }
+      // if (payload.tableNumber) {
+      //   showToast(
+      //     `${Language.orderDeliveredToast || 'Order delivered'} · ${Language.table || 'Table'} ${payload.tableNumber}`,
+      //     'success',
+      //   )
+      // }
     })
     socket.on('orderUpdated', (payload) => {
       if (!payload) return
@@ -237,28 +234,11 @@ const OrdersList = () => {
         // Full order vs partial — merge shallowly
         return prev.map((o, i) => (i === idx ? { ...o, ...payload } : o))
       })
-
-      if (payload.playSound !== false) playRingtone()
     })
 
     return () => socket.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  // ── Ringtone ───────────────────────────────────────────────
-  const playRingtone = () => {
-    stopRingtone()
-    const audio = new Audio('/newOrder.mp3')
-    audio.loop = false
-    audio.play().catch(() => {})
-    setRingtone(audio)
-  }
-  const stopRingtone = () => {
-    if (ringtone) {
-      ringtone.pause()
-      ringtone.currentTime = 0
-    }
-  }
 
   // ── Status updates ─────────────────────────────────────────
   const cancelOrder = (orderId) => {

@@ -8,14 +8,16 @@ import React, {
   useState,
 } from 'react'
 import { io } from 'socket.io-client'
+import { useSelector } from 'react-redux'
 import { BaseUrl } from '../helpers/BaseUrl'
 import { GetToken } from '../helpers/GetToken'
+import { useToast } from '../components/toast/ToastProvider'
+import translations from '../app/Language'
 
 const NotificationCenterContext = createContext(null)
 
 const MAX_EVENTS = 100 // ring buffer size in memory
 const MAX_READ_IDS = 500 // localStorage cap
-
 const STORAGE_READ_KEY = 'notificationCenterReadIds'
 
 const readReadIds = () => {
@@ -31,7 +33,6 @@ const readReadIds = () => {
 
 const writeReadIds = (set) => {
   try {
-    // Keep the last MAX_READ_IDS by insertion order
     const arr = Array.from(set).slice(-MAX_READ_IDS)
     localStorage.setItem(STORAGE_READ_KEY, JSON.stringify(arr))
   } catch {
@@ -56,6 +57,7 @@ const normalizeEvent = (eventName, payload) => {
       orderNumber: payload.orderNumber || null,
       orderType: payload.orderType || 'dine-in',
       createdAt: Date.now(),
+      playSound: payload.playSound !== false,
       raw: payload,
     }
   }
@@ -69,6 +71,7 @@ const normalizeEvent = (eventName, payload) => {
       tableNumber: payload.tableNumber || null,
       planName: payload.planName || null,
       createdAt: Date.now(),
+      playSound: payload.playSound !== false,
       raw: payload,
     }
   }
@@ -81,6 +84,7 @@ const normalizeEvent = (eventName, payload) => {
       orderId: payload.orderId,
       tableNumber: payload.tableNumber || null,
       createdAt: Date.now(),
+      playSound: payload.playSound !== false,
       raw: payload,
     }
   }
@@ -94,12 +98,12 @@ const normalizeEvent = (eventName, payload) => {
       tableNumber: payload.tableNumber || null,
       requestTypeName: payload.requestTypeName || null,
       createdAt: Date.now(),
+      playSound: payload.playSound !== false,
       raw: payload,
     }
   }
 
   if (eventName === 'deleteOrder') {
-    // payload is the order _id string in some paths, or an object in others
     const orderId = typeof payload === 'string' ? payload : payload._id || payload.orderId
     if (!orderId) return null
     return {
@@ -107,13 +111,12 @@ const normalizeEvent = (eventName, payload) => {
       type: 'deleteOrder',
       orderId,
       createdAt: Date.now(),
+      playSound: false, // never ring on delete
       raw: payload,
     }
   }
 
   if (eventName === 'orderUpdated') {
-    // Only store if it carries a status update — otherwise skip to avoid
-    // flooding the list with payment events.
     const status = payload.status
     if (!status) return null
     return {
@@ -123,6 +126,7 @@ const normalizeEvent = (eventName, payload) => {
       status,
       tableNumber: payload.table?.number || null,
       createdAt: Date.now(),
+      playSound: payload.playSound !== false,
       raw: payload,
     }
   }
@@ -130,11 +134,86 @@ const normalizeEvent = (eventName, payload) => {
   return null
 }
 
+const buildToastMessage = (event, Language) => {
+  if (event.type === 'newOrder') {
+    const label = event.tableNumber
+      ? `${Language.table || 'Table'} ${event.tableNumber}`
+      : event.orderType === 'to-go'
+        ? Language.togo || 'To-go'
+        : Language.delivery || 'Delivery'
+    return `${Language.notificationsNewOrder || 'New order'} · ${label}`
+  }
+  if (event.type === 'orderReady') {
+    const label = event.tableNumber ? ` · ${Language.table || 'Table'} ${event.tableNumber}` : ''
+    return `${Language.notificationsOrderReady || 'Order ready'}${label}`
+  }
+  if (event.type === 'orderDelivered') {
+    const label = event.tableNumber ? ` · ${Language.table || 'Table'} ${event.tableNumber}` : ''
+    return `${Language.notificationsOrderDelivered || 'Order delivered'}${label}`
+  }
+  if (event.type === 'support') {
+    const label = event.tableNumber ? ` · ${Language.table || 'Table'} ${event.tableNumber}` : ''
+    const req = event.requestTypeName ? ` (${event.requestTypeName})` : ''
+    return `${Language.notificationsSupport || 'Support call'}${label}${req}`
+  }
+  if (event.type === 'deleteOrder') {
+    return Language.notificationsDeleteOrder || 'Order deleted'
+  }
+  // Skip generic status changes — ready/delivered deserve the toast.
+  return null
+}
+
+// Which event types deserve a ring. Support and new order are the loudest;
+// ready/delivered are shorter cues. Delete never rings.
+const SHOULD_RING = {
+  newOrder: true,
+  orderReady: true,
+  orderDelivered: true,
+  support: true,
+  deleteOrder: false,
+  statusChange: false,
+}
+
 export const NotificationCenterProvider = ({ children }) => {
   const [events, setEvents] = useState([])
   const [readIds, setReadIds] = useState(() => readReadIds())
   const socketRef = useRef(null)
+  const audioRef = useRef(null)
   const token = GetToken()
+
+  const { showToast } = useToast()
+  const t = useSelector((state) => state.language)
+  const Language = translations[t]
+
+  // ── Ringtone ─────────────────────────────────────────────
+  const stopRingtone = useCallback(() => {
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+      } catch {
+        /* ignore */
+      }
+      audioRef.current = null
+    }
+  }, [])
+
+  const playRingtone = useCallback(() => {
+    stopRingtone()
+    try {
+      const audio = new Audio('/newOrder.mp3')
+      audio.loop = false
+      audio.play().catch(() => {})
+      audioRef.current = audio
+    } catch {
+      /* ignore */
+    }
+  }, [stopRingtone])
+
+  // Stop the ringtone on unmount so it doesn't linger across logout.
+  useEffect(() => {
+    return () => stopRingtone()
+  }, [stopRingtone])
 
   // ── Socket subscription ──────────────────────────────────
   useEffect(() => {
@@ -146,10 +225,34 @@ export const NotificationCenterProvider = ({ children }) => {
     const push = (eventName) => (payload) => {
       const event = normalizeEvent(eventName, payload)
       if (!event) return
+
       setEvents((prev) => {
         const next = [event, ...prev]
         return next.length > MAX_EVENTS ? next.slice(0, MAX_EVENTS) : next
       })
+
+      // ── Toast anywhere in the app ────────────────────────
+      // Muting is honored: `playSound === false` suppresses both toast and
+      // ring (the bell still records the event).
+      if (event.playSound) {
+        const message = buildToastMessage(event, Language)
+        if (message) {
+          const tone =
+            event.type === 'support'
+              ? 'warning'
+              : event.type === 'deleteOrder'
+                ? 'danger'
+                : event.type === 'orderDelivered'
+                  ? 'success'
+                  : 'info'
+          showToast(message, tone)
+        }
+      }
+
+      // ── Ringtone anywhere in the app ─────────────────────
+      if (event.playSound && SHOULD_RING[event.type]) {
+        playRingtone()
+      }
     }
 
     const handlers = {
@@ -167,8 +270,9 @@ export const NotificationCenterProvider = ({ children }) => {
       Object.entries(handlers).forEach(([name, fn]) => socket.off(name, fn))
       socket.disconnect()
       socketRef.current = null
+      stopRingtone()
     }
-  }, [token])
+  }, [token, showToast, Language, playRingtone, stopRingtone])
 
   // ── Persist read ids whenever they change ────────────────
   useEffect(() => {
@@ -194,15 +298,14 @@ export const NotificationCenterProvider = ({ children }) => {
   }, [events])
 
   const clearAll = useCallback(() => {
-    // Remove all events from memory; also mark them all read so the
-    // unread count resets.
+    stopRingtone()
     setReadIds((prev) => {
       const next = new Set(prev)
       events.forEach((e) => next.add(e.id))
       return next
     })
     setEvents([])
-  }, [events])
+  }, [events, stopRingtone])
 
   // ── Derived ──────────────────────────────────────────────
   const unreadCount = useMemo(
@@ -218,8 +321,10 @@ export const NotificationCenterProvider = ({ children }) => {
       markRead,
       markAllRead,
       clearAll,
+      // Exposed so any page can stop the ring on an acknowledged action.
+      stopRingtone,
     }),
-    [events, unreadCount, readIds, markRead, markAllRead, clearAll],
+    [events, unreadCount, readIds, markRead, markAllRead, clearAll, stopRingtone],
   )
 
   return (

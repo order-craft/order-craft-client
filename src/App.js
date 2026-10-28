@@ -38,8 +38,8 @@ const App = () => {
         }
       >
         <AuthProvider>
-          <NotificationCenterProvider>
-            <ToastProvider>
+          <ToastProvider>
+            <NotificationCenterProvider>
               <Routes>
                 <Route exact path="/login" name="Login Page" element={<Login />} />
                 <Route exact path="/register" name="Register Page" element={<Register />} />
@@ -52,8 +52,8 @@ const App = () => {
                 />{' '}
               </Routes>
               <GlobalNotification /> {/* Always available */}
-            </ToastProvider>
-          </NotificationCenterProvider>
+            </NotificationCenterProvider>
+          </ToastProvider>
         </AuthProvider>
       </Suspense>
     </HashRouter>
