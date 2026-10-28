@@ -13,6 +13,7 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilMenu, cilGlobeAlt } from '@coreui/icons'
 import { AppHeaderDropdown } from './header/index'
+import NotificationCenter from './header/NotificationCenter'
 import './AppHeader.css'
 
 const LANGUAGES = [
@@ -69,7 +70,8 @@ const AppHeader = () => {
               ))}
             </CDropdownMenu>
           </CDropdown>
-
+          {/* Notifications bell */}
+          <NotificationCenter />
           {/* Account dropdown */}
           <AppHeaderDropdown />
         </CHeaderNav>

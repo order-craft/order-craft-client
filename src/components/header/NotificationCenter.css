@@ -1,0 +1,211 @@
+/* =========================================================================
+   Notification center (bell in AppHeader)
+   ========================================================================= */
+
+.app-header-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #f1f3f5;
+  color: #4a5568;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.app-header-bell:hover {
+  background: #e9ecef;
+  color: #1a1a1a;
+}
+
+.app-header-bell-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 2px solid #fff;
+}
+
+/* ── Dropdown menu ───────────────────────────────────────── */
+.app-header-bell-menu {
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  padding: 0;
+  border-radius: 14px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.app-header-bell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 8px 14px;
+  border-bottom: 1px solid #eef0f3;
+}
+
+.app-header-bell-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.app-header-bell-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.app-header-bell-link {
+  border: none;
+  background: transparent;
+  color: #0d6efd;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+.app-header-bell-link.is-muted {
+  color: #6c757d;
+}
+
+.app-header-bell-link:hover {
+  text-decoration: underline;
+}
+
+/* ── List ────────────────────────────────────────────────── */
+.app-header-bell-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.app-header-bell-list::-webkit-scrollbar {
+  width: 6px;
+}
+.app-header-bell-list::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+}
+
+.app-header-bell-item {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 14px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  border: none;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f3f5;
+  transition: background-color 0.12s ease;
+}
+
+.app-header-bell-item:hover {
+  background: #f8f9fa;
+}
+
+.app-header-bell-item.is-read {
+  opacity: 0.65;
+}
+
+.app-header-bell-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f1f3f5;
+  color: #4a5568;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header-bell-item.is-read .app-header-bell-icon {
+  background: #f8f9fa;
+  color: #a0aec0;
+}
+
+.app-header-bell-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-header-bell-item-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-header-bell-item-time {
+  font-size: 0.72rem;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.app-header-bell-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #0d6efd;
+  margin-right: 4px;
+}
+
+.app-header-bell-chev {
+  width: 14px;
+  height: 14px;
+  color: #a0aec0;
+}
+
+/* ── Empty ───────────────────────────────────────────────── */
+.app-header-bell-empty {
+  padding: 32px 20px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.app-header-bell-empty svg {
+  color: #cbd5e0;
+  margin-bottom: 8px;
+}
+
+.app-header-bell-empty-title {
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 2px;
+}
+
+.app-header-bell-empty-hint {
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* ── Mobile ──────────────────────────────────────────────── */
+@media (max-width: 575.98px) {
+  .app-header-bell-menu {
+    width: calc(100vw - 16px);
+    margin-left: 8px;
+  }
+}
