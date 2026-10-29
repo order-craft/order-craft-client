@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CButton,
   CCard,
@@ -6,10 +6,8 @@ import {
   CCol,
   CRow,
   CModal,
-  CInputGroup,
   CFormInput,
   CFormSelect,
-  CBadge,
   CFormSwitch,
   CSpinner,
   CDropdown,
@@ -26,7 +24,6 @@ import { saveAs } from 'file-saver'
 import CIcon from '@coreui/icons-react'
 import {
   cilCloudDownload,
-  cilQrCode,
   cilTrash,
   cilSave,
   cilInfo,
@@ -42,6 +39,7 @@ import {
   cilFilter,
   cilOptions,
   cilWarning,
+  cilCalendar,
 } from '@coreui/icons'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
@@ -56,7 +54,6 @@ const TablesDashboard = () => {
   const [tables, setTables] = useState([])
   const [orders, setOrders] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -87,6 +84,12 @@ const TablesDashboard = () => {
   const [takeawayRange, setTakeawayRange] = useState('today')
   const [takeawayFrom, setTakeawayFrom] = useState('')
   const [takeawayTo, setTakeawayTo] = useState('')
+
+  // Keep the latest fetchOrders available to the socket handler without
+  // re-subscribing on every state change.
+  const fetchOrdersRef = useRef(null)
+  const fetchTablesRef = useRef(null)
+
   const token = GetToken()
   const { role } = useAuth()
   const isSuperClient = role === 'superClient'
@@ -114,7 +117,10 @@ const TablesDashboard = () => {
       })
       setTables(withTotal)
     } catch (err) {
-      setError('Error fetching tables')
+      showToast(
+        err.response?.data?.error || Language.fetchError || 'Could not load tables',
+        'danger',
+      )
       console.error(err)
     } finally {
       setLoading(false)
@@ -136,13 +142,14 @@ const TablesDashboard = () => {
   }
 
   const fetchOrders = async () => {
-    setLoading(true)
+    // Guard: don't fetch until the user has picked both dates for a custom range.
     if (takeawayRange === 'custom' && (!takeawayFrom || !takeawayTo)) {
-      // Wait until the user picks both dates — do not call the API.
-      setOrders([]) // ← optional, clears the list while the user is picking
+      setOrders([])
       setLoading(false)
       return
     }
+
+    setLoading(true)
     try {
       const params = new URLSearchParams({ range: takeawayRange })
       if (takeawayRange === 'custom' && takeawayFrom && takeawayTo) {
@@ -154,12 +161,13 @@ const TablesDashboard = () => {
       })
       setOrders(data.data || [])
     } catch (err) {
-      const msg =
+      showToast(
         err.response?.data?.error ||
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to load takeaway orders'
-      showToast(msg, 'danger')
+          err.response?.data?.message ||
+          Language.fetchError ||
+          'Could not load takeaway orders',
+        'danger',
+      )
       setOrders([])
     } finally {
       setLoading(false)
@@ -176,9 +184,12 @@ const TablesDashboard = () => {
       })
       setPaymentMethods(res.data)
     } catch (err) {
-      setError('Error fetching payment methods')
+      console.error('Error fetching payment methods:', err)
     }
   }
+
+  fetchOrdersRef.current = fetchOrders
+  fetchTablesRef.current = fetchTables
 
   // Data fetch — depends on the takeaway range too
   useEffect(() => {
@@ -196,7 +207,8 @@ const TablesDashboard = () => {
   useEffect(() => {
     const socket = io(BaseUrl, { auth: { token } })
     socket.on(isTakeAway ? 'newOrder' : 'tableUpdated', () => {
-      isTakeAway ? fetchOrders() : fetchTables()
+      if (isTakeAway) fetchOrdersRef.current?.()
+      else fetchTablesRef.current?.()
     })
     return () => socket.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -359,370 +371,314 @@ const TablesDashboard = () => {
 
   const busyCount = filteredTables.filter((t) => t.orderCount > 0).length
 
+  // Whether we're waiting on the user to pick both custom dates.
+  const waitingForCustomRange =
+    isTakeAway && takeawayRange === 'custom' && (!takeawayFrom || !takeawayTo)
+
   /* ---------- render ---------- */
   return (
     <>
       <CRow>
         <CCol xs={12}>
-          <CCard className="mb-4">
-            <div className="tl-header">
-              {/* Title row */}
-              <div className="tl-header-top">
-                <div>
-                  <h5 className="tl-title">
-                    {isTakeAway
-                      ? Language.ordersToday || 'Orders today'
-                      : Language.tables || 'Tables'}
-                  </h5>
-                  <div className="tl-subtitle">
-                    {isTakeAway ? (
-                      <>
-                        <strong>{filteredOrders.length}</strong>{' '}
-                        {filteredOrders.length === 1 ? 'order' : 'orders'}
-                        {' · '}
-                        <strong>
-                          {takeawayRange === 'today' && (Language.takeawayRangeToday || 'Today')}
-                          {takeawayRange === 'thisWeek' &&
-                            (Language.takeawayRangeThisWeek || 'This week')}
-                          {takeawayRange === 'all' && (Language.takeawayRangeAll || 'All time')}
-                          {takeawayRange === 'custom' &&
-                            `${Language.takeawayFrom || 'From'} ${takeawayFrom || '…'} → ${
-                              takeawayTo || '…'
-                            }`}
-                        </strong>
-                      </>
-                    ) : (
-                      <>
-                        <strong>{filteredTables.length}</strong>{' '}
-                        {filteredTables.length === 1 ? 'table' : 'tables'}
-                        {' · '}
-                        <strong>{busyCount}</strong> busy
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <div className="tl-top-right">
-                  <div className="tl-segments" role="tablist">
-                    <button
-                      type="button"
-                      className={`tl-segment ${!isTakeAway ? 'is-active' : ''}`}
-                      onClick={() => setIsTakeAway(false)}
-                    >
-                      <CIcon icon={cilTablet} />
-                      {Language.tables || 'Tables'}
-                    </button>
-                    <button
-                      type="button"
-                      className={`tl-segment ${isTakeAway ? 'is-active' : ''}`}
-                      onClick={() => setIsTakeAway(true)}
-                    >
-                      <CIcon icon={cilRestaurant} />
-                      {Language.takeawayDeliveryOnly || 'Takeaway'}
-                    </button>
-                  </div>
-
-                  {/* Primary action */}
-                  {isTakeAway ? null : (
-                    <CButton color="primary" onClick={() => setShowOrderModal(true)}>
-                      <CIcon icon={cilPlus} className="me-2" />
-                      {Language.newTogo || 'New to-go'}
-                    </CButton>
-                  )}
-                </div>
+          <CCard className="tl-page">
+            {/* ── Header ──────────────────────────────────────── */}
+            <div className="tl-page-head">
+              <div className="tl-page-head-left">
+                <h1 className="tl-page-title">
+                  {isTakeAway
+                    ? Language.takeawayDeliveryOnly || 'Takeaway orders'
+                    : Language.tables || 'Tables'}
+                </h1>
+                <p className="tl-page-subtitle">
+                  {isTakeAway
+                    ? `${filteredOrders.length} ${
+                        filteredOrders.length === 1 ? 'order' : 'orders'
+                      } · ${describeRange()}`
+                    : `${filteredTables.length} ${
+                        filteredTables.length === 1 ? 'table' : 'tables'
+                      } · ${busyCount} occupied`}
+                </p>
               </div>
 
-              {/* Filter row */}
-              <div className="tl-header-controls">
-                <div className="tl-controls-left">
-                  <div className="tl-search">
-                    <CIcon icon={cilSearch} className="tl-search-icon" />
-                    <input
-                      type="text"
-                      placeholder={
-                        isTakeAway
-                          ? Language.searchByOrderNumber || 'Search by order number'
-                          : Language.searchByTableNumber || 'Search by table number'
-                      }
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      aria-label="Search"
-                    />
-                  </div>
-
-                  {isTakeAway ? (
-                    <>
-                      <div className="tl-filter">
-                        <CIcon icon={cilFilter} className="tl-filter-icon" />
-                        <select
-                          value={orderTypeFilter}
-                          onChange={(e) => setOrderTypeFilter(e.target.value)}
-                          aria-label="Order type"
-                        >
-                          <option value="all">{Language.allTypes || 'All types'}</option>
-                          <option value="to-go">{Language.togo || 'To-go'}</option>
-                          <option value="delivery">{Language.delivery || 'Delivery'}</option>
-                        </select>
-                      </div>
-
-                      <div className="tl-segments" role="tablist">
-                        {[
-                          { key: 'today', label: Language.takeawayRangeToday || 'Today' },
-                          { key: 'thisWeek', label: Language.takeawayRangeThisWeek || 'This week' },
-                          { key: 'all', label: Language.takeawayRangeAll || 'All time' },
-                          { key: 'custom', label: Language.takeawayCustomRange || 'Custom' },
-                        ].map((r) => (
-                          <button
-                            key={r.key}
-                            type="button"
-                            className={`tl-segment ${takeawayRange === r.key ? 'is-active' : ''}`}
-                            onClick={() => setTakeawayRange(r.key)}
-                          >
-                            {r.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {takeawayRange === 'custom' && (
-                        <div className="tl-date-group">
-                          <div className="tl-date">
-                            <input
-                              type="date"
-                              value={takeawayFrom}
-                              max={takeawayTo || undefined}
-                              onChange={(e) => setTakeawayFrom(e.target.value)}
-                              aria-label={Language.takeawayFrom || 'From'}
-                            />
-                          </div>
-                          <span className="tl-date-sep">→</span>
-                          <div className="tl-date">
-                            <input
-                              type="date"
-                              value={takeawayTo}
-                              min={takeawayFrom || undefined}
-                              onChange={(e) => setTakeawayTo(e.target.value)}
-                              aria-label={Language.takeawayTo || 'To'}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      <CFormSwitch
-                        id="tl-paid-toggle"
-                        label={Language.showPaidOrders || 'Show paid'}
-                        checked={showPaidOrders}
-                        onChange={(e) => setShowPaidOrders(e.target.checked)}
-                        className="tl-paid-switch"
-                      />
-                    </>
-                  ) : (
-                    <div className="tl-filter">
-                      <CIcon icon={cilFilter} className="tl-filter-icon" />
-                      <select
-                        value={selectedPlanFilter}
-                        onChange={(e) => setSelectedPlanFilter(e.target.value)}
-                        aria-label="Plan"
-                      >
-                        <option value="all">{Language.allPlans || 'All plans'}</option>
-                        {plans.map((plan) => (
-                          <option key={plan._id} value={plan._id}>
-                            {plan.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+              <div className="tl-page-head-right">
+                <div className="tl-switch" role="tablist" aria-label="View mode">
+                  <button
+                    type="button"
+                    className={`tl-switch-btn ${!isTakeAway ? 'is-active' : ''}`}
+                    onClick={() => setIsTakeAway(false)}
+                    aria-pressed={!isTakeAway}
+                  >
+                    <CIcon icon={cilTablet} />
+                    <span>{Language.tables || 'Tables'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`tl-switch-btn ${isTakeAway ? 'is-active' : ''}`}
+                    onClick={() => setIsTakeAway(true)}
+                    aria-pressed={isTakeAway}
+                  >
+                    <CIcon icon={cilRestaurant} />
+                    <span>{Language.takeawayDeliveryOnly || 'Takeaway'}</span>
+                  </button>
                 </div>
 
-                {!isTakeAway && isSuperClient && (
-                  <div className="tl-controls-right">
-                    <CButton
-                      color="secondary"
-                      variant="outline"
-                      onClick={() => setShowCreateModal(true)}
-                      className="tl-action-btn"
-                    >
-                      <CIcon icon={cilPlus} className="me-2" />
-                      {Language.table || 'Table'}
-                    </CButton>
-                    <CButton
-                      color="secondary"
-                      variant="outline"
-                      onClick={() => setShowPlanModal(true)}
-                      className="tl-action-btn"
-                    >
-                      <CIcon icon={cilLayers} className="me-2" />
-                      {Language.managePlans || 'Plans'}
-                    </CButton>
-                  </div>
+                {!isTakeAway && (
+                  <CButton
+                    color="primary"
+                    className="tl-primary-action"
+                    onClick={() => setShowOrderModal(true)}
+                  >
+                    <CIcon icon={cilPlus} className="me-2" />
+                    {Language.newTogo || 'New to-go'}
+                  </CButton>
                 )}
               </div>
             </div>
 
-            <CCardBody>
-              {/* Skeleton loading */}
-              {loading && tables.length === 0 && !isTakeAway && (
-                <CRow className="g-3">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <CCol xs={12} sm={6} md={4} lg={3} xl={2} key={i}>
-                      <div className="tl-skeleton-card" />
-                    </CCol>
-                  ))}
-                </CRow>
-              )}
+            {/* ── Filter bar ──────────────────────────────────── */}
+            <div className="tl-page-filters">
+              <div className="tl-page-filters-left">
+                <div className="tl-search tl-search--fixed">
+                  <CIcon icon={cilSearch} className="tl-search-icon" />
+                  <input
+                    type="text"
+                    placeholder={
+                      isTakeAway
+                        ? Language.searchByOrderNumber || 'Search by order number'
+                        : Language.searchByTableNumber || 'Search by table number'
+                    }
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    aria-label="Search"
+                  />
+                </div>
 
-              {/* Takeaway skeleton */}
-              {loading && orders.length === 0 && isTakeAway && (
-                <CRow className="g-3">
-                  {[1, 2, 3, 4].map((i) => (
-                    <CCol xs={12} sm={6} md={6} lg={4} key={i}>
-                      <div className="tl-skeleton-card" />
-                    </CCol>
-                  ))}
-                </CRow>
-              )}
-
-              {/* Content */}
-              {!loading || tables.length > 0 || orders.length > 0 ? (
-                <CRow className="g-3">
-                  {isTakeAway
-                    ? filteredOrders.map((order) => (
-                        <OrderCard
-                          key={order._id}
-                          order={order}
-                          onClick={() => {
-                            setSelectedOrderId(order._id)
-                            setSelectedOrderProducts(order.products)
-                            setShowProdSelectModal(true)
-                          }}
-                          paymentMethods={paymentMethods}
-                          refreshOrders={fetchOrders}
-                          onShowToast={showToast}
-                        />
-                      ))
-                    : filteredTables.map((table) => {
-                        const busy = table.orderCount > 0
-                        return (
-                          <CCol xs={12} sm={6} md={4} lg={3} xl={2} key={table._id}>
-                            <div
-                              className={`tl-card ${busy ? 'is-busy' : ''}`}
-                              role="button"
-                              tabIndex={0}
-                              onClick={(e) => {
-                                // ignore clicks that originated from the menu
-                                if (e.target.closest('.tl-card-menu-btn')) return
-                                if (e.target.closest('.dropdown-menu')) return
-                                handleCardClick(table._id)
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                  e.preventDefault()
-                                  handleCardClick(table._id)
-                                }
-                              }}
-                            >
-                              <div className="tl-card-top">
-                                <div className={`tl-card-number ${busy ? 'is-busy' : ''}`}>
-                                  {table.number}
-                                </div>
-
-                                <CDropdown variant="btn-group" className="tl-card-dropdown">
-                                  {' '}
-                                  <CDropdownToggle
-                                    color="transparent"
-                                    caret={false}
-                                    className="tl-card-menu-btn"
-                                  >
-                                    <CIcon icon={cilOptions} />
-                                  </CDropdownToggle>
-                                  <CDropdownMenu className="tl-card-menu" placement="bottom-end">
-                                    <CDropdownItem
-                                      onClick={(e) => {
-                                        downloadQRCode(table.number, table.qrCode)
-                                      }}
-                                    >
-                                      <CIcon icon={cilCloudDownload} className="me-2" />
-                                      {Language.downloadQR || 'Download QR'}
-                                    </CDropdownItem>
-                                    <CDropdownItem
-                                      onClick={(e) => {
-                                        setSelectedTable(table)
-                                        setShowMoveOrdersModal(true)
-                                      }}
-                                    >
-                                      <CIcon icon={cilSwapHorizontal} className="me-2" />
-                                      {Language.switchTable || 'Move orders'}
-                                    </CDropdownItem>
-                                    {isSuperClient && (
-                                      <CDropdownItem
-                                        onClick={(e) => {
-                                          handleDeleteTable(table._id, table.unpaidOrders)
-                                        }}
-                                      >
-                                        <CIcon icon={cilTrash} className="me-2 text-danger" />
-                                        <span className="text-danger">
-                                          {Language.deleteTable || 'Delete table'}
-                                        </span>
-                                      </CDropdownItem>
-                                    )}
-                                  </CDropdownMenu>
-                                </CDropdown>
-                              </div>
-
-                              <div className="tl-card-body">
-                                <div className="tl-card-plan">
-                                  {plans.find((p) => p._id === table.plan)?.name || 'No plan'}
-                                </div>
-                                <div className="tl-card-meta">
-                                  {busy ? (
-                                    <>
-                                      <span
-                                        className="tl-card-orders"
-                                        title={`orderCount=${table.orderCount}`}
-                                      >
-                                        {table.orderCount}{' '}
-                                        {table.orderCount === 1 ? 'order' : 'orders'}
-                                      </span>
-                                      <span className="tl-card-orders">
-                                        {table.orderCount}{' '}
-                                        {table.orderCount === 1 ? 'order' : 'orders'}
-                                      </span>
-                                      <span className="tl-card-total">
-                                        {table.totalPrice.toFixed(2)} TND
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <span className="tl-card-free">Available</span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </CCol>
-                        )
-                      })}
-                </CRow>
-              ) : null}
-
-              {/* Empty state - no tables */}
-              {!loading && !isTakeAway && tables.length === 0 && (
-                <div className="tl-empty">
-                  <CIcon icon={cilTablet} size="xl" />
-                  <div className="tl-empty-title">{Language.noTablesYet || 'No tables yet'}</div>
-                  <div className="tl-empty-body">
-                    {Language.noTablesHint ||
-                      'Start by creating a plan for your floor, then add tables to it.'}
+                {!isTakeAway && (
+                  <div className="tl-select">
+                    <CIcon icon={cilLayers} className="tl-select-icon" />
+                    <select
+                      value={selectedPlanFilter}
+                      onChange={(e) => setSelectedPlanFilter(e.target.value)}
+                      aria-label="Filter by plan"
+                    >
+                      <option value="all">{Language.allPlans || 'All plans'}</option>
+                      {plans.map((plan) => (
+                        <option key={plan._id} value={plan._id}>
+                          {plan.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <CButton color="primary" onClick={() => setShowPlanModal(true)}>
+                )}
+
+                {isTakeAway && (
+                  <>
+                    <div className="tl-select">
+                      <CIcon icon={cilFilter} className="tl-select-icon" />
+                      <select
+                        value={orderTypeFilter}
+                        onChange={(e) => setOrderTypeFilter(e.target.value)}
+                        aria-label="Order type"
+                      >
+                        <option value="all">{Language.allTypes || 'All types'}</option>
+                        <option value="to-go">{Language.togo || 'To-go'}</option>
+                        <option value="delivery">{Language.delivery || 'Delivery'}</option>
+                      </select>
+                    </div>
+
+                    <div className="tl-segmented" role="tablist" aria-label="Range">
+                      {[
+                        { key: 'today', label: Language.takeawayRangeToday || 'Today' },
+                        {
+                          key: 'thisWeek',
+                          label: Language.takeawayRangeThisWeek || 'This week',
+                        },
+                        { key: 'all', label: Language.takeawayRangeAll || 'All time' },
+                        {
+                          key: 'custom',
+                          label: Language.takeawayCustomRange || 'Custom',
+                        },
+                      ].map((r) => (
+                        <button
+                          key={r.key}
+                          type="button"
+                          className={`tl-segmented-btn ${
+                            takeawayRange === r.key ? 'is-active' : ''
+                          }`}
+                          onClick={() => setTakeawayRange(r.key)}
+                          aria-pressed={takeawayRange === r.key}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <CFormSwitch
+                      id="tl-paid-toggle"
+                      label={Language.showPaidOrders || 'Show paid'}
+                      checked={showPaidOrders}
+                      onChange={(e) => setShowPaidOrders(e.target.checked)}
+                      className="tl-paid-switch"
+                    />
+                  </>
+                )}
+              </div>
+
+              {!isTakeAway && isSuperClient && (
+                <div className="tl-page-filters-right">
+                  <CButton
+                    color="secondary"
+                    variant="outline"
+                    onClick={() => setShowCreateModal(true)}
+                    className="tl-action-btn"
+                  >
+                    <CIcon icon={cilPlus} className="me-2" />
+                    {Language.table || 'New table'}
+                  </CButton>
+                  <CButton
+                    color="secondary"
+                    variant="outline"
+                    onClick={() => setShowPlanModal(true)}
+                    className="tl-action-btn"
+                  >
                     <CIcon icon={cilLayers} className="me-2" />
                     {Language.managePlans || 'Manage plans'}
                   </CButton>
                 </div>
               )}
+            </div>
 
-              {/* Empty state - no matching tables */}
-              {!loading && !isTakeAway && tables.length > 0 && filteredTables.length === 0 && (
+            {/* ── Custom date picker row (only in custom mode) ── */}
+            {isTakeAway && takeawayRange === 'custom' && (
+              <div className="tl-date-row">
+                <div className="tl-date">
+                  <CIcon icon={cilCalendar} className="tl-date-icon" />
+                  <input
+                    type="date"
+                    value={takeawayFrom}
+                    max={takeawayTo || undefined}
+                    onChange={(e) => setTakeawayFrom(e.target.value)}
+                    aria-label={Language.takeawayFrom || 'From'}
+                  />
+                </div>
+                <span className="tl-date-sep">→</span>
+                <div className="tl-date">
+                  <CIcon icon={cilCalendar} className="tl-date-icon" />
+                  <input
+                    type="date"
+                    value={takeawayTo}
+                    min={takeawayFrom || undefined}
+                    onChange={(e) => setTakeawayTo(e.target.value)}
+                    aria-label={Language.takeawayTo || 'To'}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── Content ─────────────────────────────────────── */}
+            <CCardBody className="tl-page-body">
+              {/* Takeaway: waiting for the user to pick both dates */}
+              {waitingForCustomRange ? (
                 <div className="tl-empty">
-                  <CIcon icon={cilWarning} size="xl" />
+                  <div className="tl-empty-icon">
+                    <CIcon icon={cilCalendar} size="xl" />
+                  </div>
+                  <div className="tl-empty-title">{Language.pickRange || 'Pick a date range'}</div>
+                  <div className="tl-empty-body">
+                    {Language.pickRangeHint ||
+                      'Choose a start and end date above to see the orders.'}
+                  </div>
+                </div>
+              ) : loading && isTakeAway && orders.length === 0 ? (
+                <div className="tl-grid">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div className="tl-skeleton-card" key={i} />
+                  ))}
+                </div>
+              ) : loading && !isTakeAway && tables.length === 0 ? (
+                <div className="tl-grid">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div className="tl-skeleton-card" key={i} />
+                  ))}
+                </div>
+              ) : isTakeAway ? (
+                /* Takeaway grid */
+                filteredOrders.length > 0 ? (
+                  <CRow className="g-3">
+                    {filteredOrders.map((order) => (
+                      <OrderCard
+                        key={order._id}
+                        order={order}
+                        onClick={() => {
+                          setSelectedOrderId(order._id)
+                          setSelectedOrderProducts(order.products)
+                          setShowProdSelectModal(true)
+                        }}
+                        paymentMethods={paymentMethods}
+                        refreshOrders={fetchOrders}
+                        onShowToast={showToast}
+                      />
+                    ))}
+                  </CRow>
+                ) : orders.length > 0 ? (
+                  <div className="tl-empty">
+                    <div className="tl-empty-icon">
+                      <CIcon icon={cilWarning} size="xl" />
+                    </div>
+                    <div className="tl-empty-title">
+                      {Language.noOrdersMatch || 'No orders match'}
+                    </div>
+                    <div className="tl-empty-body">
+                      {Language.noOrdersMatchHint || 'Try a different search or filter.'}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="tl-empty">
+                    <div className="tl-empty-icon">
+                      <CIcon icon={cilRestaurant} size="xl" />
+                    </div>
+                    <div className="tl-empty-title">
+                      {Language.noOrdersToday || 'No takeaway orders'}
+                    </div>
+                    <div className="tl-empty-body">
+                      {Language.noOrdersTodayHint ||
+                        'New takeaway and delivery orders will appear here.'}
+                    </div>
+                    <CButton
+                      color="primary"
+                      className="tl-empty-cta"
+                      onClick={() => setShowOrderModal(true)}
+                    >
+                      <CIcon icon={cilPlus} className="me-2" />
+                      {Language.newTogo || 'New to-go'}
+                    </CButton>
+                  </div>
+                )
+              ) : /* Tables grid */
+              filteredTables.length > 0 ? (
+                <div className="tl-grid">
+                  {filteredTables.map((table) => (
+                    <TableCard
+                      key={table._id}
+                      table={table}
+                      plans={plans}
+                      isSuperClient={isSuperClient}
+                      onOpen={() => handleCardClick(table._id)}
+                      onDownloadQR={() => downloadQRCode(table.number, table.qrCode)}
+                      onMoveOrders={() => {
+                        setSelectedTable(table)
+                        setShowMoveOrdersModal(true)
+                      }}
+                      onDelete={() => handleDeleteTable(table._id, table.unpaidOrders)}
+                      Language={Language}
+                    />
+                  ))}
+                </div>
+              ) : tables.length > 0 ? (
+                <div className="tl-empty">
+                  <div className="tl-empty-icon">
+                    <CIcon icon={cilWarning} size="xl" />
+                  </div>
                   <div className="tl-empty-title">
                     {Language.noTablesMatch || 'No tables match'}
                   </div>
@@ -730,36 +686,24 @@ const TablesDashboard = () => {
                     {Language.noTablesMatchHint || 'Try a different search term or plan.'}
                   </div>
                 </div>
-              )}
-
-              {/* Empty state - no orders today */}
-              {!loading && isTakeAway && orders.length === 0 && (
+              ) : (
                 <div className="tl-empty">
-                  <CIcon icon={cilRestaurant} size="xl" />
-                  <div className="tl-empty-title">
-                    {Language.noOrdersToday || 'No takeaway orders today'}
+                  <div className="tl-empty-icon">
+                    <CIcon icon={cilTablet} size="xl" />
                   </div>
+                  <div className="tl-empty-title">{Language.noTablesYet || 'No tables yet'}</div>
                   <div className="tl-empty-body">
-                    {Language.noOrdersTodayHint ||
-                      'New takeaway and delivery orders will appear here.'}
+                    {Language.noTablesHint ||
+                      'Start by creating a plan for your floor, then add tables to it.'}
                   </div>
-                  <CButton color="primary" onClick={() => setShowOrderModal(true)}>
-                    <CIcon icon={cilPlus} className="me-2" />
-                    {Language.newTogo || 'New to-go'}
+                  <CButton
+                    color="primary"
+                    className="tl-empty-cta"
+                    onClick={() => setShowPlanModal(true)}
+                  >
+                    <CIcon icon={cilLayers} className="me-2" />
+                    {Language.managePlans || 'Manage plans'}
                   </CButton>
-                </div>
-              )}
-
-              {/* Empty state - no matching orders */}
-              {!loading && isTakeAway && orders.length > 0 && filteredOrders.length === 0 && (
-                <div className="tl-empty">
-                  <CIcon icon={cilWarning} size="xl" />
-                  <div className="tl-empty-title">
-                    {Language.noOrdersMatch || 'No orders match'}
-                  </div>
-                  <div className="tl-empty-body">
-                    {Language.noOrdersMatchHint || 'Try a different search or filter.'}
-                  </div>
                 </div>
               )}
             </CCardBody>
@@ -776,11 +720,11 @@ const TablesDashboard = () => {
         className="tm-modal"
       >
         <div className="tm-header">
-          <div>
-            <h5 className="tm-header-title">
-              <CIcon icon={cilSwapHorizontal} />
-              {Language.moveOrdersToAnotherTable}
-            </h5>
+          <div className="tm-header-icon">
+            <CIcon icon={cilSwapHorizontal} />
+          </div>
+          <div className="tm-header-text">
+            <h5 className="tm-header-title">{Language.moveOrdersToAnotherTable}</h5>
             <div className="tm-header-sub">
               Source: {Language.table} {selectedTable?.number}
             </div>
@@ -802,18 +746,16 @@ const TablesDashboard = () => {
                 <label htmlFor="tm-target-search">
                   {Language.searchByTableNumber || 'Search by table number'}
                 </label>
-                <CInputGroup>
-                  <CFormInput
-                    id="tm-target-search"
-                    type="text"
-                    placeholder="12"
-                    value={targetTableNumber}
-                    onChange={(e) => {
-                      setTargetTableNumber(e.target.value)
-                      setTargetTable('')
-                    }}
-                  />
-                </CInputGroup>
+                <CFormInput
+                  id="tm-target-search"
+                  type="text"
+                  placeholder="12"
+                  value={targetTableNumber}
+                  onChange={(e) => {
+                    setTargetTableNumber(e.target.value)
+                    setTargetTable('')
+                  }}
+                />
               </div>
             </CCol>
             <CCol md={4}>
@@ -879,21 +821,19 @@ const TablesDashboard = () => {
             <CIcon icon={cilX} className="me-2" />
             {Language.cancel}
           </CButton>
-          <div className="tm-footer-right">
-            <CButton color="primary" onClick={handleMoveOrders} disabled={!targetTable || loading}>
-              {loading ? (
-                <>
-                  <CSpinner size="sm" className="me-2" />
-                  {Language.loading}
-                </>
-              ) : (
-                <>
-                  <CIcon icon={cilSwapHorizontal} className="me-2" />
-                  {Language.moveOrders}
-                </>
-              )}
-            </CButton>
-          </div>
+          <CButton color="primary" onClick={handleMoveOrders} disabled={!targetTable || loading}>
+            {loading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                {Language.loading}
+              </>
+            ) : (
+              <>
+                <CIcon icon={cilSwapHorizontal} className="me-2" />
+                {Language.moveOrders}
+              </>
+            )}
+          </CButton>
         </div>
       </CModal>
 
@@ -905,10 +845,12 @@ const TablesDashboard = () => {
         className="tm-modal"
       >
         <div className="tm-header">
-          <div>
+          <div className="tm-header-icon">
+            <CIcon icon={cilPlus} />
+          </div>
+          <div className="tm-header-text">
             <h5 className="tm-header-title">
-              <CIcon icon={cilPlus} />
-              {Language.create} {Language.new} {Language.table}
+              {Language.create} {Language.table}
             </h5>
             <div className="tm-header-sub">Give the new table a number and assign a plan.</div>
           </div>
@@ -967,25 +909,23 @@ const TablesDashboard = () => {
               <CIcon icon={cilX} className="me-2" />
               {Language.cancel}
             </CButton>
-            <div className="tm-footer-right">
-              <CButton
-                color="primary"
-                type="submit"
-                disabled={loading || !tableNumber || !selectedPlan}
-              >
-                {loading ? (
-                  <>
-                    <CSpinner size="sm" className="me-2" />
-                    {Language.loading || 'Loading'}
-                  </>
-                ) : (
-                  <>
-                    <CIcon icon={cilCheck} className="me-2" />
-                    {Language.create} {Language.table}
-                  </>
-                )}
-              </CButton>
-            </div>
+            <CButton
+              color="primary"
+              type="submit"
+              disabled={loading || !tableNumber || !selectedPlan}
+            >
+              {loading ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  {Language.loading || 'Loading'}
+                </>
+              ) : (
+                <>
+                  <CIcon icon={cilCheck} className="me-2" />
+                  {Language.create} {Language.table}
+                </>
+              )}
+            </CButton>
           </div>
         </form>
       </CModal>
@@ -999,11 +939,11 @@ const TablesDashboard = () => {
         className="tm-modal"
       >
         <div className="tm-header">
-          <div>
-            <h5 className="tm-header-title">
-              <CIcon icon={cilLayers} />
-              {Language.manageTablePlans}
-            </h5>
+          <div className="tm-header-icon">
+            <CIcon icon={cilLayers} />
+          </div>
+          <div className="tm-header-text">
+            <h5 className="tm-header-title">{Language.manageTablePlans}</h5>
             <div className="tm-header-sub">
               Organize your floor into plans and assign tables to them.
             </div>
@@ -1077,20 +1017,22 @@ const TablesDashboard = () => {
                           <p className="tm-plan-card-desc">
                             {plan.description || Language.noDescriptionProvided || 'No description'}
                           </p>
-                          <CBadge color="info" className="mt-2">
+                          <span className="tm-plan-card-badge">
                             {usageCount} {Language.tables}
-                          </CBadge>
+                          </span>
                         </div>
                         <div className="tm-plan-card-actions">
                           <CButton
-                            color="outline-primary"
+                            color="secondary"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleEditPlan(plan)}
                           >
                             <CIcon icon={cilPencil} />
                           </CButton>
                           <CButton
-                            color="outline-danger"
+                            color="danger"
+                            variant="outline"
                             size="sm"
                             onClick={() => handleDeletePlan(plan._id)}
                             disabled={usageCount > 0}
@@ -1122,11 +1064,11 @@ const TablesDashboard = () => {
         className="tm-modal"
       >
         <div className="tm-header">
-          <div>
-            <h5 className="tm-header-title">
-              <CIcon icon={cilPencil} />
-              {Language.editPlan || 'Edit plan'}
-            </h5>
+          <div className="tm-header-icon">
+            <CIcon icon={cilPencil} />
+          </div>
+          <div className="tm-header-text">
+            <h5 className="tm-header-title">{Language.editPlan || 'Edit plan'}</h5>
           </div>
           <button
             className="tm-close"
@@ -1161,11 +1103,9 @@ const TablesDashboard = () => {
           <CButton color="secondary" variant="outline" onClick={() => setShowEditPlanModal(false)}>
             {Language.cancel}
           </CButton>
-          <div className="tm-footer-right">
-            <CButton color="primary" onClick={handleUpdatePlan}>
-              {Language.updatePlan}
-            </CButton>
-          </div>
+          <CButton color="primary" onClick={handleUpdatePlan}>
+            {Language.updatePlan}
+          </CButton>
         </div>
       </CModal>
 
@@ -1178,7 +1118,14 @@ const TablesDashboard = () => {
 
       <ProductSelectionModal
         visible={showProdSelectModal}
-        onClose={setShowProdSelectModal}
+        onClose={() => {
+          // CModal passes the event to onClose when the backdrop is clicked or
+          // Escape is pressed. Coerce to a boolean to avoid setting state to an
+          // Event object (which is truthy and would keep the modal open).
+          setShowProdSelectModal(false)
+          setSelectedOrderProducts([])
+          setSelectedOrderId('')
+        }}
         products={selectedOrderProducts}
         orderId={selectedOrderId}
         paymentMethods={paymentMethods}
@@ -1187,6 +1134,103 @@ const TablesDashboard = () => {
         isTakeaway={true}
       />
     </>
+  )
+
+  // ── Small helper used in the header ──────────────────────
+  function describeRange() {
+    if (takeawayRange === 'today') return Language.takeawayRangeToday || 'Today'
+    if (takeawayRange === 'thisWeek') return Language.takeawayRangeThisWeek || 'This week'
+    if (takeawayRange === 'all') return Language.takeawayRangeAll || 'All time'
+    if (takeawayRange === 'custom') {
+      if (!takeawayFrom || !takeawayTo) return Language.pickRange || 'Pick a range'
+      return `${takeawayFrom} → ${takeawayTo}`
+    }
+    return ''
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// TableCard — the individual table tile
+// ─────────────────────────────────────────────────────────────
+const TableCard = ({
+  table,
+  plans,
+  isSuperClient,
+  onOpen,
+  onDownloadQR,
+  onMoveOrders,
+  onDelete,
+  Language,
+}) => {
+  const busy = table.orderCount > 0
+  const planName = plans.find((p) => p._id === table.plan)?.name || 'No plan'
+
+  return (
+    <div
+      className={`tl-card ${busy ? 'is-busy' : ''}`}
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        if (e.target.closest('.tl-card-menu')) return
+        if (e.target.closest('.dropdown-menu')) return
+        onOpen()
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+    >
+      <div className="tl-card-top">
+        <div className="tl-card-number-wrap">
+          <div className={`tl-card-number ${busy ? 'is-busy' : ''}`}>{table.number}</div>
+          <span className={`tl-card-status ${busy ? 'is-busy' : 'is-free'}`} aria-hidden="true" />
+        </div>
+
+        <CDropdown variant="btn-group" className="tl-card-menu">
+          <CDropdownToggle
+            color="transparent"
+            caret={false}
+            className="tl-card-menu-btn"
+            // onClick={(e) => e.stopPropagation()}
+            aria-label="Actions"
+          >
+            <CIcon icon={cilOptions} />
+          </CDropdownToggle>
+          <CDropdownMenu className="tl-card-menu-items" placement="bottom-end">
+            <CDropdownItem onClick={onDownloadQR}>
+              <CIcon icon={cilCloudDownload} className="me-2" />
+              {Language.downloadQR || 'Download QR'}
+            </CDropdownItem>
+            <CDropdownItem onClick={onMoveOrders}>
+              <CIcon icon={cilSwapHorizontal} className="me-2" />
+              {Language.switchTable || 'Move orders'}
+            </CDropdownItem>
+            {isSuperClient && (
+              <CDropdownItem onClick={onDelete}>
+                <CIcon icon={cilTrash} className="me-2 text-danger" />
+                <span className="text-danger">{Language.deleteTable || 'Delete table'}</span>
+              </CDropdownItem>
+            )}
+          </CDropdownMenu>
+        </CDropdown>
+      </div>
+
+      <div className="tl-card-body">
+        <div className="tl-card-plan">{planName}</div>
+        {busy ? (
+          <div className="tl-card-meta">
+            <span className="tl-card-orders">
+              {table.orderCount} {table.orderCount === 1 ? 'order' : 'orders'}
+            </span>
+            <span className="tl-card-total">{table.totalPrice.toFixed(2)} TND</span>
+          </div>
+        ) : (
+          <span className="tl-card-free">{Language.available || 'Available'}</span>
+        )}
+      </div>
+    </div>
   )
 }
 

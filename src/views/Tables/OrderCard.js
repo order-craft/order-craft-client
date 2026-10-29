@@ -1,10 +1,8 @@
-import { React, useEffect, useRef, useState } from 'react'
+import { React, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  CBadge,
   CButton,
   CCard,
   CCardBody,
-  CCardHeader,
   CCol,
   CFormSelect,
   CModal,
@@ -17,7 +15,13 @@ import {
 import translations from '../../app/Language'
 import { useSelector } from 'react-redux'
 import CIcon from '@coreui/icons-react'
-import { cilCheckCircle, cilCreditCard, cilPrint } from '@coreui/icons'
+import {
+  cilCheckCircle,
+  cilCreditCard,
+  cilPrint,
+  cilChevronBottom,
+  cilChevronTop,
+} from '@coreui/icons'
 import { GetToken } from '../../helpers/GetToken'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
@@ -25,26 +29,33 @@ import { Br, Cut, Line, Printer, render, Row, Text } from 'react-thermal-printer
 import { printerConnector } from '../../helpers/printerConnector'
 
 // ─────────────────────────────────────────────────────────────
-// Product line helper
-//
-// Order documents store two parallel shapes for a product reference:
-//   - `product`         → populated Product document (may be null if the
-//                         product was deleted after the order was placed)
-//   - `productDetails`  → snapshot { _id, name, price } captured at order
-//                         creation time
-// Every rendering path goes through this helper so the fallback is
-// consistent.
+// Product line helper (unchanged — snapshot fallback logic)
 // ─────────────────────────────────────────────────────────────
 const getProductLine = (line, idx, unknownLabel) => {
   const id = line.product?._id || line.productDetails?._id || `_line-${idx}-${line.quantity ?? 0}`
 
   const name = line.product?.name || line.productDetails?.name || unknownLabel || 'Unknown item'
 
-  const unitPrice = Number(line.product?.price ?? line.productDetails?.price ?? 0)
+  const rawPrice = Number(line.product?.price ?? line.productDetails?.price ?? 0)
+  const discount =
+    Number(line.product?.discountPercentage ?? line.productDetails?.discountPercentage ?? 0) || 0
+  const unitPrice = discount > 0 ? rawPrice * (1 - discount / 100) : rawPrice
+
   const qty = Number(line.quantity) || 0
   const lineTotal = unitPrice * qty
+  const lineTotalRaw = rawPrice * qty
 
-  return { id: String(id), name, unitPrice, qty, lineTotal }
+  return {
+    id: String(id),
+    name,
+    rawPrice,
+    unitPrice,
+    discount,
+    qty,
+    lineTotal,
+    lineTotalRaw,
+    hasDiscount: discount > 0,
+  }
 }
 
 const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast }) => {
@@ -60,7 +71,7 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
   const receiptRef = useRef()
   const [printerStatus, setPrinterStatus] = useState(() => printerConnector.getStatus())
 
-  // ── Subscribe to the shared printer connector ─────────────
+  // Subscribe to the shared printer connector
   useEffect(() => {
     const unsubscribe = printerConnector.subscribe((next) => {
       setPrinterStatus(next)
@@ -68,7 +79,7 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
     return unsubscribe
   }, [])
 
-  // ── Receipt builder (thermal printer) ─────────────────────
+  // ── Receipt builder ────────────────────────────────────────
   async function buildReceipt(order) {
     const receipt = (
       <Printer type="epson" width={58}>
@@ -97,7 +108,6 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
     return render(receipt)
   }
 
-  // ── Print ─────────────────────────────────────────────────
   const handlePrint = async (order) => {
     try {
       if (!printerConnector.isEnabled()) {
@@ -147,40 +157,28 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
     }
   }
 
-  // ── Status color for the badge ────────────────────────────
-  const statusColor = (status) => {
-    switch (status) {
-      case 'placed':
-        return 'primary'
-      case 'pending':
-        return 'warning'
-      case 'preparing':
-        return 'info'
-      case 'ready':
-        return 'success'
-      case 'delivered':
-        return 'success'
-      case 'completed':
-        return 'success'
-      case 'cancelled':
-        return 'danger'
-      default:
-        return 'secondary'
+  // ── Status/type mapping to accent colour + label ──────────
+  const statusMeta = useMemo(() => {
+    const map = {
+      placed: { accent: '#0d6efd', label: Language.placed || 'Placed' },
+      pending: { accent: '#f59e0b', label: Language.pending || 'Pending' },
+      preparing: { accent: '#0891b2', label: Language.preparing || 'Preparing' },
+      ready: { accent: '#16a34a', label: Language.ready || 'Ready' },
+      delivered: { accent: '#059669', label: Language.delivered || 'Delivered' },
+      completed: { accent: '#198754', label: Language.completed || 'Completed' },
+      cancelled: { accent: '#dc2626', label: Language.cancelled || 'Cancelled' },
+      archived: { accent: '#94a3b8', label: Language.archived || 'Archived' },
     }
-  }
+    return map[order.status] || { accent: '#94a3b8', label: order.status }
+  }, [order.status, Language])
 
-  const typeColor = (type) => {
-    switch (type) {
-      case 'to-go':
-        return 'primary'
-      case 'delivery':
-        return 'dark'
-      default:
-        return 'secondary'
-    }
-  }
+  const typeLabel = useMemo(() => {
+    if (order.orderType === 'to-go') return Language.togo || 'To-go'
+    if (order.orderType === 'delivery') return Language.delivery || 'Delivery'
+    return order.orderType || 'Dine-in'
+  }, [order.orderType, Language])
 
-  // ── Confirm payment ───────────────────────────────────────
+  // ── Confirm payment ────────────────────────────────────────
   const handleConfirmPayment = async () => {
     setLoading(true)
 
@@ -202,11 +200,9 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
       if (response.status === 200) {
         const { message, warnings = [], insufficientMaterials = [], deficits = [] } = response.data
 
-        // Close the modal immediately; the toast carries the confirmation.
         setShowPaymentModal(false)
         setPaymentMethod('')
         setSelectedOrder('')
-
         refreshOrders()
 
         onShowToast(message || Language.paymentSuccess || 'Order confirmed successfully', 'success')
@@ -247,8 +243,6 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
       }
       console.error('Failed to confirm payment:', error)
       onShowToast(errorMessage, 'danger')
-
-      // Close the modal so the user can retry from the card if they want.
       setShowPaymentModal(false)
     } finally {
       setLoading(false)
@@ -257,157 +251,217 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <CCol xs={12} sm={6} md={6} lg={4} xl={3}>
-      <CCard className="h-100 clickable-card" style={{ cursor: 'pointer' }}>
-        <CCardHeader className="d-flex justify-content-between align-items-center">
-          <strong>
-            {Language.order} #{order.orderNumber}
-          </strong>
+    <CCol xs={12} sm={6} md={6} lg={4} xl={3} style={{ alignSelf: 'start' }}>
+      <CCard className="oc-card" style={{ '--oc-accent': statusMeta.accent }}>
+        {/* Left accent stripe — the status colour */}
+        <div className="oc-accent" aria-hidden="true" />
 
-          <div className="btn-group">
-            {/* Printer status badge */}
-            <CBadge
-              size="sm"
-              color={
-                printerStatus === 'connected'
-                  ? 'success'
-                  : printerStatus === 'error'
-                    ? 'danger'
-                    : printerStatus === 'disabled'
-                      ? 'secondary'
-                      : 'warning'
-              }
-              className="me-1"
+        {/* Header: order number + printer dot + actions */}
+        <div className="oc-head">
+          <div className="oc-head-left">
+            <div className="oc-order-number">
+              <span className="oc-order-label">{Language.order || 'Order'}</span>
+              <span className="oc-order-value">
+                #{order.orderNumber || String(order._id).slice(-4)}
+              </span>
+            </div>
+            <div className="oc-status-text">{statusMeta.label}</div>
+          </div>
+
+          <div className="oc-head-actions">
+            <span
+              className={`oc-printer-dot is-${printerStatus}`}
               title={
-                printerStatus === 'disabled'
-                  ? 'Printer connection disabled'
-                  : printerStatus === 'connecting'
-                    ? 'Connecting to printer…'
-                    : undefined
+                printerStatus === 'connected'
+                  ? Language.printerReady || 'Printer ready'
+                  : printerStatus === 'error'
+                    ? Language.printerError || 'Printer error'
+                    : printerStatus === 'disabled'
+                      ? 'Printer connection disabled'
+                      : Language.printerOffline || 'Printer offline'
               }
-            >
-              {printerStatus === 'connected'
-                ? Language.printerReady || 'Printer Ready'
-                : printerStatus === 'error'
-                  ? Language.printerError || 'Printer Error'
-                  : Language.printerOffline || 'Printer Offline'}
-            </CBadge>
-
-            {/* Confirm payment button */}
-            <CButton
-              color={order.payed ? 'secondary' : 'success'}
-              size="sm"
-              onClick={() => {
+              aria-label="Printer status"
+            />
+            <button
+              type="button"
+              className={`oc-icon-btn ${order.payed ? 'is-paid' : 'is-pay'}`}
+              onClick={(e) => {
+                e.stopPropagation()
                 if (!order.payed) {
                   setSelectedOrder(order._id)
                   setShowPaymentModal(true)
                 }
               }}
               disabled={order.payed}
-              className="rounded-pill px-3 py-2 m-1 d-flex align-items-center shadow-sm"
               title={order.payed ? Language.alreadyPaid : Language.markAsPaid}
+              aria-label={order.payed ? Language.alreadyPaid : Language.markAsPaid}
             >
               <CIcon icon={order.payed ? cilCheckCircle : cilCreditCard} />
-            </CButton>
-
-            {/* Print receipt button */}
-            <CButton
-              color="outline-dark"
-              size="sm"
-              onClick={() => handlePrint(order)}
-              className="rounded-pill px-3 py-2 m-1 d-flex align-items-center border shadow-sm"
-              title={Language.printReceiptShort}
+            </button>
+            <button
+              type="button"
+              className="oc-icon-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                handlePrint(order)
+              }}
+              title={Language.printReceiptShort || 'Print receipt'}
+              aria-label={Language.printReceiptShort || 'Print receipt'}
             >
               <CIcon icon={cilPrint} />
-            </CButton>
+            </button>
           </div>
-        </CCardHeader>
+        </div>
 
-        <CCardBody onClick={() => onClick(order)}>
-          {/* Type & Status */}
-          <div className="mb-2">
-            <CBadge color={typeColor(order.orderType)} className="me-1">
-              {Language.type}: {order.orderType}
-            </CBadge>
-            <CBadge color={statusColor(order.status)}>
-              {Language.status}: {order.status}
-            </CBadge>
+        {/* Body — clickable to open the order */}
+        <CCardBody
+          className="oc-body"
+          onClick={() => onClick(order)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onClick(order)
+            }
+          }}
+        >
+          {/* Meta row: type pill + time */}
+          <div className="oc-meta">
+            <span className={`oc-pill oc-pill-type is-${order.orderType || 'dine-in'}`}>
+              {typeLabel}
+            </span>
+            <span className="oc-time">
+              {order.timestamp || order.createdAt
+                ? new Date(order.timestamp || order.createdAt).toLocaleTimeString(undefined, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
+                : ''}
+            </span>
           </div>
 
-          {/* Products toggle */}
-          <div
+          {/* Products disclosure */}
+          <button
+            type="button"
+            className="oc-products-toggle"
             onClick={(e) => {
               e.stopPropagation()
-              setOpen(!open)
+              setOpen((v) => !v)
             }}
-            style={{
-              cursor: 'pointer',
-              fontWeight: 500,
-              marginBottom: '0.5rem',
-            }}
+            aria-expanded={open}
           >
-            {open
-              ? `▼ ${Language.products} (${order.products.length})`
-              : `▶ ${Language.products} (${order.products.length})`}
-          </div>
+            <span>
+              {Language.products || 'Products'} ({order.products.length})
+            </span>
+            <CIcon icon={open ? cilChevronTop : cilChevronBottom} />
+          </button>
 
-          {/* Products list */}
           {open && (
-            <div className="mb-2">
+            <div className="oc-products">
               {order.products.map((prod, idx) => {
                 const line = getProductLine(prod, idx, Language.unknownProduct)
                 return (
-                  <div key={line.id} className="d-flex justify-content-between">
-                    <span>
+                  <div key={line.id} className="oc-product-row">
+                    <span className="oc-product-name">
                       {line.qty} × {line.name}
+                      {line.hasDiscount && (
+                        <span className="oc-product-discount">-{line.discount}%</span>
+                      )}
                     </span>
-                    <span>{line.lineTotal.toFixed(2)} DT</span>
+                    <span className="oc-product-price">
+                      {line.hasDiscount && (
+                        <span className="oc-product-price-original">
+                          {line.lineTotalRaw.toFixed(2)}
+                        </span>
+                      )}
+                      <span className="oc-product-price-final">{line.lineTotal.toFixed(2)} DT</span>
+                    </span>
                   </div>
                 )
               })}
             </div>
           )}
 
-          {/* Total Price */}
-          <div className="mb-2">
-            <small className="text-muted">{Language.total || 'Total'}: </small>
-            <strong>{Number(order.totalPrice || 0).toFixed(2)} DT</strong>
+          {/* Footer of the body: total */}
+          <div className="oc-total-row">
+            <span className="oc-total-label">{Language.total || 'Total'}</span>
+            <span className="oc-total-value">
+              {Number(order.totalPrice || 0).toFixed(2)}
+              <span className="oc-total-unit"> DT</span>
+            </span>
           </div>
         </CCardBody>
 
-        {/* Payment Method Modal */}
+        {/* Payment Method Modal — unified look with the tables modals */}
         <CModal
           visible={showPaymentModal}
           onClose={() => {
             if (loading) return
             setShowPaymentModal(false)
           }}
+          alignment="center"
+          className="oc-modal"
         >
-          <CModalHeader>
-            <CModalTitle>{Language.confirmPayment}</CModalTitle>
-          </CModalHeader>
-          <CModalBody>
-            <p>{Language.choosePaymentMethod}:</p>
-            <CFormSelect
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              disabled={loading}
+          <div className="tm-header">
+            <div className="tm-header-icon">
+              <CIcon icon={cilCreditCard} />
+            </div>
+            <div className="tm-header-text">
+              <h5 className="tm-header-title">{Language.confirmPayment || 'Confirm payment'}</h5>
+              <div className="tm-header-sub">
+                {Language.order || 'Order'} #{order.orderNumber}
+              </div>
+            </div>
+            <button
+              className="tm-close"
+              onClick={() => {
+                if (loading) return
+                setShowPaymentModal(false)
+              }}
+              aria-label="Close"
+              type="button"
             >
-              <option value="">{Language.selectMethod}</option>
-              {paymentMethods.map((m) => (
-                <option key={m._id} value={m._id}>
-                  {m.name}
-                </option>
-              ))}
-            </CFormSelect>
+              &times;
+            </button>
+          </div>
+
+          <CModalBody>
+            <div className="tm-field">
+              <label htmlFor="oc-payment-method">
+                {Language.choosePaymentMethod || 'Choose a payment method'}
+              </label>
+              <CFormSelect
+                id="oc-payment-method"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">{Language.selectMethod || 'Select method'}</option>
+                {paymentMethods.map((m) => (
+                  <option key={m._id} value={m._id}>
+                    {m.name}
+                  </option>
+                ))}
+              </CFormSelect>
+            </div>
+
+            <div className="oc-modal-summary">
+              <span className="oc-modal-summary-label">{Language.total || 'Total'}</span>
+              <span className="oc-modal-summary-value">
+                {Number(order.totalPrice || 0).toFixed(2)} TND
+              </span>
+            </div>
           </CModalBody>
-          <CModalFooter>
+
+          <div className="tm-footer">
             <CButton
               color="secondary"
+              variant="outline"
               onClick={() => setShowPaymentModal(false)}
               disabled={loading}
             >
-              {Language.cancel}
+              {Language.cancel || 'Cancel'}
             </CButton>
             <CButton
               color="primary"
@@ -415,12 +469,12 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
               onClick={handleConfirmPayment}
             >
               {loading && <CSpinner size="sm" className="me-2" />}
-              {Language.confirm}
+              {Language.confirm || 'Confirm'}
             </CButton>
-          </CModalFooter>
+          </div>
         </CModal>
 
-        {/* Hidden receipt template for browser print fallback */}
+        {/* Hidden receipt template for browser fallback */}
         <div style={{ display: 'none' }}>
           <div ref={receiptRef}>
             <h3>{Language.receiptTitle}</h3>

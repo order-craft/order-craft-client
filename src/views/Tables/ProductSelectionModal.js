@@ -171,7 +171,13 @@ const ProductSelectionModal = ({
   const allSelected = totalRemaining > 0 && totalSelectedUnits === totalRemaining
 
   return (
-    <CModal visible={visible} onClose={onClose} size="lg" backdrop="static" className="psm-modal">
+    <CModal
+      visible={visible}
+      onClose={() => onClose?.(false)}
+      size="lg"
+      backdrop="static"
+      className="psm-modal"
+    >
       <div className="psm-header">
         <div>
           <h5 className="psm-title">{Language.productLevelPayment}</h5>
@@ -325,7 +331,12 @@ const ProductSelectionModal = ({
         </div>
 
         <div className="psm-actions">
-          <CButton color="secondary" variant="outline" onClick={onClose} disabled={loading}>
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={() => onClose?.(false)}
+            disabled={loading}
+          >
             {Language.cancel}
           </CButton>
           <CButton
