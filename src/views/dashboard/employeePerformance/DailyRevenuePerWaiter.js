@@ -1,7 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { CButton, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilUser, cilCalendar, cilDollar, cilChart, cilWarning, cilReload } from '@coreui/icons'
+import {
+  cilUser,
+  cilCalendar,
+  cilDollar,
+  cilChart,
+  cilWarning,
+  cilReload,
+  cilCheckCircle,
+  cilArrowRight,
+} from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
@@ -27,7 +36,6 @@ const DailyRevenuePerWaiter = () => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  /* ---------- fetch ---------- */
   const fetchDailyRevenue = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -38,8 +46,15 @@ const DailyRevenuePerWaiter = () => {
         { headers: { Authorization: `Bearer ${token}` } },
       )
       const list = (response.data || []).map((w) => ({
+        staffId: w.staffId,
         name: w.name || 'Unknown',
+        role: w.role || null,
+        isDeleted: !!w.isDeleted,
         totalRevenue: Number(w.totalRevenue) || 0,
+        preparedCount: Number(w.preparedCount) || 0,
+        preparedRevenue: Number(w.preparedRevenue) || 0,
+        deliveredCount: Number(w.deliveredCount) || 0,
+        deliveredRevenue: Number(w.deliveredRevenue) || 0,
       }))
       list.sort((a, b) => b.totalRevenue - a.totalRevenue)
       setRevenueData(list)
@@ -55,7 +70,6 @@ const DailyRevenuePerWaiter = () => {
     fetchDailyRevenue()
   }, [fetchDailyRevenue])
 
-  /* ---------- derived ---------- */
   const totalRevenue = useMemo(
     () => revenueData.reduce((sum, w) => sum + w.totalRevenue, 0),
     [revenueData],
@@ -85,12 +99,10 @@ const DailyRevenuePerWaiter = () => {
     default: '#6c757d',
   }
 
-  /* ---------- render ---------- */
   const isEmpty = !loading && !error && revenueData.length === 0
 
   return (
     <div className="em-card">
-      {/* ---------- Header ---------- */}
       <div className="em-card-header">
         <div className="em-card-header-left">
           <h5 className="em-card-title">
@@ -124,7 +136,6 @@ const DailyRevenuePerWaiter = () => {
         </div>
       </div>
 
-      {/* ---------- Body ---------- */}
       {loading ? (
         <div className="em-skeleton">
           <div className="em-skeleton-line" style={{ width: '40%' }} />
@@ -151,7 +162,6 @@ const DailyRevenuePerWaiter = () => {
         </div>
       ) : (
         <>
-          {/* ---------- Stats ---------- */}
           <div className="em-stats em-stats-4">
             <div className="em-stat">
               <div className="em-stat-label">
@@ -190,23 +200,27 @@ const DailyRevenuePerWaiter = () => {
             </div>
           </div>
 
-          {/* ---------- Leaderboard ---------- */}
           <div className="em-list">
-            {revenueData.map((waiter, index) => {
-              const pct = maxRevenue > 0 ? (waiter.totalRevenue / maxRevenue) * 100 : 0
-              const share = totalRevenue > 0 ? (waiter.totalRevenue / totalRevenue) * 100 : 0
-              const t = tone(waiter.totalRevenue)
+            {revenueData.map((row, index) => {
+              const pct = maxRevenue > 0 ? (row.totalRevenue / maxRevenue) * 100 : 0
+              const share = totalRevenue > 0 ? (row.totalRevenue / totalRevenue) * 100 : 0
+              const t = tone(row.totalRevenue)
               const isTop = index === 0
               return (
-                <div className="em-row" key={`${waiter.name}-${index}`}>
+                <div className="em-row" key={row.staffId || index}>
                   <div className={`em-rank ${isTop ? 'is-top' : ''}`}>{index + 1}</div>
                   <div className="em-row-main">
                     <div className="em-row-top">
                       <span className="em-row-name">
-                        {waiter.name}
+                        {row.name}
+                        {row.isDeleted && (
+                          <span className="em-role-pill is-deleted">
+                            {Language.roleBreakdownDeletedBadge || 'Deleted'}
+                          </span>
+                        )}
                         {isTop && <span className="em-top-pill">{Language.Top || 'Top'}</span>}
                       </span>
-                      <span className="em-row-amount">{fmtTND(waiter.totalRevenue)} TND</span>
+                      <span className="em-row-amount">{fmtTND(row.totalRevenue)} TND</span>
                     </div>
                     <div className="em-bar-track">
                       <div
@@ -217,6 +231,29 @@ const DailyRevenuePerWaiter = () => {
                         }}
                       />
                     </div>
+
+                    <div className="em-role-row">
+                      {row.preparedCount > 0 && (
+                        <span className="em-role-pill is-preparer">
+                          <CIcon icon={cilCheckCircle} />
+                          {Language.preparedPill || 'Prepared'} · {row.preparedCount} ·{' '}
+                          {fmtTND(row.preparedRevenue)} TND
+                        </span>
+                      )}
+                      {row.deliveredCount > 0 && (
+                        <span className="em-role-pill is-deliverer">
+                          <CIcon icon={cilArrowRight} />
+                          {Language.deliveredPill || 'Delivered'} · {row.deliveredCount} ·{' '}
+                          {fmtTND(row.deliveredRevenue)} TND
+                        </span>
+                      )}
+                      {row.preparedCount === 0 && row.deliveredCount === 0 && (
+                        <span className="em-role-pill is-muted">
+                          {Language.roleBreakdownEmpty || 'No role data'}
+                        </span>
+                      )}
+                    </div>
+
                     <div className="em-row-hint">
                       {share.toFixed(1)}% {Language.ofTotal || 'of total'}
                     </div>

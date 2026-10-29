@@ -1,7 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { CButton, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilUser, cilCalendar, cilMoney, cilChart, cilWarning, cilFilter } from '@coreui/icons'
+import {
+  cilUser,
+  cilCalendar,
+  cilMoney,
+  cilChart,
+  cilWarning,
+  cilFilter,
+  cilCheckCircle,
+  cilArrowRight,
+} from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
@@ -67,13 +76,18 @@ const RevenueByWaiterAndPeriod = () => {
         { clientId: selectedWaiter || undefined, startDate, endDate },
         { headers: { Authorization: `Bearer ${token}` } },
       )
-      const normalized = (response.data || [])
-        .map((w) => ({
-          clientId: w.clientId,
-          clientName: w.clientName || 'Unknown',
-          totalRevenue: Number(w.totalRevenue) || 0,
-        }))
-        .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      // Backend already returns sorted by totalRevenue desc
+      const normalized = (response.data || []).map((w) => ({
+        clientId: w.clientId,
+        clientName: w.clientName || 'Unknown',
+        role: w.role || null,
+        isDeleted: !!w.isDeleted,
+        totalRevenue: Number(w.totalRevenue) || 0,
+        preparedCount: Number(w.preparedCount) || 0,
+        preparedRevenue: Number(w.preparedRevenue) || 0,
+        deliveredCount: Number(w.deliveredCount) || 0,
+        deliveredRevenue: Number(w.deliveredRevenue) || 0,
+      }))
       setRevenueData(normalized)
     } catch (err) {
       console.error('Error fetching revenue:', err)
@@ -277,6 +291,11 @@ const RevenueByWaiterAndPeriod = () => {
                     <div className="em-row-top">
                       <span className="em-row-name">
                         {row.clientName}
+                        {row.isDeleted && (
+                          <span className="em-role-pill is-deleted">
+                            {Language.roleBreakdownDeletedBadge || 'Deleted'}
+                          </span>
+                        )}
                         {isTop && <span className="em-top-pill">{Language.Top || 'Top'}</span>}
                       </span>
                       <span className="em-row-amount">{fmtTND(row.totalRevenue)} TND</span>
@@ -290,6 +309,30 @@ const RevenueByWaiterAndPeriod = () => {
                         }}
                       />
                     </div>
+
+                    {/* Role pills */}
+                    <div className="em-role-row">
+                      {row.preparedCount > 0 && (
+                        <span className="em-role-pill is-preparer">
+                          <CIcon icon={cilCheckCircle} />
+                          {Language.preparedPill || 'Prepared'} · {row.preparedCount} ·{' '}
+                          {fmtTND(row.preparedRevenue)} TND
+                        </span>
+                      )}
+                      {row.deliveredCount > 0 && (
+                        <span className="em-role-pill is-deliverer">
+                          <CIcon icon={cilArrowRight} />
+                          {Language.deliveredPill || 'Delivered'} · {row.deliveredCount} ·{' '}
+                          {fmtTND(row.deliveredRevenue)} TND
+                        </span>
+                      )}
+                      {row.preparedCount === 0 && row.deliveredCount === 0 && (
+                        <span className="em-role-pill is-muted">
+                          {Language.roleBreakdownEmpty || 'No role data'}
+                        </span>
+                      )}
+                    </div>
+
                     <div className="em-row-hint">
                       {share.toFixed(1)}% {Language.ofTotal || 'of total'}
                     </div>
