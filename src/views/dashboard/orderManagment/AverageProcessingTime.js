@@ -1,7 +1,16 @@
 import React, { useState } from 'react'
 import { CButton, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilClock, cilChart, cilCheckCircle, cilWarning, cilInfo } from '@coreui/icons'
+import {
+  cilClock,
+  cilChart,
+  cilCheckCircle,
+  cilWarning,
+  cilInfo,
+  cilFire,
+  cilInbox,
+  cilArrowRight,
+} from '@coreui/icons'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
@@ -9,7 +18,6 @@ import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
 import './orderManagement.css'
 
-/* local-date helpers — avoid the UTC offset bug */
 const toLocalISO = (d) => {
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
@@ -25,7 +33,7 @@ const AverageProcessingTime = () => {
 
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [avgTimes, setAvgTimes] = useState(null)
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('custom')
@@ -64,14 +72,14 @@ const AverageProcessingTime = () => {
     }
     setLoading(true)
     setError(null)
-    setAvgTimes(null)
+    setData(null)
     try {
       const response = await axios.post(
         `${BaseUrl}/dashboard/average-processing-time`,
         { startDate, endDate },
         { headers: { Authorization: `Bearer ${token}` } },
       )
-      setAvgTimes(response.data)
+      setData(response.data)
     } catch (err) {
       console.error('Error fetching average processing time:', err)
       setError(
@@ -100,81 +108,137 @@ const AverageProcessingTime = () => {
     return { label: Language.NeedsImprovement || 'Needs improvement', tone: 'danger' }
   }
 
-  /* ---------- render ---------- */
-  const renderStats = () => {
-    if (!avgTimes || avgTimes.statusFlowDisabled) return null
+  // Render one metric card given a normalized metric object.
+  const renderMetricCard = (metric, opts) => {
+    if (!metric) {
+      return (
+        <div className="om-stat" key={opts.key}>
+          <div className="om-stat-label">
+            <CIcon icon={opts.icon} /> {opts.label}
+          </div>
+          <div className="om-stat-value" style={{ color: '#a0aec0', fontSize: '1rem' }}>
+            —
+          </div>
+          <div className="om-stat-hint">
+            {Language.processingNoDataForFlow || 'No timing data for this flow.'}
+          </div>
+        </div>
+      )
+    }
 
-    const acceptanceTone = calculateEfficiency(avgTimes.avgPendingToPreparing)
-    const completionTone = calculateEfficiency(avgTimes.avgPreparingToCompleted)
-
-    const acceptancePct = Math.min((Number(avgTimes.avgPendingToPreparing) / 120) * 100, 100)
-    const completionPct = Math.min((Number(avgTimes.avgPreparingToCompleted) / 180) * 100, 100)
+    const tone = calculateEfficiency(metric.avg)
+    const pct = Math.min((metric.avg / 120) * 100, 100)
 
     return (
-      <div className="om-stats">
-        {/* Acceptance */}
-        <div className="om-stat">
-          <div className="om-stat-label">
-            <CIcon icon={cilClock} /> {Language.OrderAcceptance || 'Acceptance'}
-          </div>
-          <div className="om-stat-value">{formatMinutes(avgTimes.avgPendingToPreparing)}</div>
-          <div className="om-bar-track">
-            <div
-              className="om-bar-fill"
-              style={{
-                width: `${acceptancePct}%`,
-                background: '#d97706',
-              }}
-            />
-          </div>
-          <div className="om-stat-hint">
-            {Language.Efficiency || 'Efficiency'}: <strong>{acceptanceTone.label}</strong>
-          </div>
-          <div className="om-stat-detail">
-            <span className="om-stat-detail-label">{Language.Fastest || 'Fastest'}</span>
-            <span className="om-stat-detail-value">
-              {formatMinutes(avgTimes.minPendingToPreparing)}
-            </span>
-          </div>
-          <div className="om-stat-detail">
-            <span className="om-stat-detail-label">{Language.Slowest || 'Slowest'}</span>
-            <span className="om-stat-detail-value">
-              {formatMinutes(avgTimes.maxPendingToPreparing)}
-            </span>
-          </div>
+      <div className="om-stat" key={opts.key}>
+        <div className="om-stat-label">
+          <CIcon icon={opts.icon} /> {opts.label}
         </div>
+        <div className="om-stat-value">{formatMinutes(metric.avg)}</div>
+        <div className="om-bar-track">
+          <div className="om-bar-fill" style={{ width: `${pct}%`, background: opts.barColor }} />
+        </div>
+        <div className="om-stat-hint">
+          {Language.Efficiency || 'Efficiency'}: <strong>{tone.label}</strong> · {metric.count}{' '}
+          {Language.processingStatCount || 'orders'}
+        </div>
+        <div className="om-stat-detail">
+          <span className="om-stat-detail-label">{Language.Fastest || 'Fastest'}</span>
+          <span className="om-stat-detail-value">{formatMinutes(metric.min)}</span>
+        </div>
+        <div className="om-stat-detail">
+          <span className="om-stat-detail-label">{Language.Slowest || 'Slowest'}</span>
+          <span className="om-stat-detail-value">{formatMinutes(metric.max)}</span>
+        </div>
+      </div>
+    )
+  }
 
-        {/* Completion */}
-        <div className="om-stat">
-          <div className="om-stat-label">
-            <CIcon icon={cilCheckCircle} /> {Language.OrderCompletion || 'Completion'}
-          </div>
-          <div className="om-stat-value">{formatMinutes(avgTimes.avgPreparingToCompleted)}</div>
-          <div className="om-bar-track">
-            <div
-              className="om-bar-fill"
-              style={{
-                width: `${completionPct}%`,
-                background: '#198754',
-              }}
-            />
-          </div>
-          <div className="om-stat-hint">
-            {Language.Efficiency || 'Efficiency'}: <strong>{completionTone.label}</strong>
-          </div>
-          <div className="om-stat-detail">
-            <span className="om-stat-detail-label">{Language.Fastest || 'Fastest'}</span>
-            <span className="om-stat-detail-value">
-              {formatMinutes(avgTimes.minPreparingToCompleted)}
-            </span>
-          </div>
-          <div className="om-stat-detail">
-            <span className="om-stat-detail-label">{Language.Slowest || 'Slowest'}</span>
-            <span className="om-stat-detail-value">
-              {formatMinutes(avgTimes.maxPreparingToCompleted)}
-            </span>
+  const renderBody = () => {
+    if (!data) return null
+
+    if (data.statusFlowDisabled || data.flow === 'two-step') {
+      return (
+        <div className="om-info">
+          <CIcon icon={cilInfo} />
+          <div>
+            {data.message ||
+              Language.statusFlowDisabledNotice ||
+              'Order status flow is disabled for this business — processing times are not tracked.'}
           </div>
         </div>
+      )
+    }
+
+    const flow = data.flow || 'three-step'
+
+    if (flow === 'three-step') {
+      return (
+        <div className="om-stats">
+          {renderMetricCard(data.pendingToPreparing, {
+            key: 'p2p',
+            label: Language.OrderAcceptance || 'Acceptance',
+            icon: cilClock,
+            barColor: '#d97706',
+          })}
+          {renderMetricCard(data.preparingToCompleted, {
+            key: 'p2c',
+            label: Language.OrderCompletion || 'Completion',
+            icon: cilCheckCircle,
+            barColor: '#198754',
+          })}
+        </div>
+      )
+    }
+
+    if (flow === 'four-step') {
+      return (
+        <div className="om-stats em-stats-4">
+          {renderMetricCard(data.pendingToPreparing, {
+            key: 'p2p',
+            label: Language.processingPendingToPreparing || 'Acceptance',
+            icon: cilClock,
+            barColor: '#d97706',
+          })}
+          {renderMetricCard(data.preparingToReady, {
+            key: 'p2r',
+            label: Language.processingPreparingToReady || 'Preparation',
+            icon: cilFire,
+            barColor: '#0891b2',
+          })}
+          {renderMetricCard(data.readyToDelivered, {
+            key: 'r2d',
+            label: Language.processingReadyToDelivered || 'Delivery',
+            icon: cilArrowRight,
+            barColor: '#0d6efd',
+          })}
+          {renderMetricCard(data.pendingToDelivered, {
+            key: 'p2d',
+            label: Language.processingPendingToDelivered || 'Full pipeline',
+            icon: cilInbox,
+            barColor: '#198754',
+          })}
+        </div>
+      )
+    }
+
+    if (flow === 'delivery-only') {
+      return (
+        <div className="om-stats">
+          {renderMetricCard(data.placedToDelivered, {
+            key: 'pl2d',
+            label: Language.processingPlacedToDelivered || 'Delivery',
+            icon: cilArrowRight,
+            barColor: '#0d6efd',
+          })}
+        </div>
+      )
+    }
+
+    return (
+      <div className="om-info">
+        <CIcon icon={cilInfo} />
+        <div>{Language.processingNoDataForFlow || 'No timing data for this flow.'}</div>
       </div>
     )
   }
@@ -280,15 +344,7 @@ const AverageProcessingTime = () => {
           <CIcon icon={cilWarning} />
           <div>{error}</div>
         </div>
-      ) : avgTimes?.statusFlowDisabled ? (
-        <div className="om-info">
-          <CIcon icon={cilInfo} />
-          <div>
-            {Language.statusFlowDisabledNotice ||
-              'Order status flow is disabled for this business — processing times are not tracked.'}
-          </div>
-        </div>
-      ) : !avgTimes ? (
+      ) : !data ? (
         <div className="om-empty">
           <CIcon icon={cilClock} size="xl" />
           <div className="om-empty-title">{Language.noDataYet || 'No analysis yet'}</div>
@@ -298,7 +354,7 @@ const AverageProcessingTime = () => {
           </div>
         </div>
       ) : (
-        renderStats()
+        renderBody()
       )}
     </div>
   )

@@ -1017,6 +1017,13 @@ const translations = {
     roleBreakdownEmpty: 'No role data in this range',
     roleBreakdownEmptyHint: 'Only four-step flow tracks who prepared and delivered.',
     roleBreakdownDeletedBadge: 'Deleted',
+    processingPendingToPreparing: 'Acceptance (pending → preparing)',
+    processingPreparingToReady: 'Preparation (preparing → ready)',
+    processingReadyToDelivered: 'Delivery (ready → delivered)',
+    processingPendingToDelivered: 'Full pipeline (pending → delivered)',
+    processingPlacedToDelivered: 'Delivery (placed → delivered)',
+    processingNoDataForFlow: 'No timing data for this flow.',
+    processingStatCount: 'orders',
   },
 
   French: {
@@ -2023,6 +2030,13 @@ const translations = {
     roleBreakdownEmpty: 'Aucune donnée de rôle sur cette période',
     roleBreakdownEmptyHint: 'Seul le flux à quatre étapes suit qui a préparé et livré.',
     roleBreakdownDeletedBadge: 'Supprimé',
+    processingPendingToPreparing: 'Acceptation (en attente → en préparation)',
+    processingPreparingToReady: 'Préparation (en préparation → prête)',
+    processingReadyToDelivered: 'Livraison (prête → livrée)',
+    processingPendingToDelivered: 'Cycle complet (en attente → livrée)',
+    processingPlacedToDelivered: 'Livraison (passée → livrée)',
+    processingNoDataForFlow: 'Aucune donnée de durée pour ce flux.',
+    processingStatCount: 'commandes',
   },
 
   Italian: {
@@ -3028,6 +3042,13 @@ const translations = {
     roleBreakdownEmpty: 'Nessun dato sul ruolo in questo intervallo',
     roleBreakdownEmptyHint: 'Solo il flusso a quattro fasi traccia chi ha preparato e consegnato.',
     roleBreakdownDeletedBadge: 'Eliminato',
+    processingPendingToPreparing: 'Accettazione (in attesa → in preparazione)',
+    processingPreparingToReady: 'Preparazione (in preparazione → pronto)',
+    processingReadyToDelivered: 'Consegna (pronto → consegnato)',
+    processingPendingToDelivered: 'Ciclo completo (in attesa → consegnato)',
+    processingPlacedToDelivered: 'Consegna (effettuato → consegnato)',
+    processingNoDataForFlow: 'Nessun dato sui tempi per questo flusso.',
+    processingStatCount: 'ordini',
   },
 }
 
