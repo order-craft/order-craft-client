@@ -84,7 +84,9 @@ const TablesDashboard = () => {
   const [selectedOrderProducts, setSelectedOrderProducts] = useState([])
   const [paymentMethods, setPaymentMethods] = useState([])
   const [showPaidOrders, setShowPaidOrders] = useState(false)
-
+  const [takeawayRange, setTakeawayRange] = useState('today')
+  const [takeawayFrom, setTakeawayFrom] = useState('')
+  const [takeawayTo, setTakeawayTo] = useState('')
   const token = GetToken()
   const { role } = useAuth()
   const isSuperClient = role === 'superClient'
@@ -135,13 +137,30 @@ const TablesDashboard = () => {
 
   const fetchOrders = async () => {
     setLoading(true)
+    if (takeawayRange === 'custom' && (!takeawayFrom || !takeawayTo)) {
+      // Wait until the user picks both dates — do not call the API.
+      setOrders([]) // ← optional, clears the list while the user is picking
+      setLoading(false)
+      return
+    }
     try {
-      const { data } = await axios.get(`${BaseUrl}/order/dineIn/today`, {
+      const params = new URLSearchParams({ range: takeawayRange })
+      if (takeawayRange === 'custom' && takeawayFrom && takeawayTo) {
+        params.set('from', takeawayFrom)
+        params.set('to', takeawayTo)
+      }
+      const { data } = await axios.get(`${BaseUrl}/order/takeaway?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
-      setOrders(data.data)
+      setOrders(data.data || [])
     } catch (err) {
-      setError(err.message)
+      const msg =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to load takeaway orders'
+      showToast(msg, 'danger')
+      setOrders([])
     } finally {
       setLoading(false)
     }
@@ -161,6 +180,7 @@ const TablesDashboard = () => {
     }
   }
 
+  // Data fetch — depends on the takeaway range too
   useEffect(() => {
     if (isTakeAway) {
       fetchOrders()
@@ -169,14 +189,18 @@ const TablesDashboard = () => {
       fetchPlans()
       fetchTables()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTakeAway, takeawayRange, takeawayFrom, takeawayTo])
 
+  // Socket — stays mounted across range changes
+  useEffect(() => {
     const socket = io(BaseUrl, { auth: { token } })
     socket.on(isTakeAway ? 'newOrder' : 'tableUpdated', () => {
       isTakeAway ? fetchOrders() : fetchTables()
     })
     return () => socket.disconnect()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTakeAway])
+  }, [isTakeAway, token])
 
   const handleCardClick = (tableId) => {
     navigate(`/tables/${tableId}`)
@@ -355,6 +379,17 @@ const TablesDashboard = () => {
                       <>
                         <strong>{filteredOrders.length}</strong>{' '}
                         {filteredOrders.length === 1 ? 'order' : 'orders'}
+                        {' · '}
+                        <strong>
+                          {takeawayRange === 'today' && (Language.takeawayRangeToday || 'Today')}
+                          {takeawayRange === 'thisWeek' &&
+                            (Language.takeawayRangeThisWeek || 'This week')}
+                          {takeawayRange === 'all' && (Language.takeawayRangeAll || 'All time')}
+                          {takeawayRange === 'custom' &&
+                            `${Language.takeawayFrom || 'From'} ${takeawayFrom || '…'} → ${
+                              takeawayTo || '…'
+                            }`}
+                        </strong>
                       </>
                     ) : (
                       <>
@@ -425,10 +460,53 @@ const TablesDashboard = () => {
                           aria-label="Order type"
                         >
                           <option value="all">{Language.allTypes || 'All types'}</option>
-                          <option value="to-go">{Language.togo}</option>
-                          <option value="delivery">{Language.delivery}</option>
+                          <option value="to-go">{Language.togo || 'To-go'}</option>
+                          <option value="delivery">{Language.delivery || 'Delivery'}</option>
                         </select>
                       </div>
+
+                      <div className="tl-segments" role="tablist">
+                        {[
+                          { key: 'today', label: Language.takeawayRangeToday || 'Today' },
+                          { key: 'thisWeek', label: Language.takeawayRangeThisWeek || 'This week' },
+                          { key: 'all', label: Language.takeawayRangeAll || 'All time' },
+                          { key: 'custom', label: Language.takeawayCustomRange || 'Custom' },
+                        ].map((r) => (
+                          <button
+                            key={r.key}
+                            type="button"
+                            className={`tl-segment ${takeawayRange === r.key ? 'is-active' : ''}`}
+                            onClick={() => setTakeawayRange(r.key)}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {takeawayRange === 'custom' && (
+                        <div className="tl-date-group">
+                          <div className="tl-date">
+                            <input
+                              type="date"
+                              value={takeawayFrom}
+                              max={takeawayTo || undefined}
+                              onChange={(e) => setTakeawayFrom(e.target.value)}
+                              aria-label={Language.takeawayFrom || 'From'}
+                            />
+                          </div>
+                          <span className="tl-date-sep">→</span>
+                          <div className="tl-date">
+                            <input
+                              type="date"
+                              value={takeawayTo}
+                              min={takeawayFrom || undefined}
+                              onChange={(e) => setTakeawayTo(e.target.value)}
+                              aria-label={Language.takeawayTo || 'To'}
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       <CFormSwitch
                         id="tl-paid-toggle"
                         label={Language.showPaidOrders || 'Show paid'}
@@ -482,8 +560,6 @@ const TablesDashboard = () => {
             </div>
 
             <CCardBody>
-              {error && <div className="alert alert-danger mb-3">{error}</div>}
-
               {/* Skeleton loading */}
               {loading && tables.length === 0 && !isTakeAway && (
                 <CRow className="g-3">

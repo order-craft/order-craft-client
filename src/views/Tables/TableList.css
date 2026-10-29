@@ -1080,3 +1080,49 @@ plan modal CSS
 .tl-card-dropdown .dropdown-menu {
   z-index: 1050;
 }
+/* =========================================================================
+   Takeaway range picker (Feature: takeaway time filter)
+   ========================================================================= */
+
+.tl-date-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tl-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #fff;
+  height: 38px;
+}
+
+.tl-date input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.85rem;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.tl-date-sep {
+  color: var(--cui-secondary-color, #6c757d);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+@media (max-width: 767.98px) {
+  .tl-date-group {
+    width: 100%;
+  }
+  .tl-date {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+}

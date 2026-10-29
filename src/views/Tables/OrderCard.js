@@ -1,13 +1,11 @@
 import { React, useEffect, useRef, useState } from 'react'
 import {
-  CAlert,
   CBadge,
   CButton,
   CCard,
   CCardBody,
   CCardHeader,
   CCol,
-  CCollapse,
   CFormSelect,
   CModal,
   CModalBody,
@@ -15,19 +13,39 @@ import {
   CModalHeader,
   CModalTitle,
   CSpinner,
-  CToast,
-  CToastBody,
-  CToaster,
-  CToastHeader,
 } from '@coreui/react'
 import translations from '../../app/Language'
 import { useSelector } from 'react-redux'
 import CIcon from '@coreui/icons-react'
-import { cilCheckCircle, cilCreditCard, cilMoney, cilPrint } from '@coreui/icons'
+import { cilCheckCircle, cilCreditCard, cilPrint } from '@coreui/icons'
 import { GetToken } from '../../helpers/GetToken'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { Br, Cut, Line, Printer, render, Row, Text } from 'react-thermal-printer'
+import { printerConnector } from '../../helpers/printerConnector'
+
+// ─────────────────────────────────────────────────────────────
+// Product line helper
+//
+// Order documents store two parallel shapes for a product reference:
+//   - `product`         → populated Product document (may be null if the
+//                         product was deleted after the order was placed)
+//   - `productDetails`  → snapshot { _id, name, price } captured at order
+//                         creation time
+// Every rendering path goes through this helper so the fallback is
+// consistent.
+// ─────────────────────────────────────────────────────────────
+const getProductLine = (line, idx, unknownLabel) => {
+  const id = line.product?._id || line.productDetails?._id || `_line-${idx}-${line.quantity ?? 0}`
+
+  const name = line.product?.name || line.productDetails?.name || unknownLabel || 'Unknown item'
+
+  const unitPrice = Number(line.product?.price ?? line.productDetails?.price ?? 0)
+  const qty = Number(line.quantity) || 0
+  const lineTotal = unitPrice * qty
+
+  return { id: String(id), name, unitPrice, qty, lineTotal }
+}
 
 const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast }) => {
   const t = useSelector((state) => state.language)
@@ -37,85 +55,40 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
   const [open, setOpen] = useState(false)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('')
   const [selectedOrder, setSelectedOrder] = useState()
   const receiptRef = useRef()
-  const connectorRef = useRef(null)
-  const [ready, setReady] = useState(false)
-  const [printerStatus, setPrinterStatus] = useState('disconnected')
+  const [printerStatus, setPrinterStatus] = useState(() => printerConnector.getStatus())
 
-  async function createEmulatorConnector() {
-    console.log('[Connector] Attempting WebSocket → ws://localhost:8080')
-    const ws = new WebSocket('ws://localhost:8080')
-
-    return new Promise((resolve, reject) => {
-      ws.onopen = () => {
-        console.log('[Connector] WebSocket open ✅')
-        setPrinterStatus('connected')
-        resolve({
-          sendRaw: (buf) => {
-            console.log('[Connector] sendRaw', buf.byteLength, 'bytes')
-            ws.send(buf)
-          },
-          close: () => {
-            console.log('[Connector] Closing WebSocket')
-            ws.close()
-            setPrinterStatus('disconnected')
-          },
-        })
-      }
-      ws.onerror = (err) => {
-        console.error('[Connector] WebSocket error ❌', err)
-        setPrinterStatus('error')
-        reject(err)
-      }
-      ws.onclose = () => {
-        setPrinterStatus('disconnected')
-      }
-      setTimeout(() => {
-        if (ws.readyState !== WebSocket.OPEN) {
-          setPrinterStatus('timeout')
-          reject(new Error('WS connection timed out'))
-        }
-      }, 5000)
-    })
-  }
-
+  // ── Subscribe to the shared printer connector ─────────────
   useEffect(() => {
-    console.log('[App] useEffect mount, initializing connector…')
-    ;(async () => {
-      try {
-        connectorRef.current = await createEmulatorConnector()
-        setReady(true)
-        console.log('[App] Connector initialized, ready = true')
-      } catch (e) {
-        console.error('[App] Failed to init connector:', e)
-        onShowToast('Failed to connect to printer', 'danger')
-      }
-    })()
-
-    return () => {
-      if (connectorRef.current) {
-        connectorRef.current.close()
-      }
-    }
+    const unsubscribe = printerConnector.subscribe((next) => {
+      setPrinterStatus(next)
+    })
+    return unsubscribe
   }, [])
 
+  // ── Receipt builder (thermal printer) ─────────────────────
   async function buildReceipt(order) {
     const receipt = (
       <Printer type="epson" width={58}>
         <Text size={{ width: 2, height: 2 }} bold>
-          Order #{order._id}
+          Order #{order.orderNumber || order._id}
         </Text>
         <Br />
         <Line />
-        {order.products.map((p) => (
-          <Row key={p._id} left={`${p.quantity} × ${p.name}`} right={`$${p.quantity * p.price}`} />
-        ))}
+        {order.products.map((p, idx) => {
+          const line = getProductLine(p, idx, 'Unknown item')
+          return (
+            <Row
+              key={line.id}
+              left={`${line.qty} × ${line.name}`}
+              right={`${line.lineTotal.toFixed(2)} DT`}
+            />
+          )
+        })}
         <Line />
-        <Row left="Total" right={`$${order.totalPrice}`} />
+        <Row left="Total" right={`${Number(order.totalPrice || 0).toFixed(2)} DT`} />
         <Br />
         <Cut />
       </Printer>
@@ -124,24 +97,22 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
     return render(receipt)
   }
 
+  // ── Print ─────────────────────────────────────────────────
   const handlePrint = async (order) => {
     try {
-      console.log('Attempting to print...')
-
-      // First try WebSocket printing
-      if (ready && connectorRef.current) {
-        const data = await buildReceipt(order)
-        await connectorRef.current.sendRaw(data.buffer)
-        console.log('Print job sent to emulator')
-        onShowToast('Receipt sent to printer', 'success')
+      if (!printerConnector.isEnabled()) {
+        handlePrintReceipt(order)
         return
       }
 
-      // Fallback to browser printing
-      handlePrintReceipt(order)
+      const data = await buildReceipt(order)
+      await printerConnector.sendRaw(data.buffer)
+      onShowToast(Language.receiptSentToPrinter || 'Receipt sent to printer', 'success')
     } catch (error) {
-      console.error('Printing failed:', error)
-      // Fallback to browser printing
+      console.warn(
+        '[OrderCard] Printer send failed, falling back to browser print:',
+        error?.message,
+      )
       handlePrintReceipt(order)
     }
   }
@@ -172,25 +143,32 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
       }, 500)
     } catch (error) {
       console.error('Browser printing failed:', error)
-      onShowToast('Failed to open print dialog', 'danger')
+      onShowToast(Language.failedToOpenPrintDialog || 'Failed to open print dialog', 'danger')
     }
   }
 
-  // Map status to badge color
+  // ── Status color for the badge ────────────────────────────
   const statusColor = (status) => {
     switch (status) {
+      case 'placed':
+        return 'primary'
       case 'pending':
         return 'warning'
       case 'preparing':
         return 'info'
+      case 'ready':
+        return 'success'
+      case 'delivered':
+        return 'success'
       case 'completed':
         return 'success'
+      case 'cancelled':
+        return 'danger'
       default:
         return 'secondary'
     }
   }
 
-  // Map type to badge color
   const typeColor = (type) => {
     switch (type) {
       case 'to-go':
@@ -202,9 +180,9 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
     }
   }
 
+  // ── Confirm payment ───────────────────────────────────────
   const handleConfirmPayment = async () => {
     setLoading(true)
-    setError('')
 
     try {
       const response = await axios.put(
@@ -222,31 +200,33 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
       )
 
       if (response.status === 200) {
-        const { message, updatedOrder, warnings = [], insufficientMaterials = [] } = response.data
+        const { message, warnings = [], insufficientMaterials = [], deficits = [] } = response.data
+
+        // Close the modal immediately; the toast carries the confirmation.
+        setShowPaymentModal(false)
+        setPaymentMethod('')
+        setSelectedOrder('')
 
         refreshOrders()
 
-        onShowToast(message || 'Order confirmed successfully', 'success')
+        onShowToast(message || Language.paymentSuccess || 'Order confirmed successfully', 'success')
 
         if (warnings.length > 0) {
-          warnings.forEach((warning) => {
-            setTimeout(() => {
-              onShowToast(warning, 'warning')
-            }, 500)
+          warnings.forEach((warning, idx) => {
+            setTimeout(() => onShowToast(warning, 'warning'), 500 * (idx + 1))
           })
         }
 
         if (insufficientMaterials.length > 0) {
           const materialsText = insufficientMaterials.join(', ')
           setTimeout(
-            () => {
-              onShowToast(`Insufficient stock for materials: ${materialsText}`, 'warning')
-            },
-            warnings.length > 0 ? 1000 : 500,
+            () => onShowToast(`Insufficient stock for materials: ${materialsText}`, 'warning'),
+            warnings.length * 500 + 500,
           )
         }
-        if (response.data.deficits && response.data.deficits.length > 0) {
-          response.data.deficits.forEach((d, idx) => {
+
+        if (deficits.length > 0) {
+          deficits.forEach((d, idx) => {
             const msg = `${d.rawMaterialName}: needed ${d.needed}${d.unit}, had ${d.available}${d.unit} — ${d.deficit}${d.unit} short`
             setTimeout(
               () => onShowToast(msg, 'warning'),
@@ -254,33 +234,28 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
             )
           })
         }
-
-        setSuccess(true)
-        setTimeout(() => {
-          setSuccess(false)
-          setShowPaymentModal(false)
-          setPaymentMethod('')
-          setSelectedOrder('')
-        }, 1500)
       } else {
-        onShowToast('Failed to confirm payment', 'danger')
-        console.error('Failed to confirm payment')
+        onShowToast(Language.failedToConfirmPayment || 'Failed to confirm payment', 'danger')
+        setShowPaymentModal(false)
       }
     } catch (error) {
-      let errorMessage = 'Failed to confirm payment'
+      let errorMessage = Language.failedToConfirmPayment || 'Failed to confirm payment'
       if (error.response) {
         errorMessage = error.response.data?.error || error.response.data?.message || errorMessage
       } else if (error.request) {
-        errorMessage = 'Network error. Please check your connection.'
+        errorMessage = Language.networkError || 'Network error. Please check your connection.'
       }
-      onShowToast(errorMessage, 'danger')
-      setError(errorMessage)
       console.error('Failed to confirm payment:', error)
+      onShowToast(errorMessage, 'danger')
+
+      // Close the modal so the user can retry from the card if they want.
+      setShowPaymentModal(false)
     } finally {
       setLoading(false)
     }
   }
 
+  // ── Render ────────────────────────────────────────────────
   return (
     <CCol xs={12} sm={6} md={6} lg={4} xl={3}>
       <CCard className="h-100 clickable-card" style={{ cursor: 'pointer' }}>
@@ -298,15 +273,24 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
                   ? 'success'
                   : printerStatus === 'error'
                     ? 'danger'
-                    : 'warning'
+                    : printerStatus === 'disabled'
+                      ? 'secondary'
+                      : 'warning'
               }
               className="me-1"
+              title={
+                printerStatus === 'disabled'
+                  ? 'Printer connection disabled'
+                  : printerStatus === 'connecting'
+                    ? 'Connecting to printer…'
+                    : undefined
+              }
             >
               {printerStatus === 'connected'
-                ? 'Printer Ready'
+                ? Language.printerReady || 'Printer Ready'
                 : printerStatus === 'error'
-                  ? 'Printer Error'
-                  : 'Printer Offline'}
+                  ? Language.printerError || 'Printer Error'
+                  : Language.printerOffline || 'Printer Offline'}
             </CBadge>
 
             {/* Confirm payment button */}
@@ -350,7 +334,7 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
             </CBadge>
           </div>
 
-          {/* Products toggle header */}
+          {/* Products toggle */}
           <div
             onClick={(e) => {
               e.stopPropagation()
@@ -367,66 +351,76 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
               : `▶ ${Language.products} (${order.products.length})`}
           </div>
 
-          {/* Products list - shown when expanded */}
+          {/* Products list */}
           {open && (
             <div className="mb-2">
-              {order.products.map((prod) => (
-                <div key={prod.product._id} className="d-flex justify-content-between">
-                  <span>
-                    {prod.quantity} × {prod.product.name}
-                  </span>
-                  <span>{prod.product.price * prod.quantity} DT</span>
-                </div>
-              ))}
+              {order.products.map((prod, idx) => {
+                const line = getProductLine(prod, idx, Language.unknownProduct)
+                return (
+                  <div key={line.id} className="d-flex justify-content-between">
+                    <span>
+                      {line.qty} × {line.name}
+                    </span>
+                    <span>{line.lineTotal.toFixed(2)} DT</span>
+                  </div>
+                )
+              })}
             </div>
           )}
 
           {/* Total Price */}
           <div className="mb-2">
             <small className="text-muted">{Language.total || 'Total'}: </small>
-            <strong>{order.totalPrice} DT</strong>
+            <strong>{Number(order.totalPrice || 0).toFixed(2)} DT</strong>
           </div>
         </CCardBody>
 
         {/* Payment Method Modal */}
-        <CModal visible={showPaymentModal} onClose={() => setShowPaymentModal(false)}>
+        <CModal
+          visible={showPaymentModal}
+          onClose={() => {
+            if (loading) return
+            setShowPaymentModal(false)
+          }}
+        >
           <CModalHeader>
             <CModalTitle>{Language.confirmPayment}</CModalTitle>
           </CModalHeader>
           <CModalBody>
-            {/* error or success alerts */}
-            {error && <CAlert color="danger">{error}</CAlert>}
-            {success && <CAlert color="success">{Language.paymentSuccess}</CAlert>}
-
-            {!success && (
-              <>
-                <p>{Language.choosePaymentMethod}:</p>
-                <CFormSelect
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                >
-                  <option value="">{Language.selectMethod}</option>
-                  {paymentMethods.map((m) => (
-                    <option key={m._id} value={m._id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </CFormSelect>
-              </>
-            )}
+            <p>{Language.choosePaymentMethod}:</p>
+            <CFormSelect
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              disabled={loading}
+            >
+              <option value="">{Language.selectMethod}</option>
+              {paymentMethods.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {m.name}
+                </option>
+              ))}
+            </CFormSelect>
           </CModalBody>
           <CModalFooter>
-            <CButton color="secondary" onClick={() => setShowPaymentModal(false)}>
+            <CButton
+              color="secondary"
+              onClick={() => setShowPaymentModal(false)}
+              disabled={loading}
+            >
               {Language.cancel}
             </CButton>
-            <CButton color="primary" disabled={!paymentMethod} onClick={handleConfirmPayment}>
+            <CButton
+              color="primary"
+              disabled={!paymentMethod || loading}
+              onClick={handleConfirmPayment}
+            >
               {loading && <CSpinner size="sm" className="me-2" />}
               {Language.confirm}
             </CButton>
           </CModalFooter>
         </CModal>
 
-        {/* Hidden Receipt Template */}
+        {/* Hidden receipt template for browser print fallback */}
         <div style={{ display: 'none' }}>
           <div ref={receiptRef}>
             <h3>{Language.receiptTitle}</h3>
@@ -434,23 +428,29 @@ const OrderCard = ({ order, onClick, paymentMethods, refreshOrders, onShowToast 
               {Language.order} #{order.orderNumber}
             </p>
             <p>
-              {Language.date}: {new Date(order.createdAt).toLocaleString()}
+              {Language.date}: {new Date(order.timestamp || order.createdAt).toLocaleString()}
             </p>
             <ul>
-              {order.products.map((prod) => (
-                <li key={prod.product._id}>
-                  {prod.product.name} × {prod.quantity} — {prod.product.price * prod.quantity}DT
-                </li>
-              ))}
+              {order.products.map((prod, idx) => {
+                const line = getProductLine(prod, idx, Language.unknownProduct)
+                return (
+                  <li key={line.id}>
+                    {line.name} × {line.qty} — {line.lineTotal.toFixed(2)}DT
+                  </li>
+                )
+              })}
             </ul>
             <p>
               <strong>
-                {Language.total}:{' '}
-                {order.products.reduce((sum, p) => sum + p.quantity * p.product.price, 0)}
-                DT
+                {Language.total}: {Number(order.totalPrice || 0).toFixed(2)} DT
               </strong>
             </p>
-            {order.payed && <p>Payment Method: {order.paymentMethod?.name || 'Unknown'}</p>}
+            {order.payed && (
+              <p>
+                {Language.paymentMethodLabel || 'Payment Method'}:{' '}
+                {order.paymentMethod?.name || 'Unknown'}
+              </p>
+            )}
           </div>
         </div>
       </CCard>
