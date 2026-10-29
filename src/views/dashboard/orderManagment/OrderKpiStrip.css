@@ -1,0 +1,126 @@
+/* =========================================================================
+   Order Management KPI strip
+   ========================================================================= */
+
+.om-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+@media (min-width: 992px) {
+  .om-kpi-strip {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .om-kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Individual tile */
+.om-kpi {
+  background: #fff;
+  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 96px;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.om-kpi.is-clickable {
+  cursor: pointer;
+}
+
+.om-kpi.is-clickable:hover {
+  border-color: #cbd5e0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.om-kpi.is-warning {
+  border-color: #fbbf24;
+  background: #fffbeb;
+}
+
+.om-kpi.is-danger {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.om-kpi-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: var(--cui-secondary-color, #6c757d);
+}
+
+.om-kpi-label svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.om-kpi-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.05;
+  color: #1a1a1a;
+  font-variant-numeric: tabular-nums;
+  margin-top: auto;
+}
+
+.om-kpi-value.is-primary {
+  color: #0d6efd;
+}
+.om-kpi-value.is-success {
+  color: #198754;
+}
+.om-kpi-value.is-warning {
+  color: #d97706;
+}
+.om-kpi-value.is-danger {
+  color: #dc2626;
+}
+
+.om-kpi-value .om-kpi-unit {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cui-secondary-color, #6c757d);
+  margin-left: 2px;
+}
+
+.om-kpi-hint {
+  font-size: 0.72rem;
+  color: var(--cui-secondary-color, #6c757d);
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* Empty state when there are zero orders */
+.om-kpi-empty {
+  grid-column: 1 / -1;
+  padding: 24px;
+  text-align: center;
+  color: var(--cui-secondary-color, #6c757d);
+  background: #fff;
+  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  border-radius: 12px;
+  font-size: 0.88rem;
+}
+
+.om-kpi-empty svg {
+  color: #c8ccd0;
+  margin-bottom: 8px;
+}

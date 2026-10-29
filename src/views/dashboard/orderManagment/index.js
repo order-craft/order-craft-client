@@ -1,17 +1,17 @@
-import OrderStatusOverview from './OrderStatusOverview'
+import OrderKpiStrip from './OrderKpiStrip'
 import AverageProcessingTime from './AverageProcessingTime'
 import AverageOrderValue from './AverageOrderValue'
 import RevenuePerTable from './RevenuePerTable'
 
-const Sales = () => {
+const OrderManagement = () => {
   return (
     <>
+      <OrderKpiStrip />
       <RevenuePerTable />
-      <OrderStatusOverview />
       <AverageProcessingTime />
       <AverageOrderValue />
     </>
   )
 }
 
-export default Sales
+export default OrderManagement
