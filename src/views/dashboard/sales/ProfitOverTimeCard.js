@@ -163,8 +163,8 @@ const ProfitOverTimeCard = () => {
                   {
                     label: Language.revenue || 'Revenue',
                     data: daily.map((d) => d.revenue),
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13,110,253,0.1)',
+                    borderColor: '#1a5a44',
+                    backgroundColor: 'rgba(26,90,68,0.1)',
                     borderWidth: 2,
                     tension: 0.35,
                     pointRadius: 2,
@@ -173,8 +173,8 @@ const ProfitOverTimeCard = () => {
                   {
                     label: Language.cost || 'Cost',
                     data: daily.map((d) => d.cost),
-                    borderColor: '#ffc107',
-                    backgroundColor: 'rgba(255,193,7,0.1)',
+                    borderColor: '#d69300',
+                    backgroundColor: 'rgba(214,147,0,0.1)',
                     borderWidth: 2,
                     tension: 0.35,
                     pointRadius: 2,
@@ -183,8 +183,8 @@ const ProfitOverTimeCard = () => {
                   {
                     label: Language.profit || 'Profit',
                     data: daily.map((d) => d.profit),
-                    borderColor: '#198754',
-                    backgroundColor: 'rgba(25,135,84,0.1)',
+                    borderColor: '#2a55c9',
+                    backgroundColor: 'rgba(42,85,201,0.1)',
                     borderWidth: 2,
                     tension: 0.35,
                     pointRadius: 2,

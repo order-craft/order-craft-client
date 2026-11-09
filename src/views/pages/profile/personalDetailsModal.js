@@ -39,9 +39,9 @@ const PersonalDetailsModal = ({
       backdrop="static"
       className="modal-styled"
     >
-      <CModalHeader className="bg-gradient-primary text-white">
+      <CModalHeader className="oc-modal-header">
         <CIcon icon={cilUser} className="me-2" />
-        <i style={{ color: 'black' }}>Personal Details</i>
+        Personal Details
       </CModalHeader>
       <CModalBody className="p-4">
         <CCard className="shadow-sm">

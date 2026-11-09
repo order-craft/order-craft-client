@@ -1,72 +1,365 @@
 /* =========================================================================
-   Order Craft — design tokens
-   A small set of CSS variables layered on top of CoreUI's own so bespoke
-   component CSS (per-page files under src/views/**) can share one warm,
-   contemporary visual language without re-declaring colors everywhere.
+   Order Craft design system
+   Bistro pine + saffron on cool paper. Pine is the brand surface (sidebar,
+   primary actions); saffron is reserved for "you are here" and "needs
+   attention" so it keeps its signal value.
    ========================================================================= */
 
 :root {
-  /* Tells the browser this page is light-only, so engines that
-     auto-dark-theme pages lacking this declaration (noticeably more
-     aggressive in private/incognito windows on some browsers) don't
-     invert the background on their own. */
   color-scheme: light;
+
+  /* Surfaces & ink */
+  --oc-canvas: #f3f4f0;
   --oc-surface: #ffffff;
-  --oc-surface-sunken: #faf8f5;
-  --oc-ink: #211912;
-  --oc-ink-soft: #5b5248;
-  --oc-border: #e8e1d9;
-  --oc-shadow-sm: 0 1px 2px rgba(33, 25, 18, 0.05);
-  --oc-shadow: 0 4px 16px rgba(33, 25, 18, 0.08);
-  --oc-shadow-lg: 0 16px 40px rgba(33, 25, 18, 0.14);
-  --oc-radius: 0.875rem;
-  --oc-radius-lg: 1.125rem;
-  --oc-display-font: 'Fraunces', 'Plus Jakarta Sans', Georgia, serif;
+  --oc-surface-sunken: #f3f4f0;
+  --oc-ink: #17201c;
+  --oc-ink-soft: #5e6963;
+  --oc-ink-faint: #8d968f;
+  --oc-border: #e1e4dd;
+  --oc-border-strong: #cdd2ca;
 
-  /* Permanent dark "espresso" sidebar identity — independent of the
-     app's own light/dark color mode, same idea as Stripe/Linear's
-     fixed-dark-nav-on-light-canvas pattern. */
-  --oc-side-bg: #1c130c;
-  --oc-side-bg-raised: #241a11;
-  --oc-side-ink: #f4ece2;
-  --oc-side-ink-soft: rgba(244, 236, 226, 0.58);
-  --oc-side-border: rgba(244, 236, 226, 0.09);
-  --oc-side-hover: rgba(244, 236, 226, 0.06);
-  --oc-side-accent: #e8a06c;
-  --oc-side-accent-bg: rgba(232, 160, 108, 0.16);
-}
+  /* Brand */
+  --oc-pine: #1a5a44;
+  --oc-pine-deep: #0f3227;
+  --oc-pine-tint: #e4eee9;
+  --oc-saffron: #f0ae2c;
+  --oc-saffron-tint: #fdf2da;
 
-/* A few hero moments (login headline, dashboard greeting) get a warm
-   display serif so the product has typographic personality beyond a
-   single geometric sans used everywhere else. */
-.oc-display {
-  font-family: var(--oc-display-font);
-  font-weight: 600;
-}
+  /* Type */
+  --oc-font-ui: 'Schibsted Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --oc-display-font: 'Bricolage Grotesque', 'Schibsted Grotesk', sans-serif;
 
-@if $enable-dark-mode {
-  @include color-mode(dark) {
-    :root {
-      --oc-surface: var(--cui-dark-bg-subtle, #27241f);
-      --oc-surface-sunken: var(--cui-body-bg);
-      --oc-ink: var(--cui-body-color);
-      --oc-ink-soft: var(--cui-secondary-color);
-      --oc-border: var(--cui-border-color);
-      --oc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-      --oc-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-      --oc-shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
-    }
-  }
+  /* Depth & geometry */
+  --oc-shadow-sm: 0 1px 2px rgba(16, 30, 24, 0.06);
+  --oc-shadow: 0 6px 20px -8px rgba(16, 30, 24, 0.18);
+  --oc-shadow-lg: 0 24px 48px -16px rgba(16, 30, 24, 0.28);
+  --oc-radius-sm: 8px;
+  --oc-radius: 12px;
+  --oc-radius-lg: 16px;
+
+  /* Sidebar */
+  --oc-side-bg: #0f3227;
+  --oc-side-bg-raised: #153d30;
+  --oc-side-ink: #f1f5f2;
+  --oc-side-ink-soft: rgba(236, 243, 239, 0.66);
+  --oc-side-ink-faint: rgba(236, 243, 239, 0.42);
+  --oc-side-border: rgba(236, 243, 239, 0.08);
+  --oc-side-hover: rgba(255, 255, 255, 0.06);
+  --oc-side-active: rgba(255, 255, 255, 0.1);
+  --oc-side-accent: #f0ae2c;
+
+  /* Order status colors — the one source of truth for every screen that
+     shows an order's state. Text colors pass AA on their tinted bg. */
+  --oc-status-pending: #a86f00;
+  --oc-status-pending-bg: #fcf1d6;
+  --oc-status-preparing: #2a55c9;
+  --oc-status-preparing-bg: #e7edfc;
+  --oc-status-completed: #19804f;
+  --oc-status-completed-bg: #e1f2e8;
+  --oc-status-cancelled: #be3a2d;
+  --oc-status-cancelled-bg: #f9e4e1;
 }
 
 body {
-  background-color: var(--oc-surface-sunken);
+  background-color: var(--oc-canvas);
+  font-family: var(--oc-font-ui);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'tnum' 0;
 }
 
-/* Cards read as calm, elevated surfaces rather than flat Bootstrap boxes. */
-.card {
-  box-shadow: var(--oc-shadow-sm);
+.oc-display,
+h1,
+h2,
+h3,
+.h1,
+.h2,
+.h3 {
+  font-family: var(--oc-display-font);
+  letter-spacing: -0.01em;
 }
+
+.oc-display {
+  font-weight: 700;
+}
+
+.oc-num {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--oc-pine);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* =========================================================================
+   Global component layer — restyles CoreUI/Bootstrap once so every page,
+   including ones without bespoke CSS, speaks the same language.
+   ========================================================================= */
+
+/* ---- Cards: flat panels, one hairline, no floating shadows ---- */
+.card {
+  --cui-card-border-color: var(--oc-border);
+  --cui-card-border-radius: var(--oc-radius);
+  --cui-card-inner-border-radius: calc(var(--oc-radius) - 1px);
+  --cui-card-cap-bg: transparent;
+  --cui-card-bg: var(--oc-surface);
+  box-shadow: none;
+}
+
+.card-header {
+  border-bottom-color: var(--oc-border);
+  font-weight: 600;
+  color: var(--oc-ink);
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
+.card-title {
+  font-family: var(--oc-display-font);
+  font-weight: 700;
+}
+
+/* ---- Buttons ---- */
+.btn {
+  --cui-btn-font-weight: 600;
+  --cui-btn-border-radius: var(--oc-radius-sm);
+  --cui-btn-padding-y: 0.45rem;
+  --cui-btn-padding-x: 0.9rem;
+  letter-spacing: 0.005em;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn-sm {
+  --cui-btn-padding-y: 0.3rem;
+  --cui-btn-padding-x: 0.65rem;
+  --cui-btn-border-radius: 6px;
+}
+
+.btn-primary {
+  --cui-btn-hover-bg: #134232;
+  --cui-btn-hover-border-color: #134232;
+  --cui-btn-active-bg: #0f3227;
+}
+
+.btn-outline-secondary,
+.btn-secondary.btn-outline,
+.btn-light {
+  --cui-btn-color: var(--oc-ink);
+  --cui-btn-border-color: var(--oc-border-strong);
+  --cui-btn-hover-bg: var(--oc-surface-sunken);
+  --cui-btn-hover-color: var(--oc-ink);
+  --cui-btn-hover-border-color: var(--oc-border-strong);
+}
+
+/* ---- Forms ---- */
+.form-control,
+.form-select {
+  border-color: var(--oc-border-strong);
+  border-radius: var(--oc-radius-sm);
+  color: var(--oc-ink);
+  background-color: var(--oc-surface);
+}
+
+.form-control::placeholder {
+  color: var(--oc-ink-faint);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--oc-pine);
+  box-shadow: 0 0 0 3px rgba(26, 90, 68, 0.16);
+}
+
+.form-label,
+.col-form-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--oc-ink);
+  margin-bottom: 0.35rem;
+}
+
+.form-text {
+  color: var(--oc-ink-soft);
+}
+
+.form-check-input:checked {
+  background-color: var(--oc-pine);
+  border-color: var(--oc-pine);
+}
+
+.input-group-text {
+  background: var(--oc-surface-sunken);
+  border-color: var(--oc-border-strong);
+  color: var(--oc-ink-soft);
+}
+
+/* ---- Tables ---- */
+.table {
+  --cui-table-border-color: var(--oc-border);
+  --cui-table-hover-bg: var(--oc-surface-sunken);
+  --cui-table-striped-bg: #f8f9f6;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.table > thead > tr > th {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--oc-ink-soft);
+  background: var(--oc-surface-sunken);
+  border-bottom-color: var(--oc-border);
+  white-space: nowrap;
+}
+
+.table > tbody > tr > td {
+  vertical-align: middle;
+}
+
+/* ---- Badges ---- */
+.badge {
+  --cui-badge-font-weight: 600;
+  --cui-badge-border-radius: 6px;
+  letter-spacing: 0.01em;
+}
+
+/* ---- Modals: one header style for every dialog in the product ---- */
+.modal-content {
+  border: none;
+  border-radius: var(--oc-radius-lg);
+  box-shadow: var(--oc-shadow-lg);
+  overflow: hidden;
+}
+
+.modal-header {
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
+  padding: 1rem 1.25rem;
+  color: var(--oc-ink);
+  font-weight: 700;
+}
+
+.modal-title {
+  font-family: var(--oc-display-font);
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--oc-border);
+  background: var(--oc-surface);
+}
+
+.modal-backdrop.show {
+  opacity: 0.45;
+}
+
+/* ---- Dropdowns ---- */
+.dropdown-menu {
+  --cui-dropdown-border-color: var(--oc-border);
+  --cui-dropdown-border-radius: 10px;
+  --cui-dropdown-link-active-bg: var(--oc-pine);
+  --cui-dropdown-link-hover-bg: var(--oc-surface-sunken);
+  box-shadow: var(--oc-shadow);
+  padding: 0.35rem;
+}
+
+.dropdown-item {
+  border-radius: 6px;
+  padding: 0.45rem 0.7rem;
+  font-weight: 500;
+}
+
+/* ---- Tabs & pills ---- */
+.nav-tabs {
+  --cui-nav-tabs-border-color: var(--oc-border);
+  gap: 0.25rem;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--oc-ink-soft);
+  font-weight: 600;
+  background: transparent;
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--oc-pine);
+  border-bottom-color: var(--oc-pine);
+  background: transparent;
+}
+
+.nav-pills .nav-link.active {
+  background: var(--oc-pine);
+}
+
+/* ---- Alerts: tinted, not shouting ---- */
+.alert {
+  border-radius: var(--oc-radius-sm);
+  border-width: 1px;
+}
+
+.alert-info {
+  --cui-alert-bg: var(--oc-status-preparing-bg);
+  --cui-alert-color: #1d3f99;
+  --cui-alert-border-color: #cfdaf7;
+}
+
+.alert-success {
+  --cui-alert-bg: var(--oc-status-completed-bg);
+  --cui-alert-color: #10603a;
+  --cui-alert-border-color: #c3e4d1;
+}
+
+.alert-warning {
+  --cui-alert-bg: var(--oc-status-pending-bg);
+  --cui-alert-color: #7a5100;
+  --cui-alert-border-color: #f3dfaa;
+}
+
+.alert-danger {
+  --cui-alert-bg: var(--oc-status-cancelled-bg);
+  --cui-alert-color: #8f2a20;
+  --cui-alert-border-color: #f0c9c3;
+}
+
+/* ---- Progress ---- */
+.progress {
+  --cui-progress-bg: var(--oc-surface-sunken);
+  --cui-progress-border-radius: 999px;
+}
+
+/* ---- Toasts ---- */
+.toast {
+  border-radius: var(--oc-radius-sm);
+  border-color: var(--oc-border);
+  box-shadow: var(--oc-shadow);
+}
+
+/* ---- Pagination ---- */
+.pagination {
+  --cui-pagination-active-bg: var(--oc-pine);
+  --cui-pagination-active-border-color: var(--oc-pine);
+  --cui-pagination-color: var(--oc-ink);
+  --cui-pagination-border-color: var(--oc-border);
+}
+
+/* =========================================================================
+   Application shell
+   ========================================================================= */
 
 .wrapper {
   width: 100%;
@@ -76,136 +369,105 @@ body {
   @include transition(padding 0.15s);
 }
 
-.header > .container-fluid,
-.sidebar-header {
-  min-height: calc(4rem + 1px); // stylelint-disable-line function-disallowed-list
+/* ---- Content area ---- */
+.oc-content {
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 24px 28px 48px;
 }
 
-.sidebar-brand-full {
-  margin-left: 3px;
-}
-
-.sidebar-header {
-  .nav-underline-border {
-    --cui-nav-underline-border-link-padding-x: 1rem;
-    --cui-nav-underline-border-gap: 0;
-  }
-
-  .nav-link {
-    display: flex;
-    align-items: center;
-    min-height: calc(4rem + 1px); // stylelint-disable-line function-disallowed-list
+@media (max-width: 767.98px) {
+  .oc-content {
+    padding: 16px 14px 40px;
   }
 }
 
-.sidebar-toggler {
-  @include ltr-rtl('margin-left', auto);
-}
-
-.sidebar-narrow,
-.sidebar-narrow-unfoldable:not(:hover) {
-  .sidebar-toggler {
-    @include ltr-rtl('margin-right', auto);
-  }
-}
-
-.header > .container-fluid + .container-fluid {
-  min-height: 3rem;
-}
-
-.footer {
-  min-height: calc(3rem + 1px); // stylelint-disable-line function-disallowed-list
-}
-
-@if $enable-dark-mode {
-  @include color-mode(dark) {
-    body {
-      background-color: var(--cui-dark-bg-subtle);
-    }
-
-    .footer {
-      --cui-footer-bg: var(--cui-body-bg);
-    }
-  }
-}
-
-/* =========================================================================
-   AppSidebar — permanent dark "espresso" brand identity
-   Overrides CoreUI's own .sidebar-dark variables (normally a cool
-   blue-gray) with our warm palette. Scoped entirely to the sidebar, so
-   the rest of the app stays on the light canvas regardless of this.
-   ========================================================================= */
-
-.app-sidebar.sidebar-dark {
-  --cui-body-bg: var(--oc-side-bg);
+/* ---- Sidebar ---- */
+.app-sidebar.sidebar {
+  --cui-sidebar-width: 248px;
+  --cui-sidebar-bg: var(--oc-side-bg);
+  --cui-sidebar-color: var(--oc-side-ink);
+  --cui-sidebar-border-color: transparent;
+  --cui-sidebar-nav-link-color: var(--oc-side-ink-soft);
+  --cui-sidebar-nav-link-icon-color: var(--oc-side-ink-faint);
+  --cui-sidebar-nav-link-hover-bg: var(--oc-side-hover);
+  --cui-sidebar-nav-link-hover-color: var(--oc-side-ink);
+  --cui-sidebar-nav-link-active-bg: var(--oc-side-active);
+  --cui-sidebar-nav-link-active-color: #ffffff;
+  --cui-sidebar-toggler-bg: transparent;
   --cui-body-color: var(--oc-side-ink);
-  --cui-emphasis-color: var(--oc-side-ink);
-  --cui-secondary-color: var(--oc-side-ink-soft);
-  --cui-secondary-bg: var(--oc-side-bg-raised);
-  --cui-tertiary-color: var(--oc-side-ink-soft);
-  --cui-tertiary-bg: var(--oc-side-bg-raised);
   --cui-border-color: var(--oc-side-border);
   background-color: var(--oc-side-bg);
+  border-right: none !important;
 }
 
-/* ---- Brand header ---- */
 .app-sidebar-header {
-  padding: 18px 16px !important;
-  background-color: var(--oc-side-bg);
+  padding: 20px 20px 14px !important;
+  border-bottom: none !important;
+  min-height: auto !important;
 }
 
 .app-sidebar-brand {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 0 !important;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--oc-side-ink);
 }
 
 .app-sidebar-logo {
   display: block;
-  width: 100%;
-  max-width: 100px;
-  height: auto;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
-  /* Source mark is drawn for light backgrounds — show it in white
-     against the dark sidebar instead of swapping the asset. */
   filter: brightness(0) invert(1);
 }
 
-/* ---- Section labels ---- */
-.nav-section-label {
-  padding: 16px 20px 6px 20px;
-  font-size: 0.68rem;
+.app-sidebar-wordmark {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.app-sidebar-wordmark strong {
+  font-family: var(--oc-display-font);
+  font-size: 1.1rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--oc-side-ink-soft);
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.app-sidebar-wordmark span {
+  font-size: 0.74rem;
+  color: var(--oc-side-ink-faint);
+  margin-top: 2px;
+}
+
+.nav-section-label {
+  padding: 18px 22px 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--oc-side-ink-faint);
   user-select: none;
 }
 
-/* First section shouldn't add extra top padding */
-.sidebar-nav > :first-child .nav-section-label,
-.sidebar-nav > .nav-section-label:first-child {
-  padding-top: 10px;
-}
-
-/* ---- Nav links: softer hover, amber accent on active ---- */
 .sidebar .nav-link {
   position: relative;
   display: flex;
   align-items: center;
+  gap: 2px;
   border-radius: 8px;
-  margin: 2px 8px;
-  padding: 8px 12px;
+  margin: 1px 10px;
+  padding: 7px 12px;
+  font-size: 0.9rem;
   font-weight: 500;
   color: var(--oc-side-ink-soft);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
-/* Longer translated labels (e.g. French "Disponibilité des produits")
-   truncate with an ellipsis instead of overflowing past the sidebar's
-   right-hand border. */
 .sidebar .nav-link .nav-label {
   overflow: hidden;
   white-space: nowrap;
@@ -214,10 +476,12 @@ body {
   flex: 1 1 auto;
 }
 
-.sidebar .nav-link .nav-icon,
-.sidebar .nav-link .nav-icon-bullet {
+.sidebar .nav-link .nav-icon {
   flex-shrink: 0;
-  color: var(--oc-side-ink-soft);
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  color: var(--oc-side-ink-faint);
 }
 
 .sidebar .nav-link:hover {
@@ -230,126 +494,423 @@ body {
 }
 
 .sidebar .nav-link.active {
-  background-color: var(--oc-side-accent-bg);
-  color: var(--oc-side-accent) !important;
+  background-color: var(--oc-side-active);
+  color: #fff !important;
   font-weight: 600;
 }
 
 .sidebar .nav-link.active .nav-icon {
   color: var(--oc-side-accent);
-  opacity: 1;
 }
 
 .sidebar .nav-link.active::before {
   content: '';
   position: absolute;
-  left: -8px;
-  top: 6px;
-  bottom: 6px;
+  left: -10px;
+  top: 7px;
+  bottom: 7px;
   width: 3px;
   border-radius: 0 3px 3px 0;
   background-color: var(--oc-side-accent);
 }
 
-/* Nested items under a group */
 .sidebar .nav-group-items .nav-link {
-  padding-left: 32px;
-  font-size: 0.875rem;
+  padding-left: 40px;
+  font-size: 0.86rem;
 }
 
-/* ---- Footer ---- */
 .app-sidebar .sidebar-footer {
-  background-color: var(--oc-side-bg);
+  border-top: 1px solid var(--oc-side-border) !important;
+  background: transparent;
 }
 
 .app-sidebar .sidebar-toggler {
-  color: var(--oc-side-ink-soft);
+  color: var(--oc-side-ink-faint);
 }
 
-.app-sidebar .sidebar-toggler:hover {
-  color: var(--oc-side-ink);
+.sidebar.sidebar-narrow .nav-section-label,
+.sidebar-narrow-unfoldable:not(:hover) .nav-section-label {
+  font-size: 0;
+  padding: 8px 0;
+  margin: 8px 14px 0;
+  border-top: 1px solid var(--oc-side-border);
 }
 
-/* ---- Mobile: sidebar shows as overlay ---- */
+.sidebar-narrow-unfoldable:not(:hover) .app-sidebar-wordmark {
+  display: none;
+}
+
 @media (max-width: 991.98px) {
   .app-sidebar {
     box-shadow: var(--oc-shadow-lg);
   }
-
-  .nav-section-label {
-    padding: 12px 16px 6px 16px;
-    font-size: 0.65rem;
-  }
-
-  .sidebar .nav-link {
-    margin: 2px 6px;
-    padding: 10px 14px;
-  }
 }
 
-/* ---- Collapsed (unfoldable) state — icons only ---- */
-.sidebar.sidebar-narrow .nav-section-label {
-  padding: 8px 0;
-  text-align: center;
-  font-size: 0;
-  border-top: 1px solid var(--oc-side-border);
-  margin: 6px 12px 0 12px;
+/* ---- Header ---- */
+.app-header.header {
+  --cui-header-bg: rgba(255, 255, 255, 0.92);
+  --cui-header-border-color: var(--oc-border);
+  backdrop-filter: saturate(140%) blur(8px);
+  border-bottom: 1px solid var(--oc-border);
+  min-height: 64px;
 }
 
-.sidebar.sidebar-narrow .nav-section-label:first-child {
-  border-top: none;
-  margin-top: 0;
+.oc-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 0 24px;
+  min-height: 64px;
 }
 
-/* =========================================================================
-   AppHeader
-   ========================================================================= */
-
-.app-header {
-  background-color: var(--oc-surface);
+.oc-header-toggler {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--oc-border);
+  background: var(--oc-surface);
+  color: var(--oc-ink);
+  cursor: pointer;
+  flex-shrink: 0;
 }
 
-.app-header .border-bottom {
-  border-color: var(--oc-border) !important;
+.oc-header-toggler:hover {
+  background: var(--oc-surface-sunken);
 }
 
-/* =========================================================================
-   Shared "hub card" building blocks — used by the Dashboard landing page
-   and the Login screen so both share the same premium surface language.
-   ========================================================================= */
-
-.oc-hub-card {
+.oc-header-where {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  min-width: 0;
+}
+
+.oc-header-crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--oc-ink-faint);
+  white-space: nowrap;
+}
+
+.oc-header-crumb a {
+  color: var(--oc-ink-soft);
+  text-decoration: none;
+}
+
+.oc-header-crumb a:hover {
+  color: var(--oc-pine);
+}
+
+.oc-header-title {
+  font-family: var(--oc-display-font);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.oc-header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.oc-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+  padding-right: 12px;
+  margin-right: 2px;
+  border-right: 1px solid var(--oc-border);
+}
+
+.oc-clock-time {
+  font-family: var(--oc-display-font);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-clock-date {
+  font-size: 0.72rem;
+  color: var(--oc-ink-soft);
+  text-transform: capitalize;
+}
+
+.oc-lang-toggle {
+  height: 36px;
+  min-width: 44px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--oc-border);
+  background: var(--oc-surface);
+  font-weight: 700;
+  font-size: 0.78rem;
+  color: var(--oc-ink);
+}
+
+.oc-lang-toggle::after {
+  display: none;
+}
+
+.oc-lang-toggle:hover {
+  background: var(--oc-surface-sunken);
+}
+
+.app-header .nav-link {
+  color: var(--oc-ink-soft);
+}
+
+@media (max-width: 767.98px) {
+  .oc-header-inner {
+    padding: 0 14px;
+    gap: 10px;
+  }
+  .oc-clock {
+    display: none;
+  }
+  .oc-header-crumb {
+    display: none;
+  }
+}
+
+/* =========================================================================
+   Shared page primitives
+   ========================================================================= */
+
+/* Page heading used by bespoke pages */
+.oc-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.oc-page-title {
+  font-family: var(--oc-display-font);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--oc-ink);
+  margin: 0;
+  line-height: 1.15;
+}
+
+.oc-page-sub {
+  font-size: 0.9rem;
+  color: var(--oc-ink-soft);
+  margin: 4px 0 0;
+}
+
+/* Generic panel */
+.oc-panel {
   background: var(--oc-surface);
   border: 1px solid var(--oc-border);
   border-radius: var(--oc-radius);
-  box-shadow: var(--oc-shadow-sm);
-  padding: 20px;
+}
+
+.oc-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--oc-border);
+}
+
+.oc-panel-title {
+  font-family: var(--oc-display-font);
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.oc-panel-count {
+  font-family: var(--oc-font-ui);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--oc-ink-soft);
+  background: var(--oc-surface-sunken);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.oc-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--oc-pine);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.oc-link:hover {
+  text-decoration: underline;
+}
+
+/* Status pill */
+.oc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.oc-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.oc-status.is-pending {
+  background: var(--oc-status-pending-bg);
+  color: var(--oc-status-pending);
+}
+.oc-status.is-preparing {
+  background: var(--oc-status-preparing-bg);
+  color: var(--oc-status-preparing);
+}
+.oc-status.is-completed {
+  background: var(--oc-status-completed-bg);
+  color: var(--oc-status-completed);
+}
+.oc-status.is-cancelled {
+  background: var(--oc-status-cancelled-bg);
+  color: var(--oc-status-cancelled);
+}
+
+/* Skeleton */
+.oc-skel {
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    var(--oc-surface-sunken) 0%,
+    #fafbf9 50%,
+    var(--oc-surface-sunken) 100%
+  );
+  background-size: 200% 100%;
+  animation: oc-shimmer 1.3s infinite linear;
+}
+
+@keyframes oc-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Empty state */
+.oc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 36px 20px;
+  color: var(--oc-ink-soft);
+}
+
+.oc-empty-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--oc-surface-sunken);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--oc-ink-faint);
+  margin-bottom: 4px;
+}
+
+.oc-empty-title {
+  font-weight: 700;
+  color: var(--oc-ink);
+  font-size: 0.95rem;
+}
+
+.oc-empty-body {
+  font-size: 0.85rem;
+  max-width: 340px;
+}
+
+/* Shared modal header (profile modals) */
+.oc-modal-header {
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
+  color: var(--oc-ink);
+  font-family: var(--oc-display-font);
+  font-weight: 700;
+}
+
+.oc-modal-header svg {
+  color: var(--oc-pine);
+}
+
+/* ---- Hub / stat primitives (insight sub-pages) ---- */
+.oc-hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  padding: 18px;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .oc-hub-card:hover,
 .oc-hub-card:focus-visible {
-  transform: translateY(-2px);
-  box-shadow: var(--oc-shadow);
-  border-color: rgba(var(--cui-primary-rgb), 0.3);
+  border-color: var(--oc-pine);
 }
 
 .oc-hub-card-icon {
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 10px;
   flex-shrink: 0;
 }
 
 .oc-hub-card-title {
+  font-family: var(--oc-display-font);
   font-size: 1rem;
   font-weight: 700;
   color: var(--oc-ink);
@@ -366,17 +927,16 @@ body {
   background: var(--oc-surface);
   border: 1px solid var(--oc-border);
   border-radius: var(--oc-radius);
-  box-shadow: var(--oc-shadow-sm);
-  padding: 18px 20px;
+  padding: 16px 18px;
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
 .oc-stat-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 11px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -384,49 +944,24 @@ body {
 }
 
 .oc-stat-label {
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   color: var(--oc-ink-soft);
   margin: 0 0 2px 0;
 }
 
 .oc-stat-value {
-  font-size: 1.35rem;
+  font-family: var(--oc-display-font);
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--oc-ink);
   font-variant-numeric: tabular-nums;
   margin: 0;
 }
 
-/* =========================================================================
-   Shared section header for hub-only sub-dashboards
-   ========================================================================= */
-
+/* Section header for insight sub-pages */
 .oc-section-header {
   margin-bottom: 20px;
-}
-
-.oc-back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--oc-ink-soft);
-  text-decoration: none;
-  margin-bottom: 12px;
-  transition: color 0.15s ease;
-}
-
-.oc-back-link:hover {
-  color: var(--cui-primary);
-}
-
-.oc-back-link svg {
-  width: 13px;
-  height: 13px;
 }
 
 .oc-section-header-row {
@@ -446,19 +981,21 @@ body {
 }
 
 .oc-section-title {
-  font-size: 1.3rem;
-  font-weight: 800;
+  font-family: var(--oc-display-font);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--oc-ink);
   margin: 0;
 }
 
 .oc-section-subtitle {
-  font-size: 0.86rem;
+  font-size: 0.9rem;
   color: var(--oc-ink-soft);
   margin: 2px 0 0 0;
 }
 
-/* ---- Honest "not built yet" empty state ---- */
+/* Honest "not built yet" empty state */
 .oc-soon {
   display: flex;
   flex-direction: column;
@@ -471,7 +1008,7 @@ body {
 }
 
 .oc-soon svg {
-  color: var(--oc-border);
+  color: var(--oc-border-strong);
   margin-bottom: 4px;
 }
 
@@ -484,4 +1021,288 @@ body {
 .oc-soon-body {
   font-size: 0.85rem;
   max-width: 320px;
+}
+
+/* Account page cover band (replaces a striped texture loaded from a
+   third-party site, which also hid the white "My Profile" heading) */
+.oc-profile-cover {
+  height: 84px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--oc-pine-deep);
+}
+
+/* Billing summary */
+.bl-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px;
+  padding: 6px 2px;
+  align-items: center;
+}
+
+.bl-due {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bl-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--oc-ink-soft);
+}
+
+.bl-amount {
+  font-family: var(--oc-display-font);
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-amount small {
+  font-family: var(--oc-font-ui);
+  font-size: 0.9rem;
+  color: var(--oc-ink-soft);
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+
+.bl-amount.is-due {
+  color: var(--oc-ink);
+}
+
+.bl-amount.is-clear {
+  color: var(--oc-status-completed);
+}
+
+.bl-clear {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--oc-status-completed);
+}
+
+.bl-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+
+.bl-figures > div:not(.bl-progress) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bl-figure {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.bl-progress {
+  grid-column: 1 / -1;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--oc-surface-sunken);
+  overflow: hidden;
+}
+
+.bl-progress span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--oc-pine);
+}
+
+@media (max-width: 767.98px) {
+  .bl-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================================
+   Shared page toolbar — segmented controls, search, selects, icon buttons
+   ========================================================================= */
+.oc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 12px;
+  flex-wrap: wrap;
+}
+
+.oc-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oc-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 10px;
+  background: #e7eae4;
+}
+
+.oc-seg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 6px 13px;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--oc-ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.oc-seg button:hover {
+  color: var(--oc-ink);
+}
+
+.oc-seg button.is-active {
+  background: var(--oc-surface);
+  color: var(--oc-ink);
+  box-shadow: 0 1px 2px rgba(16, 30, 24, 0.12);
+}
+
+.oc-seg-count {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(16, 30, 24, 0.07);
+  font-size: 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--oc-border-strong);
+  border-radius: 10px;
+  background: var(--oc-surface);
+  min-width: 220px;
+}
+
+.oc-search:focus-within {
+  border-color: var(--oc-pine);
+  box-shadow: 0 0 0 3px rgba(26, 90, 68, 0.14);
+}
+
+.oc-search svg {
+  color: var(--oc-ink-faint);
+  flex-shrink: 0;
+}
+
+.oc-search input {
+  border: none;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  font-size: 0.9rem;
+  color: var(--oc-ink);
+}
+
+.oc-select {
+  height: 38px;
+  padding: 0 32px 0 12px;
+  border: 1px solid var(--oc-border-strong);
+  border-radius: 10px;
+  background: var(--oc-surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e6963' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 11px center;
+  appearance: none;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--oc-ink);
+  cursor: pointer;
+}
+
+.oc-select:focus {
+  outline: none;
+  border-color: var(--oc-pine);
+  box-shadow: 0 0 0 3px rgba(26, 90, 68, 0.14);
+}
+
+.oc-icon-btn {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 1px solid var(--oc-border);
+  background: var(--oc-surface);
+  color: var(--oc-ink-soft);
+  cursor: pointer;
+}
+
+.oc-icon-btn:hover {
+  color: var(--oc-ink);
+  background: var(--oc-surface-sunken);
+}
+
+.oc-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px 16px;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+  color: var(--oc-ink-soft);
+}
+
+.oc-summary strong {
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.oc-summary .is-alert strong {
+  color: var(--oc-status-pending);
+}
+
+.oc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 767.98px) {
+  .oc-toolbar-group {
+    width: 100%;
+  }
+  .oc-search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .oc-seg {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .oc-seg::-webkit-scrollbar {
+    display: none;
+  }
 }

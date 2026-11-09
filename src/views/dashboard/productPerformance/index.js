@@ -15,8 +15,8 @@ const ProductPerformance = () => {
     <>
       <DashboardSectionHeader
         icon={cilRestaurant}
-        accent="#7a5aa8"
-        title={Language.productPerformance}
+        accent="#6b4fa0"
+        title={Language.navProductInsights || Language.productPerformance}
         subtitle={Language.productHubDesc}
       />
       <RevenuePerProduct />

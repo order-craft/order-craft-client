@@ -6,20 +6,10 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
+import { SERIES } from '../../helpers/palette'
 import './productPerformance/productPerformance.css'
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-  '#dc3545',
-  '#6c757d',
-]
+const SLICE_COLORS = SERIES
 
 /* Convert a value + previous cumulative offset into an SVG arc path */
 const polarToCartesian = (cx, cy, r, angleDeg) => {
@@ -220,7 +210,7 @@ const MonthPieChart = () => {
                     }}
                   >
                     <strong>{Number(value || 0).toFixed(2)} TND</strong>{' '}
-                    <span style={{ color: '#6c757d' }}>{pct.toFixed(1)}%</span>
+                    <span style={{ color: 'var(--oc-ink-soft)' }}>{pct.toFixed(1)}%</span>
                   </span>
                 </li>
               )

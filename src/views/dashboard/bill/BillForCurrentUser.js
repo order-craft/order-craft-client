@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import PropTypes from 'prop-types'
-import { CRow, CCol, CWidgetStatsA, CSpinner, CAlert } from '@coreui/react'
+import { CSpinner, CAlert } from '@coreui/react'
 import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
@@ -22,7 +22,7 @@ const BillForCurrentUser = (props) => {
       })
       setBill(response.data)
     } catch (err) {
-      setError('Error fetching the bill. Please try again later.')
+      setError('The bill couldn’t be loaded. Refresh the page to try again.')
       console.error(err)
     }
     setLoading(false)
@@ -30,26 +30,48 @@ const BillForCurrentUser = (props) => {
 
   useEffect(() => {
     getBillForCurrentUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  if (loading) {
+    return (
+      <div className={`oc-empty ${props.className || ''}`}>
+        <CSpinner color="primary" size="sm" />
+      </div>
+    )
+  }
+  if (error) return <CAlert color="danger">{error}</CAlert>
+  if (!bill) return <CAlert color="info">There is no bill for this account yet.</CAlert>
+
+  const total = Number(bill.totalAmount) || 0
+  const paid = Number(bill.amountPaid) || 0
+  const balance = Number(bill.balance) || 0
+  const paidPct = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0
+
   return (
-    <CRow className={props.className} xs={{ gutter: 4 }}>
-      <CCol>
-        {loading ? (
-          <CSpinner color="primary" style={{ width: '3rem', height: '3rem' }} />
-        ) : error ? (
-          <CAlert color="danger">{error}</CAlert>
-        ) : bill ? (
-          <CWidgetStatsA
-            color="success"
-            value={`Balance: ${bill.balance.toFixed(2)} TND`}
-            title={`Total Amount: ${bill.totalAmount.toFixed(2)} TND | Paid: ${bill.amountPaid.toFixed(2)} TND`}
-          />
-        ) : (
-          <CAlert color="info">No bill available for the current user.</CAlert>
-        )}
-      </CCol>
-    </CRow>
+    <div className={`bl-summary ${props.className || ''}`}>
+      <div className="bl-due">
+        <span className="bl-label">{balance > 0 ? 'Balance due' : 'Balance'}</span>
+        <span className={`bl-amount ${balance > 0 ? 'is-due' : 'is-clear'}`}>
+          {balance.toFixed(2)}
+          <small>TND</small>
+        </span>
+        {balance <= 0 && <span className="bl-clear">Fully paid</span>}
+      </div>
+      <div className="bl-figures">
+        <div>
+          <span className="bl-label">Total billed</span>
+          <span className="bl-figure">{total.toFixed(2)} TND</span>
+        </div>
+        <div>
+          <span className="bl-label">Paid so far</span>
+          <span className="bl-figure">{paid.toFixed(2)} TND</span>
+        </div>
+        <div className="bl-progress" aria-label={`${paidPct}% paid`}>
+          <span style={{ width: `${paidPct}%` }} />
+        </div>
+      </div>
+    </div>
   )
 }
 

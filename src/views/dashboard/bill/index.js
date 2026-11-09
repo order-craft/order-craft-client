@@ -16,9 +16,9 @@ const Bill = () => {
     <>
       <DashboardSectionHeader
         icon={cilDescription}
-        accent="#3d7a5c"
-        title={Language.bills}
-        subtitle={Language.billsHubDesc}
+        accent="#b47a00"
+        title={Language.navBilling || Language.bills}
+        subtitle={Language.blBillingDesc || Language.billsHubDesc}
       />
 
       <CCard className="mb-4">

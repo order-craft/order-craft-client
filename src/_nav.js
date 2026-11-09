@@ -2,200 +2,95 @@ import React from 'react'
 import { useSelector } from 'react-redux'
 import CIcon from '@coreui/icons-react'
 import {
-  cilNotes,
-  cilSpeedometer,
-  cilWallet,
-  cilUser,
+  cilHome,
   cilListNumbered,
-  cilBraille,
+  cilRestaurant,
   cilBell,
-  cilDiamond,
-  cilAlignLeft,
-  cilHouse,
-  cilCreditCard,
-  cilHistory,
+  cilBraille,
+  cilNotes,
+  cilLayers,
   cilChartLine,
   cilListRich,
-  cilRestaurant,
+  cilBasket,
   cilPeople,
+  cilStar,
   cilDescription,
+  cilHistory,
+  cilUser,
+  cilCreditCard,
+  cilSettings,
+  cilWallet,
 } from '@coreui/icons'
-import { CNavGroup, CNavItem } from '@coreui/react'
+import { CNavItem } from '@coreui/react'
 import { jwtDecode } from 'jwt-decode'
 import translations from './app/Language'
 
+const icon = (i) => <CIcon icon={i} customClassName="nav-icon" />
+
+// Sections follow the shape of a restaurant day: what's happening on the
+// floor right now, what's on the menu, how the business is doing, and the
+// rarely-touched setup. Routes and role filtering are unchanged.
 const NavItems = () => {
   const t = useSelector((state) => state.language)
-  const Language = translations[t]
+  const L = translations[t] || {}
 
   const token = localStorage.getItem('token')
   let role = null
   if (token) {
-    const decodedToken = jwtDecode(token)
-    role = decodedToken.role
+    try {
+      role = jwtDecode(token).role
+    } catch {
+      role = null
+    }
   }
 
-  // ---- Sections ----
-  // Each section = { label, items: [...] }
+  const item = (name, to, i) => ({ component: CNavItem, name, to, icon: icon(i) })
+
   const _nav = [
     {
-      label: Language.sectionOperations || 'Operations',
+      key: 'service',
+      label: L.navService || 'Service',
       items: [
-        {
-          component: CNavItem,
-          name: Language.dashboard || 'Dashboard',
-          to: '/dashboard',
-          icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.payment || 'Payment',
-          to: '/tables/tablesList',
-          icon: <CIcon icon={cilWallet} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.orders || 'Orders',
-          to: '/orders/ordersList',
-          icon: <CIcon icon={cilListNumbered} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.productAvailability || "Product's availability",
-          to: '/product/availability',
-          icon: <CIcon icon={cilBraille} customClassName="nav-icon" />,
-        },
+        item(L.navHome || 'Home', '/dashboard', cilHome),
+        item(L.orders || 'Orders', '/orders/ordersList', cilListNumbered),
+        item(L.navTablesBills || 'Tables & bills', '/tables/tablesList', cilRestaurant),
+        item(L.navServiceCalls || 'Service calls', '/support', cilBell),
+        item(L.navAvailability || 'Availability', '/product/availability', cilBraille),
       ],
     },
     {
-      // These five pages used to be reachable only through the Dashboard's
-      // navigation tiles, with no sidebar entry and no way back except a
-      // link on the page itself. Giving them first-class nav items makes
-      // them directly navigable and jump-between-able like everything else.
-      label: Language.sectionAnalytics || 'Analytics',
+      key: 'menu',
+      label: L.navMenuStock || 'Menu & stock',
       items: [
-        {
-          component: CNavItem,
-          name: Language?.salesStatistic || 'Sales',
-          to: '/Sales',
-          icon: <CIcon icon={cilChartLine} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.orderManagement || 'Order Management',
-          to: '/order-management',
-          icon: <CIcon icon={cilListRich} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.productPerformance || 'Product Performance',
-          to: '/product-performance',
-          icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.EmployeePerformance || 'Employee Performance',
-          to: '/employee-performance',
-          icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.bills || 'Bills',
-          to: '/bill',
-          icon: <CIcon icon={cilDescription} customClassName="nav-icon" />,
-        },
+        item(L.navMenu || 'Menu', '/menu/sections', cilNotes),
+        item(L.navInventory || 'Inventory', '/stock-inventory', cilLayers),
       ],
     },
     {
-      label: Language.sectionMenuStock || 'Menu & Stock',
+      key: 'insights',
+      label: L.navInsights || 'Insights',
       items: [
-        {
-          component: CNavItem,
-          name: Language?.menu || 'Menu',
-          to: '/menu/sections',
-          icon: <CIcon icon={cilNotes} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language.inventory || 'Inventory',
-          to: '/stock-inventory',
-          icon: <CIcon icon={cilHouse} customClassName="nav-icon" />,
-        },
+        item(L.navSales || 'Sales', '/Sales', cilChartLine),
+        item(L.navOrderInsights || 'Order insights', '/order-management', cilListRich),
+        item(L.navProductInsights || 'Product insights', '/product-performance', cilBasket),
+        item(L.navStaffInsights || 'Staff insights', '/employee-performance', cilPeople),
+        item(L.navLeaderboard || 'Table leaderboard', '/tables/guru', cilStar),
+        item(L.navDailyReport || 'Daily receipt', '/daily-receipt', cilDescription),
+        item(L.navHistory || 'Order history', '/history', cilHistory),
       ],
     },
     {
-      label: Language.sectionManagement || 'Management',
+      key: 'settings',
+      label: L.navSettings || 'Settings',
       items: [
-        {
-          component: CNavGroup,
-          name: Language?.users || 'Users',
-          to: '/users',
-          icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
-          items: [
-            {
-              component: CNavItem,
-              name: Language?.usersList || 'Users List',
-              to: '/users/usersList',
-            },
-            {
-              component: CNavItem,
-              name: Language?.createUser || 'Create User',
-              to: '/users/createUser',
-            },
-          ],
-        },
-        {
-          component: CNavItem,
-          name: 'Payment Methods',
-          to: '/payment-methods',
-          icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavGroup,
-          name: Language?.Support || 'Support',
-          to: '/support',
-          icon: <CIcon icon={cilBell} customClassName="nav-icon" />,
-          items: [
-            {
-              component: CNavItem,
-              name: Language?.support || 'Support',
-              to: '/support',
-            },
-            {
-              component: CNavItem,
-              name: Language?.supportTypes || 'Support Types',
-              to: '/support-types',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      label: Language.sectionReports || 'Reports',
-      items: [
-        {
-          component: CNavItem,
-          name: Language?.dailyReceipt || 'Daily Receipt',
-          to: '/daily-receipt',
-          icon: <CIcon icon={cilAlignLeft} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: Language?.history || 'History',
-          to: '/history',
-          icon: <CIcon icon={cilHistory} customClassName="nav-icon" />,
-        },
-        {
-          component: CNavItem,
-          name: 'Guru',
-          to: '/tables/guru',
-          icon: <CIcon icon={cilDiamond} customClassName="nav-icon" />,
-        },
+        item(L.navStaff || 'Staff', '/users/usersList', cilUser),
+        item(L.navPaymentMethods || 'Payment methods', '/payment-methods', cilCreditCard),
+        item(L.navCallTypes || 'Call types', '/support-types', cilSettings),
+        item(L.navBilling || 'Billing', '/bill', cilWallet),
       ],
     },
   ]
 
-  // ---- Role filter ----
   const SUPERCLIENT_ONLY_ROUTES = new Set([
     '/dashboard',
     '/Sales',
@@ -212,25 +107,15 @@ const NavItems = () => {
     '/stock-inventory',
   ])
 
-  const filterItem = (item) => {
-    if (role === 'superClient' || role !== 'client') return item
-    if (SUPERCLIENT_ONLY_ROUTES.has(item.to)) return null
-    if (Array.isArray(item.items)) {
-      const kids = item.items.map(filterItem).filter(Boolean)
-      if (kids.length === 0) return null
-      return { ...item, items: kids }
-    }
-    return item
+  const filterItem = (navItem) => {
+    if (role === 'superClient' || role !== 'client') return navItem
+    if (SUPERCLIENT_ONLY_ROUTES.has(navItem.to)) return null
+    return navItem
   }
 
-  const filteredSections = _nav
-    .map((section) => ({
-      ...section,
-      items: section.items.map(filterItem).filter(Boolean),
-    }))
+  return _nav
+    .map((section) => ({ ...section, items: section.items.map(filterItem).filter(Boolean) }))
     .filter((section) => section.items.length > 0)
-
-  return filteredSections
 }
 
 export default NavItems

@@ -120,7 +120,7 @@ const MostSoldProducts = () => {
                           className="pp-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: '#0d6efd',
+                            background: '#1a5a44',
                           }}
                         />
                       </div>

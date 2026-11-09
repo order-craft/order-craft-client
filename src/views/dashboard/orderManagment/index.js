@@ -16,8 +16,8 @@ const OrderManagement = () => {
     <>
       <DashboardSectionHeader
         icon={cilListRich}
-        accent="#c15a76"
-        title={Language.orderManagement}
+        accent="#2a55c9"
+        title={Language.navOrderInsights || Language.orderManagement}
         subtitle={Language.orderHubDesc}
       />
       <RevenuePerTable />

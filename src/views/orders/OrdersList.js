@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
-  CCard,
-  CCardBody,
   CButton,
   CSpinner,
   CProgress,
@@ -53,6 +51,23 @@ const OrdersList = () => {
   const [statusFlowEnabled, setStatusFlowEnabled] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedRows, setExpandedRows] = useState({})
+  const [view, setView] = useState(() => {
+    try {
+      const saved = localStorage.getItem('oc.orders.view')
+      if (saved === 'board' || saved === 'list') return saved
+    } catch {
+      /* storage unavailable */
+    }
+    return typeof window !== 'undefined' && window.innerWidth >= 1100 ? 'board' : 'list'
+  })
+  const chooseView = (v) => {
+    setView(v)
+    try {
+      localStorage.setItem('oc.orders.view', v)
+    } catch {
+      /* storage unavailable */
+    }
+  }
 
   // Responsibility-based view scope (who this order list belongs to).
   // Also mirrored into refs because the socket listeners below are
@@ -540,9 +555,10 @@ const OrdersList = () => {
   }
 
   /* ---------- render ---------- */
-  const renderOrderRow = (order) => {
-    if (!order) return null
-
+  // Everything a view needs to render one order, including which actions
+  // this user may take. Both the list and the board call this, so the
+  // permission and transition rules live in exactly one place.
+  const orderBits = (order, laneStatus) => {
     const products = order.products || []
     const totalPrice = products
       .reduce((sum, item) => {
@@ -555,7 +571,6 @@ const OrdersList = () => {
       }, 0)
       .toFixed(2)
 
-    const isExpanded = !!expandedRows[order._id]
     const duration = currentStatusDuration(order)
 
     const canMove =
@@ -674,7 +689,7 @@ const OrdersList = () => {
     // the current render, safe to read here) — every other tab only shows
     // the read-only "Claimed by" pill above once claimed.
     const canClaim =
-      visibleTab.status === '__available__' &&
+      laneStatus === '__available__' &&
       order.status === 'completed' &&
       !order.deliveryClaimedBy &&
       !order.deliveredAt &&
@@ -700,6 +715,23 @@ const OrdersList = () => {
         )}
       </CButton>
     ) : null
+
+    return {
+      products,
+      totalPrice,
+      duration,
+      canMove,
+      statusButtons,
+      deliverButton,
+      claimButton,
+    }
+  }
+
+  const renderOrderRow = (order) => {
+    if (!order) return null
+    const { products, totalPrice, duration, canMove, statusButtons, deliverButton, claimButton } =
+      orderBits(order, visibleTab.status)
+    const isExpanded = !!expandedRows[order._id]
 
     return (
       <React.Fragment key={order._id}>
@@ -909,6 +941,90 @@ const OrdersList = () => {
         )
       : filteredOrders.filter((o) => o.status === visibleTab.status)
 
+  /* ---------- board ---------- */
+  // The board shows the live flow side by side (cancelled stays in the
+  // list view). Lanes come from the same `tabs` array, so tenant settings
+  // like direct_service or shared_delivery shape the board identically.
+  const BOARD_LANE_LIMIT = 30
+  const boardLanes = tabs.filter((tab) => tab.status !== 'cancelled')
+
+  const ordersForLane = (laneStatus) =>
+    laneStatus === '__available__'
+      ? filteredOrders.filter(
+          (o) => o.status === 'completed' && !o.deliveryClaimedBy && !o.deliveredAt,
+        )
+      : filteredOrders.filter((o) => o.status === laneStatus)
+
+  const orderTitle = (order) =>
+    order.table
+      ? `${Language.table || 'Table'} ${order.table.number}`
+      : `${
+          order.orderType === 'to-go' ? Language.togo || 'To-go' : Language.delivery || 'Delivery'
+        }${order.orderNumber ? ` #${order.orderNumber}` : ''}`
+
+  const renderBoardCard = (order, laneStatus) => {
+    const { products, totalPrice, duration, statusButtons, deliverButton, claimButton } = orderBits(
+      order,
+      laneStatus,
+    )
+    return (
+      <article
+        key={order._id}
+        className={`ob-card ${updatedOrders[order._id] ? 'is-new' : ''}`}
+        data-status={statusPillClass(order)}
+      >
+        <header className="ob-card-head">
+          <span className="ob-card-title">{orderTitle(order)}</span>
+          <span className="ob-card-total">{totalPrice} TND</span>
+        </header>
+        <div className="ob-card-meta">
+          <span>
+            {formatDistanceToNow(new Date(order.timestamp || order.createdAt), {
+              addSuffix: true,
+              locale: dateLocale,
+            })}
+          </span>
+          {duration && (
+            <span className="ob-card-dur">
+              <CIcon icon={cilClock} width={12} />
+              {duration}
+            </span>
+          )}
+          {updatedOrders[order._id] && (
+            <span className="ob-card-new">{Language.updated || 'New'}</span>
+          )}
+        </div>
+        <ul className="ob-card-items">
+          {products.slice(0, 5).map((item, idx) => (
+            <li key={idx}>
+              <b>{item.quantity || 0}×</b>
+              <span>
+                {(item.product?.name || item.name || Language.unknownProduct || '—').trim()}
+                {item.notes && <em> — {item.notes}</em>}
+              </span>
+            </li>
+          ))}
+          {products.length > 5 && (
+            <li className="ob-card-more">
+              +{products.length - 5} {Language.items || 'items'}
+            </li>
+          )}
+        </ul>
+        {order.comment && <p className="ob-card-comment">“{order.comment}”</p>}
+        {order.deliveryClaimedBy && (
+          <span className="ol-pill completed ob-card-claim">
+            {Language.claimedBy || 'Claimed by'} {order.deliveryClaimedBy.fullName || '—'}
+          </span>
+        )}
+        <div className="ob-card-actions">
+          {statusButtons}
+          {deliverButton}
+          {claimButton}
+        </div>
+      </article>
+    )
+  }
+
   return (
     <>
       <CToaster position="top-end">
@@ -927,175 +1043,243 @@ const OrdersList = () => {
         ))}
       </CToaster>
 
-      <CCard className="mb-4">
-        {/* ---- Header ---- */}
-        <div className="ol-header">
-          <div className="ol-header-top">
-            <div>
-              <h5 className="ol-title">
-                <CIcon icon={cilListRich} className="me-2" />
-                {Language.orders || 'Orders'}
-              </h5>
-              <div className="ol-subtitle">
-                <strong>{filteredOrders.length}</strong>{' '}
-                {filteredOrders.length === 1 ? 'order' : 'orders'}
-                {' · '}
-                <strong>
-                  {filteredOrders.filter((o) => o.status === 'cancelled').length}
-                </strong>{' '}
-                cancelled
-              </div>
-              {viewScope === 'mine' && assignedTables.length > 0 && (
-                <div className="ol-scope-badge">
-                  {Language.showingYourTables || 'Showing your tables:'}{' '}
-                  {assignedTables.map((tb) => tb.number).join(', ')}
-                </div>
-              )}
-              {viewScope === 'all' && canPrepare && (
-                <div className="ol-scope-badge is-prep">
-                  {Language.showingAllPreparation || 'All orders — preparation access'}
-                </div>
-              )}
-            </div>
-
-            <div className="ol-top-right">
-              <div className="ol-search">
-                <CIcon icon={cilSearch} className="ol-search-icon" />
-                <input
-                  type="text"
-                  placeholder={Language.searchByTableNumber || 'Search table / order #'}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div className="ol-select">
-                <CIcon icon={cilFilter} className="ol-select-icon" />
-                <select
-                  value={timeFilter}
-                  onChange={(e) => setTimeFilter(e.target.value)}
-                  aria-label="Time filter"
-                >
-                  <option value="today">{Language.today || 'Today'}</option>
-                  <option value="thisWeek">{Language.thisWeek || 'This week'}</option>
-                  <option value="all">{Language.allTime || 'All time'}</option>
-                </select>
-              </div>
-
-              <CButton
-                color="primary"
-                className="ol-refresh"
-                onClick={fetchOrders}
-                disabled={loading}
-                aria-label="Refresh"
-              >
-                <CIcon icon={cilReload} />
-              </CButton>
-            </div>
-          </div>
-
-          {/* Filters row: mode + plan/type */}
-          <div className="ol-header-top" style={{ paddingTop: 0 }}>
-            <div className="d-flex gap-2 flex-wrap align-items-center">
-              <CButton
-                color={!onlyTakeawayDelivery ? 'primary' : 'secondary'}
-                variant={!onlyTakeawayDelivery ? undefined : 'outline'}
-                size="sm"
+      <div className="op">
+        {/* ---- Toolbar: what you're looking at, then how to narrow it ---- */}
+        <div className="op-toolbar">
+          <div className="op-toolbar-left">
+            <div className="op-seg" role="group" aria-label="Service type">
+              <button
+                type="button"
+                className={!onlyTakeawayDelivery ? 'is-active' : ''}
                 onClick={() => setOnlyTakeawayDelivery(false)}
               >
                 {Language.tables || 'Dine-in'}
-              </CButton>
-              <CButton
-                color={onlyTakeawayDelivery ? 'primary' : 'secondary'}
-                variant={onlyTakeawayDelivery ? undefined : 'outline'}
-                size="sm"
+              </button>
+              <button
+                type="button"
+                className={onlyTakeawayDelivery ? 'is-active' : ''}
                 onClick={() => setOnlyTakeawayDelivery(true)}
               >
                 {Language.takeawayDeliveryOnly || 'Takeaway / Delivery'}
-              </CButton>
+              </button>
             </div>
 
-            <div className="ol-top-right">
-              {onlyTakeawayDelivery ? (
-                <div className="ol-select">
-                  <CIcon icon={cilFilter} className="ol-select-icon" />
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value)}
-                    aria-label="Order type"
-                  >
-                    <option value="all">{Language.allTypes || 'All types'}</option>
-                    <option value="to-go">{Language.togo || 'To-go'}</option>
-                    <option value="delivery">{Language.delivery || 'Delivery'}</option>
-                  </select>
-                </div>
-              ) : (
-                <div className="ol-select">
-                  <CIcon icon={cilFilter} className="ol-select-icon" />
-                  <select
-                    value={selectedPlanFilter}
-                    onChange={(e) => setSelectedPlanFilter(e.target.value)}
-                    aria-label="Plan"
-                  >
-                    <option value="all">{Language.allPlans || 'All plans'}</option>
-                    {availablePlans.map((plan) => (
-                      <option key={plan._id} value={plan._id}>
-                        {plan.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+            {onlyTakeawayDelivery ? (
+              <div className="ol-select">
+                <CIcon icon={cilFilter} className="ol-select-icon" />
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  aria-label="Order type"
+                >
+                  <option value="all">{Language.allTypes || 'All types'}</option>
+                  <option value="to-go">{Language.togo || 'To-go'}</option>
+                  <option value="delivery">{Language.delivery || 'Delivery'}</option>
+                </select>
+              </div>
+            ) : (
+              <div className="ol-select">
+                <CIcon icon={cilFilter} className="ol-select-icon" />
+                <select
+                  value={selectedPlanFilter}
+                  onChange={(e) => setSelectedPlanFilter(e.target.value)}
+                  aria-label="Area"
+                >
+                  <option value="all">{Language.allPlans || 'All areas'}</option>
+                  {availablePlans.map((plan) => (
+                    <option key={plan._id} value={plan._id}>
+                      {plan.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
-          {/* Tabs */}
-          <div className="ol-tabs" role="tablist">
-            {tabs.map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                role="tab"
-                className={`ol-tab ${safeActiveKey === tab.key ? 'is-active' : ''}`}
-                onClick={() => setActiveKey(tab.key)}
+          <div className="op-toolbar-right">
+            <div className="ol-search">
+              <CIcon icon={cilSearch} className="ol-search-icon" />
+              <input
+                type="text"
+                placeholder={Language.searchByTableNumber || 'Search table / order #'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                aria-label="Search orders"
+              />
+            </div>
+
+            <div className="ol-select">
+              <select
+                value={timeFilter}
+                onChange={(e) => setTimeFilter(e.target.value)}
+                aria-label="Time filter"
               >
-                <CIcon icon={tab.icon} />
-                {tab.label}
-                <span className="ol-tab-count">{getTabCount(tab.status)}</span>
+                <option value="today">{Language.today || 'Today'}</option>
+                <option value="thisWeek">{Language.thisWeek || 'This week'}</option>
+                <option value="all">{Language.allTime || 'All time'}</option>
+              </select>
+            </div>
+
+            <div className="op-seg op-seg-view" role="group" aria-label="View">
+              <button
+                type="button"
+                className={view === 'board' ? 'is-active' : ''}
+                onClick={() => chooseView('board')}
+              >
+                {Language.viewBoard || 'Board'}
               </button>
-            ))}
+              <button
+                type="button"
+                className={view === 'list' ? 'is-active' : ''}
+                onClick={() => chooseView('list')}
+              >
+                {Language.viewList || 'List'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="op-icon-btn"
+              onClick={fetchOrders}
+              disabled={loading}
+              aria-label="Refresh"
+              title="Refresh"
+            >
+              <CIcon icon={cilReload} />
+            </button>
           </div>
         </div>
 
-        <CCardBody>
-          {loading && visibleOrders.length === 0 ? (
-            <div className="text-center py-5">
-              <CSpinner color="primary" />
-              <div className="mt-3">{Language.loadingOrders || 'Loading orders...'}</div>
-            </div>
-          ) : visibleOrders.length === 0 ? (
-            <div className="ol-empty">
-              <CIcon icon={cilInfo} size="xl" />
-              <div className="ol-empty-title">{Language.noOrdersInTab || 'No orders here'}</div>
-              <div className="ol-empty-body">
-                {Language.noOrdersInTabHint || 'New orders will appear as they come in.'}
-              </div>
-            </div>
-          ) : (
-            <>
-              {safeActiveKey === 4 && visibleOrders.length > 0 && (
-                <div className="d-flex justify-content-end mb-3">
-                  <CButton color="danger" onClick={deleteAllCancelledOrders}>
-                    <CIcon icon={cilTrash} className="me-1" />
-                    {Language.deleteAll || 'Delete all cancelled'}
-                  </CButton>
-                </div>
-              )}
-              <div className="ol-list">{visibleOrders.map(renderOrderRow)}</div>
-            </>
+        <div className="op-summary">
+          <span>
+            <strong>{filteredOrders.length}</strong>{' '}
+            {filteredOrders.length === 1
+              ? Language.hmOrder || 'order'
+              : Language.hmOrders || 'orders'}
+          </span>
+          {viewScope === 'mine' && assignedTables.length > 0 && (
+            <span className="ol-scope-badge">
+              {Language.showingYourTables || 'Showing your tables:'}{' '}
+              {assignedTables.map((tb) => tb.number).join(', ')}
+            </span>
           )}
-        </CCardBody>
-      </CCard>
+          {viewScope === 'all' && canPrepare && (
+            <span className="ol-scope-badge is-prep">
+              {Language.showingAllPreparation || 'All orders — preparation access'}
+            </span>
+          )}
+        </div>
+
+        {loading && orders.length === 0 ? (
+          <div className="oc-panel oc-empty">
+            <CSpinner color="primary" size="sm" />
+            <span className="oc-empty-body">{Language.loadingOrders || 'Loading orders…'}</span>
+          </div>
+        ) : view === 'board' ? (
+          <>
+            <div className="ob-board" style={{ '--ob-lanes': boardLanes.length }}>
+              {boardLanes.map((lane) => {
+                const laneOrders = ordersForLane(lane.status)
+                return (
+                  <section key={lane.key} className="ob-lane" data-lane={lane.status}>
+                    <header className="ob-lane-head">
+                      <span className="ob-lane-title">
+                        <CIcon icon={lane.icon} />
+                        {lane.label}
+                      </span>
+                      <span className="ob-lane-count">{laneOrders.length}</span>
+                    </header>
+                    <div className="ob-lane-body">
+                      {laneOrders.length === 0 ? (
+                        <p className="ob-lane-empty">
+                          {Language.obEmptyLane || 'Nothing here right now.'}
+                        </p>
+                      ) : (
+                        laneOrders
+                          .slice(0, BOARD_LANE_LIMIT)
+                          .map((order) => renderBoardCard(order, lane.status))
+                      )}
+                      {laneOrders.length > BOARD_LANE_LIMIT && (
+                        <button
+                          type="button"
+                          className="ob-lane-more"
+                          onClick={() => {
+                            setActiveKey(lane.key)
+                            chooseView('list')
+                          }}
+                        >
+                          +{laneOrders.length - BOARD_LANE_LIMIT}{' '}
+                          {Language.obMore || 'more — open in list'}
+                        </button>
+                      )}
+                    </div>
+                  </section>
+                )
+              })}
+            </div>
+            {getTabCount('cancelled') > 0 && (
+              <button
+                type="button"
+                className="oc-link op-cancelled-link"
+                onClick={() => {
+                  setActiveKey(4)
+                  chooseView('list')
+                }}
+              >
+                {getTabCount('cancelled')} {Language.obCancelled || 'cancelled orders'}
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="oc-panel op-list-panel">
+            <div className="ol-tabs" role="tablist">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={safeActiveKey === tab.key}
+                  className={`ol-tab ${safeActiveKey === tab.key ? 'is-active' : ''}`}
+                  onClick={() => setActiveKey(tab.key)}
+                >
+                  <CIcon icon={tab.icon} />
+                  {tab.label}
+                  <span className="ol-tab-count">{getTabCount(tab.status)}</span>
+                </button>
+              ))}
+            </div>
+
+            {visibleOrders.length === 0 ? (
+              <div className="oc-empty">
+                <span className="oc-empty-icon">
+                  <CIcon icon={cilInfo} />
+                </span>
+                <span className="oc-empty-title">{Language.noOrdersInTab || 'No orders here'}</span>
+                <span className="oc-empty-body">
+                  {Language.noOrdersInTabHint || 'New orders will appear as they come in.'}
+                </span>
+              </div>
+            ) : (
+              <>
+                {safeActiveKey === 4 && (
+                  <div className="op-list-actions">
+                    <CButton
+                      color="danger"
+                      variant="outline"
+                      size="sm"
+                      onClick={deleteAllCancelledOrders}
+                    >
+                      <CIcon icon={cilTrash} className="me-1" />
+                      {Language.deleteAll || 'Delete all cancelled'}
+                    </CButton>
+                  </div>
+                )}
+                <div className="ol-list">{visibleOrders.map(renderOrderRow)}</div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </>
   )
 }

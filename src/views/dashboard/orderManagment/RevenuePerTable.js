@@ -1,17 +1,6 @@
 import { useState, useEffect } from 'react'
-import {
-  CCard,
-  CCardBody,
-  CCardHeader,
-  CCol,
-  CRow,
-  CWidgetStatsF,
-  CSpinner,
-  CBadge,
-} from '@coreui/react'
-import { cilChart, cilChartPie, cilMoney, cilRestaurant } from '@coreui/icons'
-import CIcon from '@coreui/icons-react'
-import { CChartBar, CChartPie } from '@coreui/react-chartjs'
+import { CSpinner } from '@coreui/react'
+import { CChartBar } from '@coreui/react-chartjs'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -27,9 +16,12 @@ import { GetToken } from '../../../helpers/GetToken'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import './insights.css'
 
 // Register Chart.js components
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement)
+
+const SHARE_ROWS = 8
 
 const TableDashboard = () => {
   const [revenueData, setRevenueData] = useState([])
@@ -61,263 +53,167 @@ const TableDashboard = () => {
     fetchRevenueData()
   }, [])
 
+  const panel = (body) => (
+    <section className="oc-panel rt-panel">
+      <div className="oc-panel-head">
+        <div>
+          <h3 className="oc-panel-title">{Language.tablePerformanceDashboard}</h3>
+          <p className="rt-sub">{Language.comprehensiveRevenueAnalytics}</p>
+        </div>
+      </div>
+      {body}
+    </section>
+  )
+
   if (loading) {
-    return (
-      <CCard>
-        <CCardBody className="text-center p-5">
-          <CSpinner />
-          <div className="mt-3">{Language.loadingDashboardData}</div>
-        </CCardBody>
-      </CCard>
+    return panel(
+      <div className="oc-empty">
+        <CSpinner color="primary" size="sm" />
+        <span className="oc-empty-body">{Language.loadingDashboardData}</span>
+      </div>,
     )
   }
 
   if (error) {
-    return (
-      <CCard>
-        <CCardBody className="text-center p-5 text-danger">
-          {error}
-          <button onClick={fetchRevenueData} className="btn btn-sm btn-primary ms-2">
-            {Language.Retry}
-          </button>
-        </CCardBody>
-      </CCard>
+    return panel(
+      <div className="oc-empty">
+        <span className="oc-empty-title">{error}</span>
+        <button onClick={fetchRevenueData} className="btn btn-sm btn-primary mt-2">
+          {Language.Retry}
+        </button>
+      </div>,
     )
   }
 
   if (!revenueData || revenueData.length === 0) {
-    return (
-      <CCard>
-        <CCardBody className="text-center p-5 text-muted">{Language.noRevenueDataAvailable}</CCardBody>
-      </CCard>
+    return panel(
+      <div className="oc-empty">
+        <span className="oc-empty-body">{Language.noRevenueDataAvailable}</span>
+      </div>,
     )
   }
 
-  // Data processing for charts
   const sortedData = [...revenueData].sort((a, b) => b.totalRevenue - a.totalRevenue)
   const topTable = sortedData[0]
   const totalRevenue = revenueData.reduce((sum, item) => sum + item.totalRevenue, 0)
   const averageRevenue = totalRevenue / revenueData.length
+  const money = (n) => `${n.toFixed(2)} ${Language.TND || 'TND'}`
 
-  // Chart configuration
-  const COLORS = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#E91E63', '#00BCD4']
-
-  // Bar Chart Data
+  // Ranked horizontal bars: names stay readable however many tables there
+  // are, and the order itself carries the comparison.
   const barChartData = {
-    labels: sortedData.map((item) => `Table ${item.tableNumber}`),
+    labels: sortedData.map((item) => `${Language.Table || 'Table'} ${item.tableNumber}`),
     datasets: [
       {
         label: Language.totalRevenueTND,
         data: sortedData.map((item) => item.totalRevenue),
-        backgroundColor: sortedData.map((item) =>
-          item.tableNumber === topTable.tableNumber ? '#FFC107' : COLORS[0],
-        ),
+        backgroundColor: sortedData.map((item, i) => (i === 0 ? '#f0ae2c' : '#1a5a44')),
         borderWidth: 0,
+        maxBarThickness: 18,
       },
     ],
   }
 
-  // Pie Chart Data
-  const pieChartData = {
-    labels: sortedData.map((item) => `Table ${item.tableNumber}`),
-    datasets: [
-      {
-        data: sortedData.map((item) => item.totalRevenue),
-        backgroundColor: COLORS,
-        borderWidth: 0,
-      },
-    ],
-  }
-
-  // Chart options
   const barChartOptions = {
+    indexAxis: 'y',
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'top' },
-      title: { display: true, text: Language.revenueByTable },
+      legend: { display: false },
+      tooltip: {
+        callbacks: { label: (ctx) => money(ctx.parsed.x || 0) },
+      },
     },
     scales: {
-      y: {
+      x: {
         beginAtZero: true,
-        title: { display: true, text: Language.TND },
+        grid: { color: '#eef0eb' },
+        ticks: { callback: (v) => `${v}` },
       },
+      y: { grid: { display: false }, ticks: { autoSkip: false } },
     },
   }
 
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { position: 'right' },
-      tooltip: {
-        callbacks: {
-          label: (context) => {
-            const label = context.label || ''
-            const value = context.parsed || 0
-            return `${label}: ${value.toFixed(2)} ${Language.TND}`
-          },
-        },
-      },
-    },
-  }
+  const shareRows = sortedData.slice(0, SHARE_ROWS)
+  const othersRevenue = sortedData
+    .slice(SHARE_ROWS)
+    .reduce((sum, item) => sum + item.totalRevenue, 0)
+  const pct = (n) => (totalRevenue > 0 ? (n / totalRevenue) * 100 : 0)
 
-  return (
-    <CCard className="mb-4">
-      <CCardHeader className="bg-gradient-info text-white py-3">
-        <div className="d-flex justify-content-between align-items-center">
-          <div>
-            <h3 className="h4 mb-1" style={{ color: 'black' }}>
-              📊 {Language.tablePerformanceDashboard}
-            </h3>
-            <small className="opacity-75 d-none d-sm-block" style={{ color: 'black' }}>
-              {Language.comprehensiveRevenueAnalytics}
-            </small>
-          </div>
-          <CIcon
-            icon={cilChartPie}
-            className="text-white-50"
-            style={{ height: 'clamp(24px, 5vw, 36px)' }}
-          />
+  return panel(
+    <>
+      <div className="rt-strip">
+        <div className="rt-cell">
+          <span className="rt-label">{Language.TotalRevenue}</span>
+          <span className="rt-value">{money(totalRevenue)}</span>
         </div>
-      </CCardHeader>
+        <div className="rt-cell">
+          <span className="rt-label">{Language.Avg_Table}</span>
+          <span className="rt-value">{money(averageRevenue)}</span>
+        </div>
+        <div className="rt-cell is-top">
+          <span className="rt-label">{Language.TopTable}</span>
+          <span className="rt-value">
+            {Language.Table || 'Table'} {topTable.tableNumber}
+          </span>
+          <span className="rt-hint">
+            {money(topTable.totalRevenue)} · {pct(topTable.totalRevenue).toFixed(0)}%
+          </span>
+        </div>
+        <div className="rt-cell">
+          <span className="rt-label">{Language.TotalTables}</span>
+          <span className="rt-value">{revenueData.length}</span>
+        </div>
+      </div>
 
-      <CCardBody className="p-3 p-md-4">
-        {/* Responsive Summary Cards */}
-        <CRow className="g-3 mb-4">
-          <CCol xs={12} sm={6} md={6} lg={3}>
-            <CWidgetStatsF
-              className="shadow-sm"
-              color="primary"
-              icon={<CIcon icon={cilMoney} style={{ height: 'clamp(20px, 4vw, 28px)' }} />}
-              title={Language.TotalRevenue}
-              value={`${totalRevenue.toFixed(2)} ${Language.TND}`}
-              padding={false}
-            />
-          </CCol>
-          <CCol xs={12} sm={6} md={6} lg={3}>
-            <CWidgetStatsF
-              className="shadow-sm"
-              color="success"
-              icon={<CIcon icon={cilRestaurant} style={{ height: 'clamp(20px, 4vw, 28px)' }} />}
-              title={Language.Avg_Table}
-              value={`${averageRevenue.toFixed(2)} ${Language.TND}`}
-              padding={false}
-            />
-          </CCol>
-          <CCol xs={12} sm={6} md={6} lg={3}>
-            <CWidgetStatsF
-              className="shadow-sm"
-              color="warning"
-              icon={<CIcon icon={cilChart} style={{ height: 'clamp(20px, 4vw, 28px)' }} />}
-              title={Language.TopTable}
-              value={`#${topTable.tableNumber}`}
-              footer={`${topTable.totalRevenue.toFixed(2)} ${Language.TND}`}
-              padding={false}
-            />
-          </CCol>
-          <CCol xs={12} sm={6} md={6} lg={3}>
-            <CWidgetStatsF
-              className="shadow-sm"
-              color="info"
-              icon={<CIcon icon={cilRestaurant} style={{ height: 'clamp(20px, 4vw, 28px)' }} />}
-              title={Language.TotalTables}
-              value={revenueData.length}
-              padding={false}
-            />
-          </CCol>
-        </CRow>
+      <div className="rt-body">
+        <div className="rt-chart">
+          <h4 className="rt-h">{Language.RevenueDistributionbyTable}</h4>
+          <div style={{ height: Math.max(220, sortedData.length * 28 + 40) }}>
+            <CChartBar data={barChartData} options={barChartOptions} style={{ height: '100%' }} />
+          </div>
+        </div>
 
-        {/* Responsive Chart Layout */}
-        <CRow className="g-3">
-          <CCol xs={12} lg={8} xl={8}>
-            <CCard className="h-100 shadow-sm">
-              <CCardHeader className="bg-light py-2">
-                <span className="h6">{Language.RevenueDistributionbyTable}</span>
-              </CCardHeader>
-              <CCardBody className="p-2" style={{ minHeight: '300px', height: '40vh' }}>
-                <CChartBar
-                  data={barChartData}
-                  options={{
-                    ...barChartOptions,
-                    plugins: {
-                      ...barChartOptions.plugins,
-                      legend: {
-                        position: window.innerWidth < 768 ? 'bottom' : 'top',
-                      },
-                    },
-                  }}
-                  style={{ height: window.innerWidth < 768 ? '70%' : '100%' }}
-                />
-              </CCardBody>
-            </CCard>
-          </CCol>
-
-          <CCol xs={12} lg={4} xl={4}>
-            <CRow className="g-3">
-              <CCol xs={12}>
-                <CCard className="h-100 shadow-sm">
-                  <CCardHeader className="bg-light py-2">
-                    <span className="h6">{Language.RevenueShare}</span>
-                  </CCardHeader>
-                  <CCardBody className="p-2" style={{ minHeight: '250px', height: '30vh' }}>
-                    <CChartPie
-                      data={pieChartData}
-                      options={{
-                        ...pieChartOptions,
-                        plugins: {
-                          ...pieChartOptions.plugins,
-                          legend: {
-                            position: window.innerWidth < 768 ? 'bottom' : 'right',
-                            labels: { boxWidth: 12 },
-                          },
-                        },
-                      }}
-                    />
-                  </CCardBody>
-                </CCard>
-              </CCol>
-
-              <CCol xs={12}>
-                <CCard className="shadow-sm">
-                  <CCardHeader className="bg-light py-2">
-                    <span className="h6">{Language.TopPerformers}</span>
-                  </CCardHeader>
-                  <CCardBody className="p-2">
-                    <div className="table-responsive">
-                      <table className="table table-borderless mb-0">
-                        <thead>
-                          <tr>
-                            <th>{Language.Rank}</th>
-                            <th>{Language.Table}</th>
-                            <th className="text-end">{Language.Revenue}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedData.slice(0, 5).map((item, index) => (
-                            <tr key={item.tableNumber}>
-                              <td>
-                                <CBadge color={index < 3 ? 'primary' : 'secondary'}>
-                                  #{index + 1}
-                                </CBadge>
-                              </td>
-                              <td>{Language.Table} {item.tableNumber}</td>
-                              <td className="text-end text-nowrap">
-                                {item.totalRevenue.toFixed(2)} {Language.TND}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CCardBody>
-                </CCard>
-              </CCol>
-            </CRow>
-          </CCol>
-        </CRow>
-      </CCardBody>
-    </CCard>
+        <div className="rt-share">
+          <h4 className="rt-h">{Language.RevenueShare}</h4>
+          <ol className="rt-share-list">
+            {shareRows.map((item, i) => (
+              <li key={item.tableNumber}>
+                <div className="rt-share-top">
+                  <span className="rt-share-name">
+                    <span className={`rt-rank ${i === 0 ? 'is-first' : ''}`}>{i + 1}</span>
+                    {Language.Table || 'Table'} {item.tableNumber}
+                  </span>
+                  <span className="rt-share-val">
+                    {money(item.totalRevenue)}
+                    <small>{pct(item.totalRevenue).toFixed(1)}%</small>
+                  </span>
+                </div>
+                <span className="rt-bar">
+                  <span
+                    className={i === 0 ? 'is-first' : ''}
+                    style={{ width: `${pct(item.totalRevenue)}%` }}
+                  />
+                </span>
+              </li>
+            ))}
+            {othersRevenue > 0 && (
+              <li className="rt-share-others">
+                <div className="rt-share-top">
+                  <span className="rt-share-name">
+                    +{sortedData.length - SHARE_ROWS} {Language.hmTables || 'tables'}
+                  </span>
+                  <span className="rt-share-val">
+                    {money(othersRevenue)}
+                    <small>{pct(othersRevenue).toFixed(1)}%</small>
+                  </span>
+                </div>
+              </li>
+            )}
+          </ol>
+        </div>
+      </div>
+    </>,
   )
 }
 

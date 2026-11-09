@@ -4,8 +4,8 @@
 
 .rt-header {
   padding: 18px 20px 14px 20px;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .rt-header-inner {
@@ -23,17 +23,17 @@
 .rt-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .rt-subtitle {
   font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .rt-subtitle strong {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .rt-header-right {
@@ -46,9 +46,9 @@
 .rt-list {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
   overflow: hidden;
   margin: 18px 20px 20px 20px;
 }
@@ -59,7 +59,7 @@
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  border-bottom: 1px solid var(--oc-border);
   transition: background-color 0.12s ease;
 }
 
@@ -80,7 +80,7 @@
   border-bottom: none;
 }
 .rt-row:hover {
-  background: #fafbfc;
+  background: var(--oc-surface-sunken);
 }
 
 .rt-icon-badge {
@@ -93,7 +93,7 @@
   font-size: 0.95rem;
   font-weight: 700;
   color: #4a5568;
-  background: #f1f3f5;
+  background: var(--oc-surface-sunken);
   flex-shrink: 0;
   overflow: hidden;
   text-align: center;
@@ -109,7 +109,7 @@
 .rt-name {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -126,10 +126,10 @@
   margin: 18px 20px 20px 20px;
   padding: 48px 24px;
   text-align: center;
-  color: var(--cui-secondary-color, #6c757d);
-  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  color: var(--oc-ink-soft);
+  border: 1px dashed var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .rt-empty svg {
@@ -138,7 +138,7 @@
 }
 .rt-empty-title {
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 4px;
 }
 .rt-empty-body {
@@ -151,7 +151,7 @@
 /* Modal */
 .rt-modal .modal-content {
   border-radius: 14px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   overflow: hidden;
 }
 
@@ -161,8 +161,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-bottom: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .rt-modal-title {
@@ -171,7 +171,7 @@
   gap: 8px;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0;
 }
 
@@ -180,18 +180,18 @@
   background: transparent;
   font-size: 1.35rem;
   line-height: 1;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   padding: 0 4px;
   cursor: pointer;
 }
 
 .rt-modal-close:hover {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .rt-modal-body {
   padding: 16px 20px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .rt-modal-footer {
@@ -199,8 +199,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 14px 20px;
-  border-top: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-top: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .rt-field {
@@ -212,23 +212,23 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   margin-bottom: 6px;
 }
 
 .rt-hint {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-top: 4px;
 }
 
 .rt-hint code {
-  background: #f1f3f5;
+  background: var(--oc-surface-sunken);
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 0.75rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .rt-confirm-body {
@@ -255,12 +255,12 @@
 .rt-confirm-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 6px;
 }
 .rt-confirm-text {
   font-size: 0.9rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   line-height: 1.5;
 }
 

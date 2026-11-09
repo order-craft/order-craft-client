@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import {
   CCard,
   CCardBody,
-  CCardHeader,
   CCardImage,
   CCardText,
   CCardTitle,
@@ -317,20 +316,7 @@ const Profile = () => {
       <CCol xs={12} md={8} lg={6}>
         {/* Profile Card */}
         <CCard className="shadow-lg rounded-4 overflow-hidden border-0">
-          {/* Gradient Header */}
-          <div className="bg-gradient-primary py-4 position-relative">
-            <div
-              className="position-absolute w-100 h-100 top-0 start-0 bg-opacity-10"
-              style={{
-                background:
-                  "url('https://www.transparenttextures.com/patterns/diagonal-striped-brick.png')",
-              }}
-            ></div>
-            <CCardHeader className="bg-transparent border-0 text-center">
-              <CIcon icon={cilUser} size="xl" className="text-white me-2" />
-              <span className="fw-bold fs-4 text-white">My Profile</span>
-            </CCardHeader>
-          </div>
+          <div className="oc-profile-cover" />
 
           {/* Profile Content */}
           <CCardBody className="p-4">

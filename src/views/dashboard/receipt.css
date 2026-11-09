@@ -5,8 +5,8 @@
 /* ---- Top strip ---- */
 .rc-header {
   padding: 18px 20px 14px 20px;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .rc-header-inner {
@@ -24,17 +24,17 @@
 .rc-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .rc-subtitle {
   font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .rc-subtitle strong {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .rc-header-right {
@@ -56,15 +56,15 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 10px;
   padding: 6px 12px;
-  background: #fff;
+  background: var(--oc-surface);
   height: 38px;
 }
 
 .rc-date-icon {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   flex-shrink: 0;
 }
 
@@ -73,12 +73,12 @@
   outline: none;
   background: transparent;
   font-size: 0.88rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   cursor: pointer;
 }
 
 .rc-date-sep {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-size: 0.8rem;
   font-weight: 600;
 }
@@ -89,13 +89,13 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   padding: 16px 20px 4px 20px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .rc-stat {
   padding: 14px 16px;
-  background: #fafbfc;
-  border: 1px solid var(--cui-border-color, #eef0f3);
+  background: var(--oc-surface-sunken);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
 }
 
@@ -103,7 +103,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   margin-bottom: 4px;
 }
@@ -111,21 +111,21 @@
 .rc-stat-value {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   line-height: 1.1;
 }
 
 .rc-stat-value.is-primary {
-  color: var(--cui-primary, #b5502b);
+  color: var(--cui-primary);
 }
 .rc-stat-value.is-success {
-  color: #198754;
+  color: var(--oc-status-completed);
 }
 
 .rc-stat-unit {
   font-size: 0.72rem;
   font-weight: 600;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-left: 2px;
 }
 
@@ -133,9 +133,9 @@
 .rc-list {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
   overflow: hidden;
   margin: 12px 20px 20px 20px;
 }
@@ -146,7 +146,7 @@
   align-items: center;
   gap: 14px;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  border-bottom: 1px solid var(--oc-border);
   cursor: pointer;
   transition: background-color 0.12s ease;
 }
@@ -155,11 +155,11 @@
   border-bottom: none;
 }
 .rc-row:hover {
-  background: #fafbfc;
+  background: var(--oc-surface-sunken);
 }
 .rc-row.is-expanded {
-  background: #f8f9fc;
-  box-shadow: inset 3px 0 0 0 var(--cui-primary, #0d6efd);
+  background: var(--oc-surface-sunken);
+  box-shadow: inset 3px 0 0 0 var(--cui-primary);
 }
 
 .rc-avatar {
@@ -182,7 +182,7 @@
 .rc-preview {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -191,7 +191,7 @@
 
 .rc-meta {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -201,7 +201,7 @@
 .rc-price {
   font-weight: 800;
   font-size: 0.98rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -211,14 +211,14 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  background: #d1e7dd;
-  color: #0f5132;
+  background: var(--oc-status-completed-bg);
+  color: var(--oc-status-completed);
   font-size: 0.7rem;
   font-weight: 700;
 }
 
 .rc-chevron {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -229,8 +229,8 @@
 /* ---- Expanded panel ---- */
 .rc-expand {
   padding: 12px 18px 16px 76px;
-  background: #f8f9fc;
-  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  background: var(--oc-surface-sunken);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .rc-expand table {
@@ -243,10 +243,10 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   padding: 6px 4px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .rc-expand th.num,
@@ -258,7 +258,7 @@
 .rc-expand td {
   font-size: 0.88rem;
   padding: 8px 4px;
-  border-bottom: 1px dashed var(--cui-border-color, #e9ecef);
+  border-bottom: 1px dashed var(--oc-border);
 }
 
 .rc-expand tr:last-child td {
@@ -270,10 +270,10 @@
   margin: 12px 20px 20px 20px;
   padding: 48px 24px;
   text-align: center;
-  color: var(--cui-secondary-color, #6c757d);
-  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  color: var(--oc-ink-soft);
+  border: 1px dashed var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .rc-empty svg {
@@ -282,7 +282,7 @@
 }
 .rc-empty-title {
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 4px;
 }
 .rc-empty-body {
@@ -300,7 +300,7 @@
 .rc-skeleton-row {
   height: 68px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #f1f3f5 0%, #fafbfc 50%, #f1f3f5 100%);
+  background: linear-gradient(90deg, var(--oc-surface-sunken) 0%, #fafbf9 50%, var(--oc-surface-sunken) 100%);
   background-size: 200% 100%;
   animation: rcShimmer 1.4s infinite linear;
   margin-bottom: 10px;

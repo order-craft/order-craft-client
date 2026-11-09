@@ -12,18 +12,10 @@ import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import { ACCENTS } from '../../../helpers/palette'
 import './sales.css'
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-]
+const SLICE_COLORS = ACCENTS
 
 const CurrentMonthRevenue = ({ className }) => {
   const t = useSelector((state) => state.language)
@@ -201,8 +193,8 @@ const CurrentMonthRevenue = ({ className }) => {
                     gap: 4,
                     padding: '3px 10px',
                     borderRadius: 999,
-                    background: growthPositive ? '#d1e7dd' : '#f8d7da',
-                    color: growthPositive ? '#0f5132' : '#842029',
+                    background: growthPositive ? 'var(--oc-status-completed-bg)' : 'var(--oc-status-cancelled-bg)',
+                    color: growthPositive ? 'var(--oc-status-completed)' : 'var(--oc-status-cancelled)',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                   }}
@@ -214,7 +206,7 @@ const CurrentMonthRevenue = ({ className }) => {
                 <span
                   style={{
                     fontSize: '0.8rem',
-                    color: '#6c757d',
+                    color: 'var(--oc-ink-soft)',
                   }}
                 >
                   {Language.previousMonth || 'Last month'}: {previousMonthRevenue.toFixed(2)} TND
@@ -236,12 +228,12 @@ const CurrentMonthRevenue = ({ className }) => {
                   datasets: [
                     {
                       label: 'Daily revenue',
-                      backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                      borderColor: 'rgba(13, 110, 253, 0.9)',
+                      backgroundColor: 'rgba(26, 90, 68, 0.1)',
+                      borderColor: '#1a5a44',
                       borderWidth: 2,
                       tension: 0.35,
                       pointBackgroundColor: '#fff',
-                      pointBorderColor: '#0d6efd',
+                      pointBorderColor: '#1a5a44',
                       pointBorderWidth: 2,
                       pointRadius: 2,
                       pointHoverRadius: 5,

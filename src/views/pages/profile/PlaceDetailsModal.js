@@ -39,14 +39,14 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
       backdrop="static"
       className="modal-styled"
     >
-      <CModalHeader className="bg-gradient-info text-white">
+      <CModalHeader className="oc-modal-header">
         <CIcon icon={cilBuilding} className="me-2" />
         {data?.placeName ? `Edit ${data.placeName}` : 'Add New Place'}
       </CModalHeader>
       <CModalBody className="p-4">
         <CCard className="shadow-sm mb-4">
           <CCardBody>
-            <h5 className="mb-4 text-info">
+            <h5 className="mb-4 text-primary">
               <CIcon icon={cilBuilding} className="me-2" />
               Basic Information
             </h5>
@@ -90,7 +90,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
         </CCard>
         <CCard className="shadow-sm mb-4">
           <CCardBody>
-            <h5 className="mb-4 text-info">Brand color</h5>
+            <h5 className="mb-4 text-primary">Brand color</h5>
             <CRow className="align-items-center">
               <CCol md={4}>
                 <CFormInput
@@ -121,7 +121,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
         </CCard>
         <CCard className="shadow-sm mb-4">
           <CCardBody>
-            <h5 className="mb-4 text-info">
+            <h5 className="mb-4 text-primary">
               <CIcon icon={cilImage} className="me-2" />
               Media
             </h5>
@@ -173,7 +173,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
 
         <CCard className="shadow-sm">
           <CCardBody>
-            <h5 className="mb-4 text-info">
+            <h5 className="mb-4 text-primary">
               <CIcon icon={cilLocationPin} className="me-2" />
               Location Details
             </h5>
@@ -214,7 +214,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
         </CCard>
         <CCard className="shadow-sm mt-4">
           <CCardBody>
-            <h5 className="mb-3 text-info">Order Workflow</h5>
+            <h5 className="mb-3 text-primary">Order Workflow</h5>
             <div className="d-flex justify-content-between align-items-center">
               <div className="pe-3">
                 <div className="fw-bold">Enable order status tracking</div>
@@ -325,7 +325,7 @@ const PlaceDetailsModal = ({ visible, onClose, data, onChange, onFileChange, onS
 
         <CCard className="shadow-sm mt-4">
           <CCardBody>
-            <h5 className="mb-3 text-info">Staff Participation</h5>
+            <h5 className="mb-3 text-primary">Staff Participation</h5>
             <div className="d-flex justify-content-between align-items-center">
               <div className="pe-3">
                 <div className="fw-bold">Notify me like staff</div>

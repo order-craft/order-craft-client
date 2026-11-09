@@ -5,8 +5,8 @@
 /* ---- Top strip ---- */
 .pd-header {
   padding: 18px 20px 14px 20px;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .pd-header-inner {
@@ -23,7 +23,7 @@
 
 .pd-breadcrumb {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-bottom: 4px;
   display: flex;
   align-items: center;
@@ -32,24 +32,24 @@
 }
 
 .pd-breadcrumb span {
-  color: #1a1a1a;
+  color: var(--oc-ink);
   font-weight: 600;
 }
 
 .pd-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .pd-subtitle {
   font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .pd-subtitle strong {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .pd-header-right {
@@ -63,10 +63,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 10px;
   padding: 7px 12px;
-  background: #fff;
+  background: var(--oc-surface);
   min-width: 220px;
 }
 
@@ -79,7 +79,7 @@
 }
 
 .pd-search-icon {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   flex-shrink: 0;
 }
 
@@ -106,10 +106,10 @@
 .pd-card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--oc-surface);
   transition:
     box-shadow 0.15s ease,
     transform 0.15s ease;
@@ -157,7 +157,7 @@
   right: 8px;
   padding: 3px 8px;
   border-radius: 999px;
-  background: #dc3545;
+  background: var(--oc-status-cancelled);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 800;
@@ -186,7 +186,7 @@
 .pd-name {
   font-weight: 700;
   font-size: 0.98rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -196,7 +196,7 @@
 
 .pd-desc {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -214,7 +214,7 @@
 .pd-price-final {
   font-size: 0.98rem;
   font-weight: 800;
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .pd-price-original {
@@ -229,7 +229,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 10px 14px 12px 14px;
-  border-top: 1px solid var(--cui-border-color, #eceef1);
+  border-top: 1px solid var(--oc-border);
 }
 
 .pd-actions-left {
@@ -240,7 +240,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .pd-actions-right {
@@ -253,10 +253,10 @@
   grid-column: 1 / -1;
   padding: 48px 24px;
   text-align: center;
-  color: var(--cui-secondary-color, #6c757d);
-  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  color: var(--oc-ink-soft);
+  border: 1px dashed var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .pd-empty svg {
@@ -265,7 +265,7 @@
 }
 .pd-empty-title {
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 4px;
 }
 .pd-empty-body {
@@ -278,7 +278,7 @@
 /* ---- Modal ---- */
 .pd-modal .modal-content {
   border-radius: 14px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   overflow: hidden;
   max-height: 92vh;
   display: flex;
@@ -291,8 +291,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-bottom: 1px solid var(--oc-border);
+  background: var(--oc-surface);
   flex-shrink: 0;
 }
 
@@ -302,7 +302,7 @@
   gap: 8px;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0;
 }
 
@@ -311,18 +311,18 @@
   background: transparent;
   font-size: 1.35rem;
   line-height: 1;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   padding: 0 4px;
   cursor: pointer;
 }
 
 .pd-modal-close:hover {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .pd-modal-body {
   padding: 16px 20px;
-  background: #fff;
+  background: var(--oc-surface);
   overflow-y: auto;
   flex: 1;
 }
@@ -332,8 +332,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 14px 20px;
-  border-top: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-top: 1px solid var(--oc-border);
+  background: var(--oc-surface);
   flex-shrink: 0;
 }
 
@@ -348,7 +348,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 700;
   margin-bottom: 10px;
 }
@@ -362,7 +362,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -381,12 +381,12 @@
 
 /* Image uploader */
 .pd-upload {
-  border: 2px dashed #d8dbe0;
+  border: 2px dashed var(--oc-border);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
   cursor: pointer;
-  background: #fafbfc;
+  background: var(--oc-surface-sunken);
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease;
@@ -394,8 +394,8 @@
 }
 
 .pd-upload:hover {
-  border-color: var(--cui-primary, #b5502b);
-  background: #f8f9fc;
+  border-color: var(--cui-primary);
+  background: var(--oc-surface-sunken);
 }
 
 .pd-upload-preview {
@@ -409,7 +409,7 @@
 
 .pd-upload-hint {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-top: 10px;
 }
 
@@ -438,12 +438,12 @@
 .pd-confirm-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 6px;
 }
 .pd-confirm-text {
   font-size: 0.9rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   line-height: 1.5;
 }
 

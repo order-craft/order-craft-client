@@ -1,14 +1,5 @@
 import React, { useState, useCallback } from 'react'
-import {
-  CContainer,
-  CCard,
-  CCardBody,
-  CToaster,
-  CToast,
-  CToastHeader,
-  CToastBody,
-  CSpinner,
-} from '@coreui/react'
+import { CToaster, CToast, CToastHeader, CToastBody, CSpinner } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilHome, cilList, cilRestaurant, cilInfo } from '@coreui/icons'
 import RecipesTab from './RecipesTab'
@@ -24,7 +15,7 @@ import './StockInventory.css'
 const StockInventory = () => {
   const t = useSelector((state) => state.language)
   const Language = translations[t]
-  const [activeTab, setActiveTab] = useState('raw-materials')
+  const [activeTab, setActiveTab] = useState('inventory')
   const [loading, setLoading] = useState(false)
   const [toasts, setToasts] = useState([])
   const token = GetToken()
@@ -79,13 +70,13 @@ const StockInventory = () => {
   }
 
   const tabs = [
+    { key: 'inventory', title: Language.ivStockLevels || 'Stock levels', icon: cilList },
     { key: 'raw-materials', title: Language.rawMaterials || 'Raw Materials', icon: cilHome },
-    { key: 'inventory', title: Language.inventory || 'Inventory', icon: cilList },
     { key: 'recipes', title: Language.recipes || 'Recipes', icon: cilRestaurant },
   ]
 
   return (
-    <CContainer fluid className="py-4">
+    <>
       <CToaster position="top-end">
         {toasts.map(({ id, msg, color }) => (
           <CToast
@@ -105,71 +96,61 @@ const StockInventory = () => {
         ))}
       </CToaster>
 
-      <CCard className="mb-4">
-        <div className="si-header">
-          <div className="si-header-top">
-            <div>
-              <h5 className="si-title">
-                <CIcon icon={cilHome} />
-                {Language.stockInventory || 'Stock Inventory'}
-              </h5>
-              <div className="si-subtitle">
-                Manage your raw materials, track stock, and build recipes.
-              </div>
-            </div>
-          </div>
-
-          <div className="si-tabs" role="tablist">
+      <div className="oc-stack">
+        <div className="oc-toolbar">
+          <div
+            className="oc-seg si-switch"
+            role="tablist"
+            aria-label={Language.stockInventory || 'Stock'}
+          >
             {tabs.map(({ key, title, icon }) => (
               <button
                 key={key}
                 type="button"
                 role="tab"
-                className={`si-tab ${activeTab === key ? 'is-active' : ''}`}
+                aria-selected={activeTab === key}
+                className={activeTab === key ? 'is-active' : ''}
                 onClick={() => setActiveTab(key)}
               >
-                <CIcon icon={icon} />
+                <CIcon icon={icon} width={15} />
                 {title}
-                {counts[key] != null && <span className="si-tab-count">{counts[key]}</span>}
+                {counts[key] != null && <span className="oc-seg-count">{counts[key]}</span>}
               </button>
             ))}
           </div>
+          {loading && <CSpinner color="primary" size="sm" />}
         </div>
 
-        <CCardBody>
-          {loading && (
-            <div className="text-center p-4">
-              <CSpinner color="primary" size="sm" />
-            </div>
-          )}
-
-          {activeTab === 'raw-materials' && (
+        {activeTab === 'raw-materials' && (
+          <div className="oc-panel si-tab-panel">
             <RawMaterialsTab
               activeTab={activeTab}
               apiCall={apiCall}
               showAlert={showAlert}
               reportCount={reportRawCount}
             />
-          )}
-          {activeTab === 'inventory' && (
-            <InventoryTab
-              activeTab={activeTab}
-              apiCall={apiCall}
-              showAlert={showAlert}
-              reportCount={reportInventoryCount}
-            />
-          )}
-          {activeTab === 'recipes' && (
+          </div>
+        )}
+        {activeTab === 'inventory' && (
+          <InventoryTab
+            activeTab={activeTab}
+            apiCall={apiCall}
+            showAlert={showAlert}
+            reportCount={reportInventoryCount}
+          />
+        )}
+        {activeTab === 'recipes' && (
+          <div className="oc-panel si-tab-panel">
             <RecipesTab
               activeTab={activeTab}
               apiCall={apiCall}
               showAlert={showAlert}
               reportCount={reportRecipeCount}
             />
-          )}
-        </CCardBody>
-      </CCard>
-    </CContainer>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 

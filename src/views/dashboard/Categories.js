@@ -1,361 +1,528 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { io } from 'socket.io-client'
 import CIcon from '@coreui/icons-react'
 import {
-  cilChartLine,
-  cilRestaurant,
-  cilListRich,
-  cilPeople,
-  cilDescription,
-  cilLayers,
-  cilCash,
-  cilWarning,
   cilArrowRight,
   cilCheckCircle,
-  cilClock,
-  cilFire,
+  cilBell,
+  cilLayers,
+  cilInbox,
+  cilWarning,
 } from '@coreui/icons'
-import { formatDistanceToNow } from 'date-fns'
-import './CSS/Dashboard.css'
+import { differenceInMinutes, format, formatDistanceToNow } from 'date-fns'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
 import { getDateLocale } from '../../helpers/dateLocale'
+import './CSS/Dashboard.css'
 
-const STATUS_STYLE = {
-  pending: { icon: cilClock, color: '#d79a2c', bg: 'rgba(215,154,44,.14)' },
-  preparing: { icon: cilFire, color: '#2f8fae', bg: 'rgba(47,143,174,.14)' },
-  completed: { icon: cilCheckCircle, color: '#2f8f5b', bg: 'rgba(47,143,91,.14)' },
-  cancelled: { icon: cilWarning, color: '#c6432f', bg: 'rgba(198,67,47,.14)' },
+const isToday = (iso) => {
+  if (!iso) return false
+  const d = new Date(iso)
+  const n = new Date()
+  return (
+    d.getFullYear() === n.getFullYear() &&
+    d.getMonth() === n.getMonth() &&
+    d.getDate() === n.getDate()
+  )
 }
+
+const orderTime = (o) => o.timestamp || o.createdAt
 
 const orderTotal = (order) =>
   (order.products || []).reduce((sum, item) => {
-    const product = item.product || {}
-    const price = typeof product.price === 'number' ? product.price : 0
-    const discount = typeof product.discountPercentage === 'number' ? product.discountPercentage : 0
-    const unitPrice = discount > 0 ? price * (1 - discount / 100) : price
-    return sum + unitPrice * (item.quantity || 0)
+    const p = item.product || {}
+    const price = typeof p.price === 'number' ? p.price : 0
+    const disc = typeof p.discountPercentage === 'number' ? p.discountPercentage : 0
+    return sum + (disc > 0 ? price * (1 - disc / 100) : price) * (item.quantity || 0)
   }, 0)
+
+const itemsSummary = (order) =>
+  (order.products || [])
+    .map((it) => `${it.quantity || 1}× ${(it.product?.name || it.name || '—').trim()}`)
+    .join(', ')
+
+const waitLabel = (mins) =>
+  mins < 60 ? `${mins} min` : `${Math.floor(mins / 60)} h ${String(mins % 60).padStart(2, '0')}`
+
+const money = (n) => `${n.toFixed(2)} TND`
 
 const Dashboard = () => {
   const navigate = useNavigate()
   const token = GetToken()
   const t = useSelector((state) => state.language)
-  const Language = translations[t]
+  const L = translations[t] || {}
   const dateLocale = getDateLocale(t)
 
-  const [revenue, setRevenue] = useState(null)
   const [orders, setOrders] = useState(null)
+  const [tables, setTables] = useState(null)
+  const [calls, setCalls] = useState(null)
+  const [revenue, setRevenue] = useState(null)
   const [lowStock, setLowStock] = useState(null)
   const [bestSellers, setBestSellers] = useState(null)
-  const [loadError, setLoadError] = useState(false)
+  const [now, setNow] = useState(() => new Date())
+  const refreshTimer = useRef(null)
 
-  useEffect(() => {
-    let cancelled = false
-
-    const load = async () => {
-      const auth = { headers: { Authorization: `Bearer ${token}` } }
-      const [revenueRes, ordersRes, inventoryRes, bestSellersRes] = await Promise.allSettled([
-        axios.get(`${BaseUrl}/dashboard/daily-revenue`, auth),
-        axios.get(`${BaseUrl}/order/orders/ordersfifo`, auth),
-        axios.get(`${BaseUrl}/inventory/low-stock`, auth),
-        axios.get(`${BaseUrl}/dashboard/most-sold-products`, auth),
-      ])
-
-      if (cancelled) return
-
-      setRevenue(revenueRes.status === 'fulfilled' ? revenueRes.value.data.totalRevenue ?? 0 : null)
-      setOrders(ordersRes.status === 'fulfilled' ? ordersRes.value.data.orders || [] : null)
-      setLowStock(
-        inventoryRes.status === 'fulfilled' ? inventoryRes.value.data.lowStockItems || [] : null,
-      )
-      setBestSellers(bestSellersRes.status === 'fulfilled' ? bestSellersRes.value.data || [] : null)
-
-      if (
-        [revenueRes, ordersRes, inventoryRes, bestSellersRes].every((r) => r.status === 'rejected')
-      ) {
-        setLoadError(true)
-      }
-    }
-
-    load()
-    return () => {
-      cancelled = true
-    }
+  const load = useCallback(async () => {
+    const auth = { headers: { Authorization: `Bearer ${token}` } }
+    const [o, tb, sc, rv, ls, bs] = await Promise.allSettled([
+      axios.get(`${BaseUrl}/order/orders/ordersfifo`, auth),
+      axios.get(`${BaseUrl}/tables`, auth),
+      axios.get(`${BaseUrl}/sup/support-requests?answered=false&limit=20`, auth),
+      axios.get(`${BaseUrl}/dashboard/daily-revenue`, auth),
+      axios.get(`${BaseUrl}/inventory/low-stock`, auth),
+      axios.get(`${BaseUrl}/dashboard/most-sold-products`, auth),
+    ])
+    const val = (r, pick, fallback) => (r.status === 'fulfilled' ? pick(r.value.data) : fallback)
+    setOrders(val(o, (d) => d.orders || [], []))
+    setTables(val(tb, (d) => d || [], []))
+    setCalls(val(sc, (d) => d.data || [], []))
+    setRevenue(val(rv, (d) => d.totalRevenue ?? 0, null))
+    setLowStock(val(ls, (d) => d.lowStockItems || [], []))
+    setBestSellers(val(bs, (d) => d || [], []))
   }, [token])
 
-  const pendingOrders = useMemo(
-    () => (orders || []).filter((o) => o.status === 'pending'),
-    [orders],
+  // Live: refetch on any order/table event, plus a slow safety refresh.
+  useEffect(() => {
+    load()
+    const scheduleRefresh = () => {
+      clearTimeout(refreshTimer.current)
+      refreshTimer.current = setTimeout(load, 600)
+    }
+    const socket = io(BaseUrl, { auth: { token } })
+    ;['newOrder', 'orderUpdated', 'deleteOrder', 'tableUpdated'].forEach((ev) =>
+      socket.on(ev, scheduleRefresh),
+    )
+    const poll = setInterval(load, 60000)
+    const tick = setInterval(() => setNow(new Date()), 30000)
+    return () => {
+      socket.disconnect()
+      clearInterval(poll)
+      clearInterval(tick)
+      clearTimeout(refreshTimer.current)
+    }
+  }, [load, token])
+
+  const today = useMemo(() => (orders || []).filter((o) => isToday(orderTime(o))), [orders])
+  const waiting = today.filter((o) => o.status === 'pending')
+  const cooking = today.filter((o) => o.status === 'preparing')
+  const done = today.filter((o) => o.status === 'completed')
+  const queue = useMemo(
+    () =>
+      [...waiting, ...cooking].sort(
+        (a, b) => new Date(orderTime(a)).getTime() - new Date(orderTime(b)).getTime(),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [today],
+  )
+  const staleOpen = (orders || []).filter(
+    (o) => (o.status === 'pending' || o.status === 'preparing') && !isToday(orderTime(o)),
+  ).length
+
+  const openBills = useMemo(
+    () =>
+      (tables || [])
+        .filter((tb) => tb.unpaidOrders)
+        .map((tb) => ({
+          ...tb,
+          amount: (tb.orders || []).reduce((s, o) => s + (Number(o.totalPrice) || 0), 0),
+        }))
+        .sort((a, b) => b.amount - a.amount),
+    [tables],
   )
 
-  const recentOrders = useMemo(() => {
-    if (!orders) return []
-    return [...orders]
-      .sort(
-        (a, b) =>
-          new Date(b.timestamp || b.createdAt).getTime() -
-          new Date(a.timestamp || a.createdAt).getTime(),
-      )
-      .slice(0, 5)
-  }, [orders])
-
-  const greetingHour = new Date().getHours()
+  const hour = now.getHours()
   const greeting =
-    greetingHour < 12
-      ? Language.goodMorning || 'Good morning'
-      : greetingHour < 18
-        ? Language.goodAfternoon || 'Good afternoon'
-        : Language.goodEvening || 'Good evening'
+    hour < 12
+      ? L.goodMorning || 'Good morning'
+      : hour < 18
+        ? L.goodAfternoon || 'Good afternoon'
+        : L.goodEvening || 'Good evening'
 
-  const categories = [
+  const loading = orders === null
+
+  const pulse = [
     {
-      name: Language.salesStatistic,
-      desc: Language.salesHubDesc || 'Revenue, growth and payment breakdowns',
-      accent: '#b5502b',
-      icon: cilChartLine,
-      path: '/Sales',
+      key: 'waiting',
+      tone: 'pending',
+      label: L.hmWaiting || 'Waiting',
+      value: waiting.length,
+      hint: L.hmWaitingHint || 'placed, not started',
+      to: '/orders/ordersList',
     },
     {
-      name: Language.productPerformance,
-      desc: Language.productHubDesc || 'Best sellers and margin by product',
-      accent: '#7a5aa8',
-      icon: cilRestaurant,
-      path: '/product-performance',
+      key: 'cooking',
+      tone: 'preparing',
+      label: L.hmPreparing || 'In preparation',
+      value: cooking.length,
+      hint: L.hmPreparingHint || 'being prepared now',
+      to: '/orders/ordersList',
     },
     {
-      name: Language.orderManagement,
-      desc: Language.orderHubDesc || 'Live status, value and table turnover',
-      accent: '#c15a76',
-      icon: cilListRich,
-      path: '/order-management',
+      key: 'done',
+      tone: 'completed',
+      label: L.hmCompleted || 'Completed today',
+      value: done.length,
+      hint: `${today.length} ${L.hmOrdersToday || 'orders today'}`,
+      to: '/orders/ordersList',
     },
     {
-      name: Language.EmployeePerformance,
-      desc: Language.employeeHubDesc || 'Shift reports and staff ratings',
-      accent: '#2f8fae',
-      icon: cilPeople,
-      path: '/employee-performance',
+      key: 'bills',
+      tone: 'neutral',
+      label: L.hmOpenBills || 'Open bills',
+      value: tables === null ? null : openBills.length,
+      hint: `${L.hmOf || 'of'} ${(tables || []).length} ${L.hmTables || 'tables'}`,
+      to: '/tables/tablesList',
     },
     {
-      name: Language.bills,
-      desc: Language.billsHubDesc || 'Closed tickets and transaction history',
-      accent: '#3d7a5c',
-      icon: cilDescription,
-      path: '/bill',
-    },
-    {
-      name: Language.stockInventory,
-      desc: Language.stockHubDesc || 'Raw materials, recipes and stock levels',
-      accent: '#8a7a2e',
-      icon: cilLayers,
-      path: '/stock-inventory',
+      key: 'revenue',
+      tone: 'brand',
+      label: L.TodaysRevenue || "Today's revenue",
+      value: revenue === null ? '—' : revenue.toFixed(2),
+      unit: 'TND',
+      hint: L.hmPaidOnly || 'paid orders',
+      to: '/Sales',
     },
   ]
 
-  const needsAttention = (lowStock && lowStock.length > 0) || pendingOrders.length > 0
+  const waitTone = (mins) => (mins >= 30 ? 'is-late' : mins >= 15 ? 'is-slow' : '')
+
+  const maxSold = Math.max(1, ...(bestSellers || []).slice(0, 5).map((p) => p.totalSold || 0))
 
   return (
-    <div className="dh-page">
-      <div className="dh-head">
-        <h4 className="dh-greeting oc-display">{greeting}</h4>
-        <p className="dh-subtitle">
-          {Language.dashboardSubtitle || "Here's how your business is doing today."}
-        </p>
-      </div>
-
-      {/* ---- Needs attention now ---- */}
-      <div className="dh-section-label">{Language.needsAttention || 'Needs attention now'}</div>
-      {orders === null && lowStock === null && !loadError ? (
-        <div className="dh-stats">
-          <div className="dh-stat-skeleton-card" />
-          <div className="dh-stat-skeleton-card" />
-        </div>
-      ) : !needsAttention ? (
-        <div className="dh-allclear">
-          <CIcon icon={cilCheckCircle} />
-          {Language.allCaughtUp || 'All caught up — nothing needs your attention right now.'}
-        </div>
-      ) : (
-        <div className="dh-stats">
-          {pendingOrders.length > 0 && (
-            <button
-              type="button"
-              className="oc-stat-card dh-stat-clickable"
-              onClick={() => navigate('/orders/ordersList')}
-            >
-              <span className="oc-stat-icon" style={{ background: 'rgba(215,154,44,.14)' }}>
-                <CIcon icon={cilClock} style={{ color: '#d79a2c' }} />
-              </span>
-              <div>
-                <p className="oc-stat-label">
-                  {Language.pending || 'Pending'} {Language.orders || 'orders'}
-                </p>
-                <p className="oc-stat-value">{pendingOrders.length}</p>
-              </div>
-              <CIcon icon={cilArrowRight} className="dh-stat-arrow" />
-            </button>
-          )}
-          {lowStock && lowStock.length > 0 && (
-            <button
-              type="button"
-              className="oc-stat-card dh-stat-clickable"
-              onClick={() => navigate('/stock-inventory')}
-            >
-              <span className="oc-stat-icon" style={{ background: 'rgba(198,67,47,.14)' }}>
-                <CIcon icon={cilWarning} style={{ color: '#c6432f' }} />
-              </span>
-              <div>
-                <p className="oc-stat-label">{Language.lowStockAlerts || 'Low stock alerts'}</p>
-                <p className="oc-stat-value">{lowStock.length}</p>
-              </div>
-              <CIcon icon={cilArrowRight} className="dh-stat-arrow" />
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ---- Performance today ---- */}
-      <div className="dh-section-label">{Language.performanceToday || 'Performance today'}</div>
-      <div className="dh-perf-grid">
-        <button
-          type="button"
-          className="oc-stat-card dh-stat-clickable dh-revenue-card"
-          onClick={() => navigate('/Sales')}
-        >
-          <span className="oc-stat-icon" style={{ background: 'rgba(181,80,43,.12)' }}>
-            <CIcon icon={cilCash} style={{ color: '#b5502b' }} />
-          </span>
-          <div>
-            <p className="oc-stat-label">{Language.TodaysRevenue || "Today's revenue"}</p>
-            {revenue === null && !loadError ? (
-              <div className="dh-stat-skeleton" />
-            ) : (
-              <p className="oc-stat-value">
-                {revenue === null ? '—' : `${revenue.toFixed(2)} TND`}
-              </p>
+    <div className="hm">
+      {/* ---- Heading ---- */}
+      <header className="hm-head">
+        <div>
+          <h2 className="hm-greet">{greeting}</h2>
+          <p className="hm-sub">
+            {format(now, 'EEEE d MMMM', { locale: dateLocale })}
+            {!loading && (
+              <>
+                {' — '}
+                {queue.length === 0
+                  ? L.hmQuiet || 'the queue is clear.'
+                  : `${queue.length} ${L.hmInQueue || 'orders in the queue.'}`}
+              </>
             )}
-          </div>
-          <CIcon icon={cilArrowRight} className="dh-stat-arrow" />
-        </button>
+          </p>
+        </div>
+        <div className="hm-actions">
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => navigate('/tables/tablesList')}
+          >
+            {L.navTablesBills || 'Tables & bills'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate('/orders/ordersList')}
+          >
+            {L.hmOpenQueue || 'Open order queue'}
+            <CIcon icon={cilArrowRight} className="ms-2" />
+          </button>
+        </div>
+      </header>
 
-        <div className="dh-card">
-          <div className="dh-card-head">
-            <span className="dh-card-title">{Language.recentOrders || 'Recent orders'}</span>
+      {/* ---- Service pulse ---- */}
+      <section className="hm-pulse" aria-label={L.hmPulse || 'Service right now'}>
+        {pulse.map((p) => (
+          <button
+            key={p.key}
+            type="button"
+            className={`hm-pulse-cell tone-${p.tone}`}
+            onClick={() => navigate(p.to)}
+          >
+            <span className="hm-pulse-label">{p.label}</span>
+            {loading || p.value === null ? (
+              <span className="oc-skel hm-pulse-skel" />
+            ) : (
+              <span className="hm-pulse-value">
+                {p.value}
+                {p.unit && <small>{p.unit}</small>}
+              </span>
+            )}
+            <span className="hm-pulse-hint">{p.hint}</span>
+          </button>
+        ))}
+      </section>
+
+      {/* ---- Queue + side rail ---- */}
+      <div className="hm-main">
+        <section className="oc-panel hm-queue">
+          <div className="oc-panel-head">
+            <h3 className="oc-panel-title">
+              {L.hmQueue || 'Order queue'}
+              {!loading && <span className="oc-panel-count">{queue.length}</span>}
+            </h3>
             <button
               type="button"
-              className="dh-card-link"
+              className="oc-link"
               onClick={() => navigate('/orders/ordersList')}
             >
-              {Language.viewAll || 'View all'}
+              {L.hmManageOrders || 'Manage orders'}
             </button>
           </div>
-          {orders === null && !loadError ? (
-            <div className="dh-list-skeleton" />
-          ) : recentOrders.length === 0 ? (
-            <div className="dh-card-empty">
-              {Language.noOrdersYetHint || 'No orders yet today.'}
+
+          {loading ? (
+            <div className="hm-rows">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="hm-row">
+                  <span className="oc-skel" style={{ height: 14, width: '60%' }} />
+                </div>
+              ))}
+            </div>
+          ) : queue.length === 0 ? (
+            <div className="oc-empty">
+              <span className="oc-empty-icon">
+                <CIcon icon={cilCheckCircle} />
+              </span>
+              <span className="oc-empty-title">{L.hmQueueEmpty || 'Nothing waiting'}</span>
+              <span className="oc-empty-body">
+                {L.hmQueueEmptyHint ||
+                  'New orders appear here the moment guests place them, oldest first.'}
+              </span>
             </div>
           ) : (
-            <ul className="dh-order-list">
-              {recentOrders.map((order) => {
-                const style = STATUS_STYLE[order.status] || STATUS_STYLE.pending
+            <ol className="hm-rows">
+              {queue.slice(0, 8).map((o) => {
+                const mins = Math.max(0, differenceInMinutes(now, new Date(orderTime(o))))
                 return (
-                  <li key={order._id} className="dh-order-row">
-                    <span
-                      className="dh-order-pill"
-                      style={{ background: style.bg, color: style.color }}
+                  <li key={o._id}>
+                    <button
+                      type="button"
+                      className="hm-row"
+                      onClick={() => navigate('/orders/ordersList')}
                     >
-                      <CIcon icon={style.icon} />
-                    </span>
-                    <span className="dh-order-main">
-                      <span className="dh-order-name">
-                        {order.table
-                          ? `${Language.table || 'Table'} ${order.table.number}`
-                          : `${Language.togo || 'To-go'}${order.orderNumber ? ` #${order.orderNumber}` : ''}`}
+                      <span className={`oc-status is-${o.status}`}>
+                        {o.status === 'pending'
+                          ? L.hmWaiting || 'Waiting'
+                          : L.hmPreparingShort || 'Preparing'}
                       </span>
-                      <span className="dh-order-time">
-                        {formatDistanceToNow(new Date(order.timestamp || order.createdAt), {
-                          addSuffix: true,
-                          locale: dateLocale,
-                        })}
+                      <span className="hm-row-main">
+                        <span className="hm-row-title">
+                          {o.table
+                            ? `${L.table || 'Table'} ${o.table.number}`
+                            : `${o.orderType === 'delivery' ? L.delivery || 'Delivery' : L.togo || 'To-go'}${o.orderNumber ? ` #${o.orderNumber}` : ''}`}
+                        </span>
+                        <span className="hm-row-items">{itemsSummary(o)}</span>
                       </span>
+                      <span className={`hm-row-wait ${waitTone(mins)}`}>
+                        {mins < 1 ? L.hmJustNow || 'just now' : waitLabel(mins)}
+                      </span>
+                      <span className="hm-row-total">{money(orderTotal(o))}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          )}
+
+          {!loading && (queue.length > 8 || staleOpen > 0) && (
+            <div className="hm-queue-foot">
+              {queue.length > 8 && (
+                <span>
+                  +{queue.length - 8} {L.hmMoreInQueue || 'more in the queue'}
+                </span>
+              )}
+              {staleOpen > 0 && (
+                <span className="hm-stale">
+                  <CIcon icon={cilWarning} width={14} />
+                  {staleOpen} {L.hmStale || 'unfinished orders from earlier days are still open'}
+                </span>
+              )}
+            </div>
+          )}
+        </section>
+
+        <div className="hm-rail">
+          <section className="oc-panel">
+            <div className="oc-panel-head">
+              <h3 className="oc-panel-title">
+                {L.hmOpenBills || 'Open bills'}
+                {tables !== null && <span className="oc-panel-count">{openBills.length}</span>}
+              </h3>
+              <button
+                type="button"
+                className="oc-link"
+                onClick={() => navigate('/tables/tablesList')}
+              >
+                {L.hmAllTables || 'All tables'}
+              </button>
+            </div>
+            {tables === null ? (
+              <div className="hm-list">
+                <span className="oc-skel" style={{ height: 14, width: '50%' }} />
+              </div>
+            ) : openBills.length === 0 ? (
+              <p className="hm-calm">{L.hmBillsClear || 'Every table is settled.'}</p>
+            ) : (
+              <ul className="hm-list">
+                {openBills.slice(0, 6).map((tb) => (
+                  <li key={tb._id}>
+                    <button
+                      type="button"
+                      className="hm-list-row"
+                      onClick={() => navigate(`/tables/${tb._id}`)}
+                    >
+                      <span className="hm-list-name">
+                        {L.table || 'Table'} {tb.number}
+                      </span>
+                      <span className="hm-list-meta">
+                        {(tb.orders || []).length}{' '}
+                        {(tb.orders || []).length === 1
+                          ? L.hmOrder || 'order'
+                          : L.hmOrders || 'orders'}
+                      </span>
+                      <span className="hm-list-amount">
+                        {tb.amount > 0 ? money(tb.amount) : ''}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="oc-panel">
+            <div className="oc-panel-head">
+              <h3 className="oc-panel-title">
+                <CIcon icon={cilBell} width={16} />
+                {L.navServiceCalls || 'Service calls'}
+                {calls !== null && calls.length > 0 && (
+                  <span className="oc-panel-count is-alert">{calls.length}</span>
+                )}
+              </h3>
+              <button type="button" className="oc-link" onClick={() => navigate('/support')}>
+                {L.hmViewAll || 'View all'}
+              </button>
+            </div>
+            {calls === null ? (
+              <div className="hm-list">
+                <span className="oc-skel" style={{ height: 14, width: '50%' }} />
+              </div>
+            ) : calls.length === 0 ? (
+              <p className="hm-calm">{L.hmCallsClear || 'No one is waiting for help.'}</p>
+            ) : (
+              <ul className="hm-list">
+                {calls.slice(0, 5).map((c) => (
+                  <li key={c._id} className="hm-list-row is-static">
+                    <span className="hm-list-name">
+                      {c.requestType?.name || L.hmRequest || 'Request'}
                     </span>
-                    <span className="dh-order-price">{orderTotal(order).toFixed(2)} TND</span>
+                    <span className="hm-list-meta">
+                      {L.table || 'Table'} {c.table?.number ?? '?'}
+                    </span>
+                    <span className="hm-list-amount is-muted">
+                      {c.createdAt
+                        ? formatDistanceToNow(new Date(c.createdAt), {
+                            addSuffix: true,
+                            locale: dateLocale,
+                          })
+                        : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+
+      {/* ---- Kitchen & menu ---- */}
+      <div className="hm-lower">
+        <section className="oc-panel">
+          <div className="oc-panel-head">
+            <h3 className="oc-panel-title">
+              <CIcon icon={cilLayers} width={16} />
+              {L.hmRunningLow || 'Running low'}
+            </h3>
+            <button type="button" className="oc-link" onClick={() => navigate('/stock-inventory')}>
+              {L.navInventory || 'Inventory'}
+            </button>
+          </div>
+          {lowStock === null ? (
+            <div className="hm-list">
+              <span className="oc-skel" style={{ height: 14, width: '50%' }} />
+            </div>
+          ) : lowStock.length === 0 ? (
+            <p className="hm-calm">
+              {L.hmStockFine || 'Every raw material is above its reorder level.'}
+            </p>
+          ) : (
+            <ul className="hm-list">
+              {lowStock.slice(0, 6).map((it, i) => {
+                const rm = it.rawMaterial || {}
+                const level = Number(rm.reorderLevel) || 0
+                const qty = Number(it.currentQuantity) || 0
+                const pct = level > 0 ? Math.min(100, Math.round((qty / level) * 100)) : 0
+                return (
+                  <li key={it._id || i} className="hm-stock">
+                    <div className="hm-stock-top">
+                      <span className="hm-list-name">{rm.name || '—'}</span>
+                      <span className="hm-list-meta">
+                        {qty} / {level} {rm.unit || ''}
+                      </span>
+                    </div>
+                    <span className="hm-bar">
+                      <span className="hm-bar-fill is-warn" style={{ width: `${pct}%` }} />
+                    </span>
                   </li>
                 )
               })}
             </ul>
           )}
-        </div>
-      </div>
+        </section>
 
-      {/* ---- Best sellers ---- */}
-      <div className="dh-section-label">{Language.bestSellers || 'Best sellers'}</div>
-      <div className="dh-card dh-card-wide">
-        <div className="dh-card-head">
-          <span className="dh-card-title">
-            {Language.bestSellersAllTime || 'Top products, all-time by units sold'}
-          </span>
-          <button
-            type="button"
-            className="dh-card-link"
-            onClick={() => navigate('/product-performance')}
-          >
-            {Language.viewAll || 'View all'}
-          </button>
-        </div>
-        {bestSellers === null && !loadError ? (
-          <div className="dh-list-skeleton" />
-        ) : bestSellers.length === 0 ? (
-          <div className="dh-card-empty">{Language.noProductsData || 'No products sold yet.'}</div>
-        ) : (
-          <ol className="dh-seller-list">
-            {bestSellers.slice(0, 5).map((p, i) => (
-              <li key={p._id} className="dh-seller-row">
-                <span className="dh-seller-rank">{i + 1}</span>
-                <span className="dh-seller-name">{p.productName}</span>
-                <span className="dh-seller-count">
-                  {p.totalSold} {Language.sold || 'sold'}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-
-      {/* ---- Navigation hub ---- */}
-      <div className="dh-section-label">{Language.explore || 'Explore'}</div>
-      <div className="dashboard-grid">
-        {categories.map((category) => (
-          <div
-            key={category.path}
-            className="oc-hub-card"
-            onClick={() => navigate(category.path)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') navigate(category.path)
-            }}
-          >
-            <div className="dashboard-item-content">
-              <span
-                className="oc-hub-card-icon"
-                style={{ background: `${category.accent}1f`, color: category.accent }}
-              >
-                <CIcon icon={category.icon} size="lg" />
-              </span>
-              <CIcon icon={cilArrowRight} className="dh-hub-arrow" />
-            </div>
-            <div>
-              <p className="oc-hub-card-title">{category.name}</p>
-              <p className="oc-hub-card-desc">{category.desc}</p>
-            </div>
+        <section className="oc-panel">
+          <div className="oc-panel-head">
+            <h3 className="oc-panel-title">
+              <CIcon icon={cilInbox} width={16} />
+              {L.bestSellers || 'Best sellers'}
+            </h3>
+            <button
+              type="button"
+              className="oc-link"
+              onClick={() => navigate('/product-performance')}
+            >
+              {L.navProductInsights || 'Product insights'}
+            </button>
           </div>
-        ))}
+          {bestSellers === null ? (
+            <div className="hm-list">
+              <span className="oc-skel" style={{ height: 14, width: '50%' }} />
+            </div>
+          ) : bestSellers.length === 0 ? (
+            <p className="hm-calm">{L.noProductsData || 'No products sold yet.'}</p>
+          ) : (
+            <ol className="hm-list">
+              {bestSellers.slice(0, 5).map((p, i) => (
+                <li key={p._id || i} className="hm-stock">
+                  <div className="hm-stock-top">
+                    <span className="hm-list-name">
+                      <span className="hm-rank">{i + 1}</span>
+                      {p.productName}
+                    </span>
+                    <span className="hm-list-meta">
+                      {p.totalSold} {L.sold || 'sold'}
+                    </span>
+                  </div>
+                  <span className="hm-bar">
+                    <span
+                      className="hm-bar-fill"
+                      style={{ width: `${Math.round(((p.totalSold || 0) / maxSold) * 100)}%` }}
+                    />
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
       </div>
     </div>
   )

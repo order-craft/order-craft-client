@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   CButton,
-  CCard,
-  CCardBody,
   CModal,
   CFormInput,
   CFormSwitch,
@@ -13,30 +11,27 @@ import {
   CToastBody,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import {
-  cilSearch,
-  cilPlus,
-  cilPencil,
-  cilTrash,
-  cilPeople,
-  cilWarning,
-  cilGrid,
-} from '@coreui/icons'
+import { cilSearch, cilPlus, cilPencil, cilTrash, cilPeople, cilCheckAlt } from '@coreui/icons'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import AssignTablesModal from './AssignTablesModal'
+import { ACCENTS } from '../../helpers/palette'
 import './users.css'
 
-const avatarPalette = ['#0d6efd', '#6610f2', '#d63384', '#fd7e14', '#198754', '#20c997', '#0dcaf0']
+const avatarPalette = ACCENTS
 const colorFor = (id) => {
   let h = 0
   const s = String(id || '')
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
   return avatarPalette[Math.abs(h) % avatarPalette.length]
 }
+
+// Some existing translations are lowercase (FR "actif"); labels that stand
+// alone should still start with a capital.
+const cap = (str) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : str)
 
 const Dashboard = () => {
   const t = useSelector((state) => state.language)
@@ -48,6 +43,8 @@ const Dashboard = () => {
   const [error, setError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [busyIds, setBusyIds] = useState(new Set())
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [showUncovered, setShowUncovered] = useState(false)
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [editUser, setEditUser] = useState(null)
@@ -137,6 +134,11 @@ const Dashboard = () => {
   }, [clients, searchQuery])
 
   const totalActive = clients.filter((c) => c.verified).length
+  const prepCount = clients.filter((c) => c.verified && staffOverview[c._id]?.canPrepare).length
+  const deliverCount = clients.filter((c) => c.verified && staffOverview[c._id]?.canDeliver).length
+  const visibleClients = filteredClients.filter((c) =>
+    statusFilter === 'active' ? c.verified : statusFilter === 'inactive' ? !c.verified : true,
+  )
 
   /* ---------- toggle active ---------- */
   const toggleActive = async (client) => {
@@ -374,253 +376,305 @@ const Dashboard = () => {
         ))}
       </CToaster>
 
-      {attentionTables.length > 0 && (
-        <div className="staff-attention">
-          <CIcon icon={cilWarning} size="lg" />
-          <div>
-            <div className="staff-attention-title">
-              {(
-                Language.unassignedTablesTitle || '{count} table(s) need a table-service assignee'
-              ).replace('{count}', attentionTables.length)}
-            </div>
-            <div>
-              {Language.unassignedTablesHint ||
-                'These tables have no active assigned server. Orders still work and preparation still sees them — assign a server so they get routed and notified.'}
-            </div>
-            <div className="staff-attention-list">
-              {attentionTables.map((tb) => (
-                <span className="staff-attention-chip" key={tb._id}>
-                  {Language.table || 'Table'} {tb.number}
-                  {tb.assignedTo && !tb.assignedTo.verified
-                    ? ` (${Language.inactive || 'Inactive'})`
-                    : ''}
-                </span>
+      <div className="oc-stack">
+        {/* ---- Toolbar ---- */}
+        <div className="oc-toolbar">
+          <div className="oc-toolbar-group">
+            <div className="oc-seg" role="group" aria-label="Filter staff">
+              {[
+                ['all', Language.tlAll || 'All', clients.length],
+                ['active', Language.active || 'Active', totalActive],
+                ['inactive', Language.inactive || 'Inactive', clients.length - totalActive],
+              ].map(([key, label, count]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={statusFilter === key ? 'is-active' : ''}
+                  onClick={() => setStatusFilter(key)}
+                >
+                  {cap(label)}
+                  <span className="oc-seg-count">{count}</span>
+                </button>
               ))}
             </div>
+            <label className="oc-search">
+              <CIcon icon={cilSearch} width={15} />
+              <input
+                type="text"
+                placeholder={Language.searchWaiters || 'Search by name or email…'}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search staff"
+              />
+            </label>
           </div>
-        </div>
-      )}
-
-      <CCard className="mb-4">
-        <div className="ut-header">
-          <div className="ut-header-inner">
-            <div className="ut-header-left">
-              <h5 className="ut-title">{Language.users || 'Waiters'}</h5>
-              <div className="ut-subtitle">
-                <strong>{clients.length}</strong> {clients.length === 1 ? 'waiter' : 'waiters'}
-                {' · '}
-                <strong>{totalActive}</strong> active
-              </div>
-            </div>
-
-            <div className="ut-header-right">
-              <div className="ut-search">
-                <CIcon icon={cilSearch} className="ut-search-icon" />
-                <input
-                  type="text"
-                  placeholder={Language.searchWaiters || 'Search by name or email...'}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <CButton color="primary" onClick={() => navigate('/users/createUser')}>
-                <CIcon icon={cilPlus} className="me-2" />
-                {Language.createUser || 'New waiter'}
-              </CButton>
-            </div>
-          </div>
+          <CButton color="primary" onClick={() => navigate('/users/createUser')}>
+            <CIcon icon={cilPlus} className="me-2" />
+            {Language.navNewStaff || 'New staff member'}
+          </CButton>
         </div>
 
-        <CCardBody className="p-0">
+        {/* ---- Coverage: who covers what, at a glance ---- */}
+        <section className="st-coverage" aria-label={Language.stCoverage || 'Service coverage'}>
+          <div className="st-cov-cell">
+            <span className="st-cov-value">{totalActive}</span>
+            <span className="st-cov-label">
+              {Language.stActiveStaff || 'active staff'}{' '}
+              <span className="st-cov-muted">
+                {Language.hmOf || 'of'} {clients.length}
+              </span>
+            </span>
+          </div>
+          <div className="st-cov-cell">
+            <span className="st-cov-value">{prepCount}</span>
+            <span className="st-cov-label">{Language.stInKitchen || 'can prepare orders'}</span>
+          </div>
+          <div className="st-cov-cell">
+            <span className="st-cov-value">{deliverCount}</span>
+            <span className="st-cov-label">{Language.stCanDeliver || 'can deliver orders'}</span>
+          </div>
+          <div className={`st-cov-cell ${attentionTables.length ? 'is-alert' : 'is-ok'}`}>
+            <span className="st-cov-value">{attentionTables.length}</span>
+            <span className="st-cov-label">
+              {Language.stTablesNoServer || 'tables without a server'}
+              {attentionTables.length > 0 && (
+                <button
+                  type="button"
+                  className="oc-link st-cov-toggle"
+                  onClick={() => setShowUncovered((v) => !v)}
+                  aria-expanded={showUncovered}
+                >
+                  {showUncovered ? Language.stHide || 'Hide' : Language.stShow || 'Show'}
+                </button>
+              )}
+            </span>
+          </div>
+          {showUncovered && attentionTables.length > 0 && (
+            <div className="st-cov-detail">
+              <p>
+                {Language.unassignedTablesHint ||
+                  'These tables have no active assigned server. Orders still work and preparation still sees them — assign a server so they get routed and notified.'}
+              </p>
+              <div className="st-chips">
+                {attentionTables.map((tb) => (
+                  <span className="st-chip" key={tb._id}>
+                    {Language.table || 'Table'} {tb.number}
+                    {tb.assignedTo && !tb.assignedTo.verified
+                      ? ` · ${Language.inactive || 'Inactive'}`
+                      : ''}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ---- Staff table ---- */}
+        <div className="oc-panel st-panel">
           {loading && clients.length === 0 ? (
-            <div className="text-center py-5">
-              <CSpinner color="primary" />
+            <div className="oc-empty">
+              <CSpinner color="primary" size="sm" />
             </div>
           ) : error ? (
-            <div className="p-4">
-              <div className="alert alert-danger">{error}</div>
+            <div className="p-3">
+              <div className="alert alert-danger mb-0">{error}</div>
             </div>
           ) : clients.length === 0 ? (
-            <div className="ut-empty">
-              <CIcon icon={cilPeople} size="xl" />
-              <div className="ut-empty-title">{Language.noWaitersYet || 'No waiters yet'}</div>
-              <div className="ut-empty-body">
-                {Language.noWaitersHint || 'Waiters can log in to take orders at tables.'}
-              </div>
-              <CButton color="primary" onClick={() => navigate('/users/createUser')}>
+            <div className="oc-empty">
+              <span className="oc-empty-icon">
+                <CIcon icon={cilPeople} />
+              </span>
+              <span className="oc-empty-title">{Language.noWaitersYet || 'No staff yet'}</span>
+              <span className="oc-empty-body">
+                {Language.noWaitersHint || 'Staff accounts can log in to take and prepare orders.'}
+              </span>
+              <CButton
+                color="primary"
+                className="mt-2"
+                onClick={() => navigate('/users/createUser')}
+              >
                 <CIcon icon={cilPlus} className="me-2" />
-                {Language.createUser || 'New waiter'}
+                {Language.navNewStaff || 'New staff member'}
               </CButton>
             </div>
-          ) : filteredClients.length === 0 ? (
-            <div className="ut-empty">
-              <CIcon icon={cilWarning} size="xl" />
-              <div className="ut-empty-title">{Language.noWaitersMatch || 'No waiters match'}</div>
-              <div className="ut-empty-body">
-                {Language.noWaitersMatchHint || 'Try a different search term.'}
-              </div>
+          ) : visibleClients.length === 0 ? (
+            <div className="oc-empty">
+              <span className="oc-empty-icon">
+                <CIcon icon={cilSearch} />
+              </span>
+              <span className="oc-empty-title">{Language.noWaitersMatch || 'No one matches'}</span>
+              <span className="oc-empty-body">
+                {Language.noWaitersMatchHint || 'Try a different search or filter.'}
+              </span>
             </div>
           ) : (
-            <div className="ut-list">
-              {filteredClients.map((client) => {
+            <div className="st-table" role="table">
+              <div className="st-head" role="row">
+                <span role="columnheader">{Language.stMember || 'Staff member'}</span>
+                <span role="columnheader">{Language.stResponsibilities || 'Responsibilities'}</span>
+                <span role="columnheader">{Language.tables || 'Tables'}</span>
+                <span role="columnheader">{Language.stWorkload || 'Right now'}</span>
+                <span role="columnheader" className="st-right">
+                  {Language.stAccess || 'Access'}
+                </span>
+              </div>
+
+              {visibleClients.map((client) => {
+                const ov = staffOverview[client._id] || {}
                 const initial = (client.fullName || '?').charAt(0).toUpperCase()
-                const color = colorFor(client._id)
                 const busy = busyIds.has(client._id)
+                const respBusy = respBusyIds.has(client._id)
+                const tables = ov.assignedTables || []
+                const ts = ov.tableService
+                const prep = ov.preparation
 
                 return (
-                  <div className="ut-row" key={client._id}>
-                    <div className="ut-avatar" style={{ background: color }}>
-                      {initial}
+                  <div
+                    className={`st-row ${client.verified ? '' : 'is-inactive'}`}
+                    key={client._id}
+                    role="row"
+                  >
+                    {/* Member */}
+                    <div className="st-member" role="cell">
+                      <span className="st-avatar" style={{ background: colorFor(client._id) }}>
+                        {initial}
+                      </span>
+                      <span className="st-member-text">
+                        <span className="st-name">{client.fullName}</span>
+                        <span className="st-email">{client.email}</span>
+                      </span>
                     </div>
 
-                    <div className="ut-info">
-                      <p className="ut-name">{client.fullName}</p>
-                      <div className="ut-email">{client.email}</div>
+                    {/* Responsibilities */}
+                    <div className="st-resp" role="cell">
+                      <button
+                        type="button"
+                        className={`st-toggle ${ov.canPrepare ? 'is-on is-prep' : ''}`}
+                        onClick={() => togglePrepare(client)}
+                        disabled={respBusy}
+                        aria-pressed={!!ov.canPrepare}
+                        title={Language.togglePreparation || 'Toggle preparation responsibility'}
+                      >
+                        <span className="st-toggle-box" aria-hidden="true">
+                          {ov.canPrepare && <CIcon icon={cilCheckAlt} width={11} />}
+                        </span>
+                        {Language.preparation || 'Preparation'}
+                      </button>
+                      <button
+                        type="button"
+                        className={`st-toggle ${ov.canDeliver ? 'is-on is-deliver' : ''}`}
+                        onClick={() => toggleDeliver(client)}
+                        disabled={respBusy}
+                        aria-pressed={!!ov.canDeliver}
+                        title={
+                          Language.toggleDelivery ||
+                          'Toggle delivery responsibility (shared delivery mode)'
+                        }
+                      >
+                        <span className="st-toggle-box" aria-hidden="true">
+                          {ov.canDeliver && <CIcon icon={cilCheckAlt} width={11} />}
+                        </span>
+                        {Language.delivery || 'Delivery'}
+                      </button>
+                      {respBusy && <CSpinner size="sm" />}
                     </div>
 
-                    <div className="resp-cell">
-                      <div className="resp-pills">
-                        {respBusyIds.has(client._id) ? (
-                          <CSpinner size="sm" />
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className={`resp-pill ${
-                                staffOverview[client._id]?.canPrepare ? 'is-prep' : 'is-none'
-                              }`}
-                              onClick={() => togglePrepare(client)}
-                              title={
-                                Language.togglePreparation || 'Toggle preparation responsibility'
-                              }
-                            >
-                              {Language.preparation || 'Preparation'}
-                            </button>
-                            <button
-                              type="button"
-                              className={`resp-pill ${
-                                staffOverview[client._id]?.canDeliver ? 'is-deliver' : 'is-none'
-                              }`}
-                              onClick={() => toggleDeliver(client)}
-                              title={
-                                Language.toggleDelivery ||
-                                'Toggle delivery responsibility (shared delivery mode)'
-                              }
-                            >
-                              {Language.delivery || 'Delivery'}
-                            </button>
-                            <button
-                              type="button"
-                              className={`resp-pill ${
-                                staffOverview[client._id]?.assignedTables?.length
-                                  ? 'is-tables'
-                                  : 'is-none'
-                              }`}
-                              onClick={() => openAssign(client)}
-                            >
-                              {staffOverview[client._id]?.assignedTables?.length
-                                ? `${staffOverview[client._id].assignedTables.length} ${
-                                    Language.tables || 'tables'
-                                  }`
-                                : Language.noTables || 'No tables'}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      {staffOverview[client._id]?.assignedTables?.length > 0 && (
-                        <div className="resp-tables-list">
-                          {Language.table || 'Table'}{' '}
-                          {staffOverview[client._id].assignedTables
+                    {/* Tables */}
+                    <div className="st-tables" role="cell">
+                      {tables.length > 0 ? (
+                        <span className="st-table-list">
+                          {tables
+                            .slice(0, 6)
                             .map((tb) => tb.number)
                             .join(', ')}
-                        </div>
-                      )}
-                      {staffOverview[client._id]?.tableService && (
-                        <div className="resp-workload">
-                          <span title={Language.activeOrders || 'Active orders'}>
-                            {staffOverview[client._id].tableService.activeOrders}{' '}
-                            {Language.active || 'active'}
-                          </span>
-                          {staffOverview[client._id].tableService.readyAwaitingDelivery > 0 && (
-                            <span className="resp-workload-warn">
-                              {staffOverview[client._id].tableService.readyAwaitingDelivery}{' '}
-                              {Language.awaitingDelivery || 'awaiting delivery'}
-                            </span>
-                          )}
-                          <span className="text-muted">
-                            {staffOverview[client._id].tableService.deliveredToday}{' '}
-                            {Language.deliveredToday || 'delivered today'}
-                            {staffOverview[client._id].tableService.avgDeliveryMinutes != null &&
-                              ` · ${Language.avg || 'avg'} ${staffOverview[client._id].tableService.avgDeliveryMinutes}${Language.minutesShort || 'min'}`}
-                          </span>
-                        </div>
-                      )}
-                      {staffOverview[client._id]?.preparation && (
-                        <div className="resp-workload">
-                          <span>
-                            {staffOverview[client._id].preparation.pendingOrders}{' '}
-                            {Language.pending || 'pending'} ·{' '}
-                            {staffOverview[client._id].preparation.preparingOrders}{' '}
-                            {Language.preparing || 'preparing'}{' '}
-                            <span className="text-muted">
-                              ({Language.kitchenQueueShared || 'shared kitchen queue'})
-                            </span>
-                          </span>
-                        </div>
+                          {tables.length > 6 && ` +${tables.length - 6}`}
+                        </span>
+                      ) : (
+                        <span className="st-muted">{Language.noTables || 'No tables'}</span>
                       )}
                       <button
                         type="button"
-                        className="resp-assign-btn"
+                        className="oc-link st-assign"
                         onClick={() => openAssign(client)}
                       >
-                        <CIcon icon={cilGrid} className="me-1" />
-                        {Language.assignTables || 'Assign tables'}
+                        {tables.length > 0
+                          ? Language.stEdit || 'Change'
+                          : Language.assignTables || 'Assign tables'}
                       </button>
                     </div>
 
-                    <span className={`ut-status ${client.verified ? 'is-active' : 'is-inactive'}`}>
-                      {client.verified
-                        ? Language.active || 'Active'
-                        : Language.inactive || 'Inactive'}
-                    </span>
+                    {/* Workload */}
+                    <div className="st-load" role="cell">
+                      {ts && (
+                        <span>
+                          <b>{ts.activeOrders}</b> {Language.active || 'active'}
+                          {ts.readyAwaitingDelivery > 0 && (
+                            <span className="st-warn">
+                              {' · '}
+                              {ts.readyAwaitingDelivery}{' '}
+                              {Language.awaitingDelivery || 'awaiting delivery'}
+                            </span>
+                          )}
+                        </span>
+                      )}
+                      {ts && (
+                        <span className="st-muted">
+                          {ts.deliveredToday} {Language.deliveredToday || 'delivered today'}
+                          {ts.avgDeliveryMinutes != null &&
+                            ` · ${Language.avg || 'avg'} ${ts.avgDeliveryMinutes}${Language.minutesShort || 'min'}`}
+                        </span>
+                      )}
+                      {prep && (
+                        <span className="st-muted">
+                          {Language.stKitchen || 'Kitchen'}: {prep.pendingOrders}{' '}
+                          {Language.pending || 'pending'} · {prep.preparingOrders}{' '}
+                          {Language.preparing || 'preparing'}
+                        </span>
+                      )}
+                      {!ts && !prep && <span className="st-muted">—</span>}
+                    </div>
 
-                    <div className="ut-row-actions">
-                      <div className="ut-toggle-cell">
-                        {busy ? (
-                          <CSpinner size="sm" />
-                        ) : (
-                          <CFormSwitch
-                            checked={!!client.verified}
-                            onChange={() => toggleActive(client)}
-                            aria-label="Toggle active"
-                          />
-                        )}
-                      </div>
-                      <CButton
-                        color="secondary"
-                        variant="outline"
-                        size="sm"
+                    {/* Access */}
+                    <div className="st-access" role="cell">
+                      {busy ? (
+                        <CSpinner size="sm" />
+                      ) : (
+                        <CFormSwitch
+                          checked={!!client.verified}
+                          onChange={() => toggleActive(client)}
+                          aria-label={Language.stCanLogIn || 'Can log in'}
+                          label={
+                            client.verified
+                              ? cap(Language.active) || 'Active'
+                              : cap(Language.inactive) || 'Inactive'
+                          }
+                        />
+                      )}
+                      <button
+                        type="button"
+                        className="oc-icon-btn st-icon"
                         onClick={() => openEdit(client)}
-                        aria-label="Edit"
+                        aria-label={Language.editUser || 'Edit'}
+                        title={Language.editUser || 'Edit'}
                       >
-                        <CIcon icon={cilPencil} />
-                      </CButton>
-                      <CButton
-                        color="danger"
-                        variant="outline"
-                        size="sm"
+                        <CIcon icon={cilPencil} width={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className="oc-icon-btn st-icon is-danger"
                         onClick={() => askDelete(client)}
-                        aria-label="Delete"
+                        aria-label={Language.delete || 'Delete'}
+                        title={Language.delete || 'Delete'}
                       >
-                        <CIcon icon={cilTrash} />
-                      </CButton>
+                        <CIcon icon={cilTrash} width={15} />
+                      </button>
                     </div>
                   </div>
                 )
               })}
             </div>
           )}
-        </CCardBody>
+        </div>
 
         {/* ---- Edit modal ---- */}
         <CModal visible={showEditModal} onClose={closeEdit} backdrop="static" className="ut-modal">
@@ -736,7 +790,7 @@ const Dashboard = () => {
             </CButton>
           </div>
         </CModal>
-      </CCard>
+      </div>
 
       <AssignTablesModal
         visible={!!assignTarget}

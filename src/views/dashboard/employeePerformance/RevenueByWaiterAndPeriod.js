@@ -23,12 +23,15 @@ import {
   CCallout,
 } from '@coreui/react'
 import axios from 'axios'
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import CIcon from '@coreui/icons-react'
 import { cilUser, cilCalendar, cilDollar, cilFilter } from '@coreui/icons'
 
 const RevenueByWaiterAndPeriod = () => {
+  const Language = translations[useSelector((state) => state.language)] || {}
   const [waiters, setWaiters] = useState([])
   const [selectedWaiter, setSelectedWaiter] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -251,7 +254,9 @@ const RevenueByWaiterAndPeriod = () => {
                 {revenueData.map((waiter) => (
                   <CTableRow key={waiter.clientId}>
                     <CTableDataCell>
-                      <div className="fw-semibold">{waiter.clientName}</div>
+                      <div className="fw-semibold">
+                        {waiter.clientName || Language.stUnassigned || 'Not assigned'}
+                      </div>
                     </CTableDataCell>
                     <CTableDataCell className="text-end fw-bold">
                       {formatCurrency(waiter.totalRevenue)}

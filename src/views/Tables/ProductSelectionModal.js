@@ -265,7 +265,7 @@ const ProductSelectionModal = ({
               <CIcon
                 icon={cilCheckCircle}
                 className="me-2"
-                style={{ color: "#198754" }}
+                style={{ color: "var(--oc-status-completed)" }}
               />
               All items on this order are already paid.
             </div>

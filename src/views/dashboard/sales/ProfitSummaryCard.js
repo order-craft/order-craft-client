@@ -185,15 +185,15 @@ const ProfitSummaryCard = () => {
               style={{
                 padding: '0 20px 20px 20px',
                 fontSize: '0.82rem',
-                color: '#6c757d',
+                color: 'var(--oc-ink-soft)',
               }}
             >
               {Language.ordersInPeriod || 'Orders in period'}:{' '}
-              <strong style={{ color: '#1a1a1a' }}>{data.orderCount}</strong>
+              <strong style={{ color: 'var(--oc-ink)' }}>{data.orderCount}</strong>
               {data.ordersWithoutSnapshot > 0 && (
                 <>
                   {' · '}
-                  <span style={{ color: '#b8860b', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--oc-status-pending)', fontWeight: 600 }}>
                     {data.ordersWithoutSnapshot}{' '}
                     {Language.ordersWithoutSnapshot || 'orders excluded (no cost snapshot)'}
                   </span>

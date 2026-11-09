@@ -5,8 +5,8 @@
 /* ---- Top strip ---- */
 .dc-header {
   padding: 18px 20px 14px 20px;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .dc-header-inner {
@@ -23,7 +23,7 @@
 
 .dc-breadcrumb {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-bottom: 4px;
   display: flex;
   align-items: center;
@@ -31,24 +31,24 @@
 }
 
 .dc-breadcrumb span {
-  color: #1a1a1a;
+  color: var(--oc-ink);
   font-weight: 600;
 }
 
 .dc-title {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .dc-subtitle {
   font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .dc-subtitle strong {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .dc-header-right {
@@ -62,10 +62,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 10px;
   padding: 7px 12px;
-  background: #fff;
+  background: var(--oc-surface);
   min-width: 220px;
 }
 
@@ -78,7 +78,7 @@
 }
 
 .dc-search-icon {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   flex-shrink: 0;
 }
 
@@ -105,10 +105,10 @@
 .dc-card {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: var(--oc-surface);
   cursor: pointer;
   transition:
     box-shadow 0.15s ease,
@@ -139,7 +139,7 @@
 .dc-card-title {
   font-weight: 700;
   font-size: 1rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 4px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -151,7 +151,7 @@
   align-items: center;
   gap: 8px;
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   flex-wrap: wrap;
 }
 
@@ -161,7 +161,7 @@
   gap: 4px;
   padding: 1px 8px;
   border-radius: 999px;
-  background: #f1f3f5;
+  background: var(--oc-surface-sunken);
   font-size: 0.72rem;
   font-weight: 600;
   color: #41464b;
@@ -169,7 +169,7 @@
 
 .dc-card-desc {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-top: 6px;
   white-space: nowrap;
   overflow: hidden;
@@ -181,7 +181,7 @@
   justify-content: flex-end;
   gap: 6px;
   padding: 8px 12px 12px 12px;
-  border-top: 1px solid var(--cui-border-color, #eceef1);
+  border-top: 1px solid var(--oc-border);
 }
 
 /* ---- Empty ---- */
@@ -189,10 +189,10 @@
   grid-column: 1 / -1;
   padding: 48px 24px;
   text-align: center;
-  color: var(--cui-secondary-color, #6c757d);
-  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  color: var(--oc-ink-soft);
+  border: 1px dashed var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .dc-empty svg {
@@ -201,7 +201,7 @@
 }
 .dc-empty-title {
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 4px;
 }
 .dc-empty-body {
@@ -214,7 +214,7 @@
 /* ---- Modal ---- */
 .dc-modal .modal-content {
   border-radius: 14px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   overflow: hidden;
 }
 
@@ -224,8 +224,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-bottom: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .dc-modal-title {
@@ -234,7 +234,7 @@
   gap: 8px;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0;
 }
 
@@ -243,18 +243,18 @@
   background: transparent;
   font-size: 1.35rem;
   line-height: 1;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   padding: 0 4px;
   cursor: pointer;
 }
 
 .dc-modal-close:hover {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .dc-modal-body {
   padding: 16px 20px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .dc-modal-footer {
@@ -262,8 +262,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 14px 20px;
-  border-top: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-top: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .dc-field {
@@ -275,7 +275,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -305,12 +305,12 @@
 .dc-confirm-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 6px;
 }
 .dc-confirm-text {
   font-size: 0.9rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   line-height: 1.5;
 }
 
@@ -338,4 +338,47 @@
   .dc-modal-footer {
     padding: 12px 16px;
   }
+}
+
+/* ---- Compact tile (redesign): monogram chip + name + actions in one row,
+   instead of a large solid color block per card ---- */
+.dc-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 14px 14px 14px;
+  transition: border-color 0.15s ease;
+}
+
+.dc-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--oc-pine);
+}
+
+.dc-card-band {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  font-family: var(--oc-display-font);
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.dc-card-body {
+  padding: 0;
+  min-width: 0;
+}
+
+.dc-card-title {
+  font-family: var(--oc-display-font);
+  font-size: 1.05rem;
+}
+
+.dc-card-actions {
+  border-top: none;
+  padding: 0;
+  margin-left: auto;
+  flex-shrink: 0;
 }

@@ -47,8 +47,6 @@ const History = React.lazy(() => import('./views/history/History'))
 const Profile = React.lazy(() => import('./views/pages/profile/profile'))
 const PaymentMethod = React.lazy(() => import('./views/paymentMethods/PaymentMethodManager'))
 
-const Widgets = React.lazy(() => import('./views/widgets/Widgets'))
-
 const getRoutesByRole = (role) => {
   const commonRoutes = [
     { path: '/', exact: true, name: 'Home' },
@@ -76,8 +74,6 @@ const getRoutesByRole = (role) => {
     //daily
     { path: '/daily-receipt', name: 'dailyReceipt', element: Daily },
     { path: '/history', name: 'History', element: History },
-
-    { path: '/widgets', name: 'Widgets', element: Widgets },
   ]
 
   const adminRoutes = [

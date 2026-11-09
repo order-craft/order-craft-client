@@ -4,53 +4,8 @@
    ========================================================================= */
 
 /* ---- Card header strip ---- */
-.si-header {
-  padding: 18px 20px 0 20px;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-}
-
-.si-header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-bottom: 14px;
-}
-
-.si-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0;
-}
-
-.si-subtitle {
-  font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
-  margin-top: 2px;
-}
-
-.si-subtitle strong {
-  color: #1a1a1a;
-}
 
 /* ---- Tabs (segmented, pill style) ---- */
-.si-tabs {
-  display: flex;
-  gap: 6px;
-  padding-bottom: 10px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.si-tabs::-webkit-scrollbar {
-  display: none;
-}
 
 .si-tab {
   display: inline-flex;
@@ -62,39 +17,21 @@
   background: transparent;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s ease;
 }
 
 .si-tab:hover {
-  background: #f4f6f8;
-  color: #1a1a1a;
+  background: var(--oc-surface-sunken);
+  color: var(--oc-ink);
 }
 
 .si-tab.is-active {
-  background: rgba(13, 110, 253, 0.08);
-  color: var(--cui-primary, #0d6efd);
-  border-color: rgba(13, 110, 253, 0.2);
-}
-
-.si-tab-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  background: rgba(0, 0, 0, 0.06);
-  color: inherit;
-}
-
-.si-tab.is-active .si-tab-count {
-  background: rgba(13, 110, 253, 0.15);
+  background: rgba(var(--cui-primary-rgb), 0.08);
+  color: var(--cui-primary);
+  border-color: rgba(var(--cui-primary-rgb), 0.2);
 }
 
 /* ---- Section top strip (per tab) ---- */
@@ -114,17 +51,17 @@
 .si-section-title {
   font-size: 1rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .si-section-meta {
   font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .si-section-meta strong {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .si-section-top-right {
@@ -139,10 +76,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 10px;
   padding: 7px 12px;
-  background: #fff;
+  background: var(--oc-surface);
   min-width: 240px;
 }
 
@@ -155,14 +92,14 @@
 }
 
 .si-search-icon {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 /* ---- List ---- */
 .si-list {
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
   overflow: hidden;
 }
 
@@ -172,7 +109,7 @@
   gap: 12px;
   align-items: center;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  border-bottom: 1px solid var(--oc-border);
   transition: background-color 0.12s ease;
 }
 
@@ -180,26 +117,26 @@
   border-bottom: none;
 }
 .si-row:hover {
-  background: #fafbfc;
+  background: var(--oc-surface-sunken);
 }
 
 .si-row-title {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 4px 0;
 }
 
 .si-row-meta {
   font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 }
 
 .si-row-meta strong {
-  color: #1a1a1a;
+  color: var(--oc-ink);
   font-weight: 600;
 }
 
@@ -213,13 +150,13 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: #e2e3e5;
+  background: var(--oc-border);
   color: #41464b;
 }
 
 .si-row-tag.is-used {
-  background: #cfe2ff;
-  color: #084298;
+  background: var(--oc-pine-tint);
+  color: var(--oc-pine);
 }
 
 .si-row-actions {
@@ -231,10 +168,10 @@
 .si-empty {
   padding: 48px 24px;
   text-align: center;
-  color: var(--cui-secondary-color, #6c757d);
-  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  color: var(--oc-ink-soft);
+  border: 1px dashed var(--oc-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .si-empty svg {
@@ -244,7 +181,7 @@
 
 .si-empty-title {
   font-weight: 600;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin-bottom: 4px;
 }
 
@@ -259,7 +196,7 @@
 /* ---- Modal ---- */
 .si-modal .modal-content {
   border-radius: 14px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   overflow: hidden;
 }
 
@@ -269,8 +206,8 @@
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-bottom: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .si-modal-title {
@@ -279,7 +216,7 @@
   gap: 8px;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0;
 }
 
@@ -288,18 +225,18 @@
   background: transparent;
   font-size: 1.35rem;
   line-height: 1;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   padding: 0 4px;
   cursor: pointer;
 }
 
 .si-modal-close:hover {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .si-modal-body {
   padding: 16px 20px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .si-modal-footer {
@@ -307,8 +244,8 @@
   justify-content: flex-end;
   gap: 8px;
   padding: 14px 20px;
-  border-top: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-top: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .si-field {
@@ -320,7 +257,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   margin-bottom: 6px;
 }
@@ -333,9 +270,6 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 767.98px) {
-  .si-header {
-    padding: 14px 16px 0 16px;
-  }
   .si-section-top {
     flex-direction: column;
     align-items: stretch;
@@ -369,123 +303,26 @@
   }
 }
 /* ---- Stats strip ---- */
-.si-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
-}
-
-.si-stat {
-  padding: 14px 16px;
-  background: #fff;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
-  border-radius: 12px;
-}
-
-.si-stat-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.si-stat-value {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  line-height: 1.15;
-}
-
-.si-stat-value.is-danger {
-  color: #dc3545;
-}
-.si-stat-value.is-success {
-  color: #198754;
-}
-
-.si-stat-unit {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--cui-secondary-color, #6c757d);
-}
 
 /* ---- Two-column inventory layout ---- */
-.si-inv-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-
-.si-inv-col-title {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.si-inv-progress {
-  margin-top: 8px;
-}
 
 /* Row modifier for alert items */
-.si-row-alert {
-  border-left: 3px solid #dc3545;
-}
 
 .si-row-tag.is-danger {
-  background: #f8d7da;
-  color: #842029;
+  background: var(--oc-status-cancelled-bg);
+  color: var(--oc-status-cancelled);
 }
 
 /* Success-tinted empty state (all well stocked) */
-.si-empty-success {
-  border-color: rgba(25, 135, 84, 0.25);
-  background: rgba(25, 135, 84, 0.03);
-}
-
-.si-empty-success svg {
-  color: #198754;
-}
 
 /* Responsive: stack columns, alerts on top */
 @media (max-width: 991.98px) {
-  .si-inv-layout {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
 
   /* Put alerts first on small screens */
-  .si-inv-layout > div:last-child {
-    order: -1;
-  }
-
-  .si-stats {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .si-stat:last-child {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 575.98px) {
-  .si-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .si-stat:last-child {
-    grid-column: auto;
-  }
 }
 /* ---- Recipe cards ---- */
 .si-rec-card {
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 12px;
   overflow: hidden;
   height: 100%;
@@ -505,8 +342,8 @@
   justify-content: space-between;
   gap: 10px;
   padding: 14px 16px;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  background: var(--oc-surface);
+  border-bottom: 1px solid var(--oc-border);
 }
 
 .si-rec-card-title-wrap {
@@ -516,7 +353,7 @@
 .si-rec-card-title {
   font-weight: 700;
   font-size: 0.98rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
   white-space: nowrap;
   overflow: hidden;
@@ -525,11 +362,11 @@
 
 .si-rec-card-sub {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .si-rec-cost {
-  color: #198754;
+  color: var(--oc-status-completed);
   font-weight: 600;
 }
 
@@ -562,20 +399,20 @@
 }
 
 .si-rec-preview-name {
-  color: #1a1a1a;
+  color: var(--oc-ink);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .si-rec-preview-qty {
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   white-space: nowrap;
 }
 
 .si-rec-more {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   text-align: center;
   padding-top: 2px;
 }
@@ -602,7 +439,7 @@
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
 }
 
@@ -635,7 +472,7 @@
 
 .si-rec-row-unit {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   min-width: 32px;
 }
 
@@ -651,4 +488,274 @@
   .si-rec-row > .btn {
     justify-self: flex-end;
   }
+}
+
+/* =========================================================================
+   Inventory redesign — readings strip + one urgency-sorted stock table
+   ========================================================================= */
+
+.si-tab-panel {
+  padding: 18px 20px 20px;
+}
+
+.iv-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  overflow: hidden;
+}
+
+.iv-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 18px;
+  border-right: 1px solid var(--oc-border);
+}
+
+.iv-cell:last-child {
+  border-right: none;
+}
+
+.iv-value {
+  font-family: var(--oc-display-font);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.iv-value small {
+  font-family: var(--oc-font-ui);
+  font-size: 0.8rem;
+  color: var(--oc-ink-soft);
+  margin-left: 4px;
+}
+
+.iv-label {
+  font-size: 0.82rem;
+  color: var(--oc-ink-soft);
+}
+
+.iv-label b {
+  color: var(--oc-status-cancelled);
+}
+
+.iv-cell.is-alert {
+  background: var(--oc-saffron-tint);
+}
+
+.iv-cell.is-alert .iv-value {
+  color: var(--oc-status-pending);
+}
+
+.iv-cell.is-ok .iv-value {
+  color: var(--oc-status-completed);
+}
+
+.iv-panel {
+  overflow: hidden;
+}
+
+.iv-head,
+.iv-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.1fr) minmax(220px, 1.6fr) 120px 140px 232px;
+  gap: 16px;
+  align-items: center;
+  padding: 11px 18px;
+}
+
+.iv-head {
+  background: var(--oc-surface-sunken);
+  border-bottom: 1px solid var(--oc-border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--oc-ink-soft);
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
+.iv-row {
+  border-bottom: 1px solid var(--oc-border);
+}
+
+.iv-row:last-child {
+  border-bottom: none;
+}
+
+.iv-row.is-out {
+  background: #fdf6f5;
+}
+
+.iv-name {
+  font-weight: 700;
+  color: var(--oc-ink);
+}
+
+.iv-level {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.iv-qty {
+  font-size: 0.86rem;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.iv-qty-rl {
+  color: var(--oc-ink-faint);
+}
+
+/* Gauge: track scaled so the reorder level sits mid-way; the marker shows
+   where "time to reorder" begins. */
+.iv-gauge {
+  position: relative;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--oc-surface-sunken);
+}
+
+.iv-gauge-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--oc-status-completed);
+}
+
+.iv-row.is-low .iv-gauge-fill {
+  background: var(--oc-saffron);
+}
+
+.iv-row.is-out .iv-gauge-fill {
+  background: var(--oc-status-cancelled);
+}
+
+.iv-gauge-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--oc-ink);
+  opacity: 0.55;
+}
+
+.iv-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 7px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.iv-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.iv-status.is-ok {
+  background: var(--oc-status-completed-bg);
+  color: var(--oc-status-completed);
+}
+
+.iv-status.is-low {
+  background: var(--oc-status-pending-bg);
+  color: var(--oc-status-pending);
+}
+
+.iv-status.is-out {
+  background: var(--oc-status-cancelled-bg);
+  color: var(--oc-status-cancelled);
+}
+
+.iv-num {
+  text-align: right;
+  font-size: 0.86rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--oc-ink);
+}
+
+.iv-per {
+  color: var(--oc-ink-faint);
+}
+
+.iv-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.iv-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.iv-icon.is-danger:hover {
+  color: var(--oc-status-cancelled);
+  border-color: #f0c9c3;
+  background: var(--oc-status-cancelled-bg);
+}
+
+@media (max-width: 991.98px) {
+  .iv-head {
+    display: none;
+  }
+  .iv-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'name status'
+      'level level'
+      'cost actions';
+    row-gap: 10px;
+  }
+  .iv-name {
+    grid-area: name;
+  }
+  .iv-row > [role='cell']:nth-child(3) {
+    grid-area: status;
+    justify-self: end;
+  }
+  .iv-level {
+    grid-area: level;
+  }
+  .iv-num {
+    grid-area: cost;
+    text-align: left;
+  }
+  .iv-actions {
+    grid-area: actions;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .iv-strip {
+    grid-template-columns: 1fr;
+  }
+  .iv-cell {
+    border-right: none;
+    border-bottom: 1px solid var(--oc-border);
+  }
+  .iv-cell:last-child {
+    border-bottom: none;
+  }
+}
+
+.iv-head .iv-num {
+  font-size: inherit;
+  color: inherit;
 }

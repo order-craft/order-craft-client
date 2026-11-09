@@ -28,18 +28,10 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
 import { useAuth } from '../../context/AuthContext'
+import { ACCENTS } from '../../helpers/palette'
 import '../dashboard/receipt.css'
 
-const palette = [
-  '#0d6efd',
-  '#6610f2',
-  '#d63384',
-  '#fd7e14',
-  '#198754',
-  '#20c997',
-  '#0dcaf0',
-  '#e83e8c',
-]
+const palette = ACCENTS
 const colorFor = (id) => {
   let h = 0
   const s = String(id || '')
@@ -296,7 +288,7 @@ const ArchivedOrdersByDate = () => {
                       outline: 'none',
                       background: 'transparent',
                       fontSize: '0.88rem',
-                      color: '#1a1a1a',
+                      color: 'var(--oc-ink)',
                       cursor: 'pointer',
                       width: '100%',
                     }}

@@ -6,20 +6,10 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
+import { SERIES } from '../../helpers/palette'
 import './productPerformance/productPerformance.css'
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-  '#dc3545',
-  '#6c757d',
-]
+const SLICE_COLORS = SERIES
 
 const RevenuePerProductPerDay = () => {
   const token = GetToken()
@@ -122,11 +112,11 @@ const RevenuePerProductPerDay = () => {
               gridTemplateColumns: `minmax(140px, 1fr) repeat(7, minmax(60px, 1fr))`,
               gap: 8,
               padding: '8px 0',
-              borderBottom: '1px solid #eceef1',
+              borderBottom: '1px solid var(--oc-border)',
               marginBottom: 8,
               fontSize: '0.78rem',
               fontWeight: 700,
-              color: '#6c757d',
+              color: 'var(--oc-ink-soft)',
               textTransform: 'uppercase',
               letterSpacing: '0.03em',
             }}
@@ -188,7 +178,7 @@ const RevenuePerProductPerDay = () => {
                     style={{
                       textAlign: 'right',
                       fontVariantNumeric: 'tabular-nums',
-                      color: v > 0 ? '#1a1a1a' : '#cbd5e0',
+                      color: v > 0 ? 'var(--oc-ink)' : 'var(--oc-border-strong)',
                       fontWeight: v > 0 ? 600 : 400,
                     }}
                   >
@@ -206,7 +196,7 @@ const RevenuePerProductPerDay = () => {
               gridTemplateColumns: `minmax(140px, 1fr) repeat(7, minmax(60px, 1fr))`,
               gap: 8,
               padding: '10px 0 0 0',
-              borderTop: '1px solid #eceef1',
+              borderTop: '1px solid var(--oc-border)',
               marginTop: 8,
               fontSize: '0.85rem',
               fontWeight: 800,
@@ -219,7 +209,8 @@ const RevenuePerProductPerDay = () => {
                 style={{
                   textAlign: 'right',
                   fontVariantNumeric: 'tabular-nums',
-                  color: maxDay > 0 && t === maxDay ? '#198754' : '#1a1a1a',
+                  color:
+                    maxDay > 0 && t === maxDay ? 'var(--oc-status-completed)' : 'var(--oc-ink)',
                 }}
               >
                 {t > 0 ? Number(t || 0).toFixed(2) : '—'}{' '}

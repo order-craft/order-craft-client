@@ -178,7 +178,7 @@ const TableGuru = () => {
                           className="tg-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: medal?.accent || 'var(--cui-primary, #0d6efd)',
+                            background: medal?.accent || 'var(--cui-primary)',
                           }}
                         />
                       </div>

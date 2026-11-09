@@ -15,19 +15,13 @@ import axios from 'axios'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import { ACCENTS } from '../../../helpers/palette'
 import './category.css'
 
-/* deterministic color per category id */
-const palette = [
-  '#0d6efd',
-  '#6610f2',
-  '#d63384',
-  '#fd7e14',
-  '#198754',
-  '#20c997',
-  '#0dcaf0',
-  '#e83e8c',
-]
+/* Deterministic color per category id — the same muted, warm accent set
+   used for the dashboard's hub-card icons, so a category's color reads as
+   part of one brand palette rather than a random Bootstrap rainbow. */
+const palette = ACCENTS
 const colorFor = (id) => {
   let h = 0
   const s = String(id || '')

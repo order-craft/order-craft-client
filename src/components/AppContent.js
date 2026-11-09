@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { CContainer, CSpinner } from '@coreui/react'
+import { CSpinner } from '@coreui/react'
 
 // routes config
 import routes from '../routes'
@@ -10,8 +10,14 @@ const AppContent = () => {
   const hasDashboardRoute = routes.some((route) => route.path === '/dashboard')
 
   return (
-    <CContainer className="px-4" lg>
-      <Suspense fallback={<CSpinner color="primary" />}>
+    <div className="oc-content">
+      <Suspense
+        fallback={
+          <div className="oc-empty">
+            <CSpinner color="primary" size="sm" />
+          </div>
+        }
+      >
         <Routes>
           {routes.map((route, idx) => {
             return (
@@ -35,7 +41,7 @@ const AppContent = () => {
           )}
         </Routes>
       </Suspense>
-    </CContainer>
+    </div>
   )
 }
 

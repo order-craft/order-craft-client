@@ -19,8 +19,8 @@ const Sales = () => {
     <>
       <DashboardSectionHeader
         icon={cilChartLine}
-        accent="#b5502b"
-        title={Language.salesStatistic}
+        accent="#1a5a44"
+        title={Language.navSales || Language.salesStatistic}
         subtitle={Language.salesHubDesc}
       />
       <DailyRevenue />

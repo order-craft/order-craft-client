@@ -1,116 +1,143 @@
-import React, { useEffect, useRef } from 'react'
-import { NavLink } from 'react-router-dom'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Link, matchPath, useLocation } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
 import {
-  CContainer,
   CDropdown,
   CDropdownItem,
   CDropdownMenu,
   CDropdownToggle,
   CHeader,
   CHeaderNav,
-  CHeaderToggler,
-  CNavLink,
-  CNavItem,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilMenu } from '@coreui/icons'
+import { cilMenu, cilChevronRight } from '@coreui/icons'
+import { format } from 'date-fns'
 import translations from '../app/Language'
+import { getDateLocale } from '../helpers/dateLocale'
 import { AppHeaderDropdown } from './header/index'
-import AppBreadcrumb from './AppBreadcrumb'
 import NotificationBell from './NotificationBell'
-import EN from '../assets/flags/English.png'
-import FR from '../assets/flags/Frensh.jpg'
-import IT from '../assets/flags/Italy.jpg'
+
+// path pattern → [label key, section key, parent path]
+const PAGES = [
+  ['/dashboard', 'navHome', 'navService'],
+  ['/orders/ordersList', 'orders', 'navService'],
+  ['/tables/tablesList', 'navTablesBills', 'navService'],
+  ['/tables/guru', 'navLeaderboard', 'navInsights'],
+  ['/tables/:tableId', 'navTableDetail', 'navService', '/tables/tablesList'],
+  ['/support', 'navServiceCalls', 'navService'],
+  ['/product/availability', 'navAvailability', 'navService'],
+  ['/menu/sections', 'navMenu', 'navMenuStock'],
+  ['/menu/sections/:sectionId', 'navCategories', 'navMenuStock', '/menu/sections'],
+  ['/menu/categories/:id', 'navProducts', 'navMenuStock', '/menu/sections'],
+  ['/stock-inventory', 'navInventory', 'navMenuStock'],
+  ['/Sales', 'navSales', 'navInsights'],
+  ['/order-management', 'navOrderInsights', 'navInsights'],
+  ['/product-performance', 'navProductInsights', 'navInsights'],
+  ['/employee-performance', 'navStaffInsights', 'navInsights'],
+  ['/daily-receipt', 'navDailyReport', 'navInsights'],
+  ['/history', 'navHistory', 'navInsights'],
+  ['/users/usersList', 'navStaff', 'navSettings'],
+  ['/users/createUser', 'navNewStaff', 'navSettings', '/users/usersList'],
+  ['/payment-methods', 'navPaymentMethods', 'navSettings'],
+  ['/support-types', 'navCallTypes', 'navSettings'],
+  ['/bill', 'navBilling', 'navSettings'],
+  ['/profile', 'navProfile', 'navSettings'],
+]
+
+const LANGS = [
+  ['English', 'EN', 'English'],
+  ['French', 'FR', 'Français'],
+  ['Italian', 'IT', 'Italiano'],
+]
 
 const AppHeader = () => {
-  const headerRef = useRef()
   const dispatch = useDispatch()
+  const { pathname } = useLocation()
   const sidebarShow = useSelector((state) => state.sidebarShow)
   const t = useSelector((state) => state.language)
-  const Language = translations[t]
+  const L = translations[t] || {}
+  const dateLocale = getDateLocale(t)
 
+  const [now, setNow] = useState(() => new Date())
   useEffect(() => {
-    document.addEventListener('scroll', () => {
-      headerRef.current &&
-        headerRef.current.classList.toggle('shadow-sm', document.documentElement.scrollTop > 0)
-    })
+    const id = setInterval(() => setNow(new Date()), 15000)
+    return () => clearInterval(id)
   }, [])
 
+  const page = useMemo(() => {
+    const hit = PAGES.find(([pattern]) => matchPath({ path: pattern, end: true }, pathname))
+    if (!hit) return null
+    const [, labelKey, sectionKey, parent] = hit
+    const parentHit = parent && PAGES.find(([p]) => p === parent)
+    return {
+      title: L[labelKey],
+      section: L[sectionKey],
+      parent: parentHit ? { to: parent, label: L[parentHit[1]] } : null,
+    }
+  }, [pathname, L])
+
+  const currentLang = LANGS.find(([key]) => key === t) || LANGS[0]
+
   return (
-    <CHeader position="sticky" className="mb-4 p-0 app-header" ref={headerRef}>
-      <CContainer className="border-bottom px-4" fluid>
-        <CHeaderToggler
+    <CHeader position="sticky" className="p-0 app-header">
+      <div className="oc-header-inner">
+        <button
+          type="button"
+          className="oc-header-toggler"
           onClick={() => dispatch({ type: 'set', sidebarShow: !sidebarShow })}
-          style={{ marginInlineStart: '-14px' }}
+          aria-label="Toggle navigation"
         >
-          <CIcon icon={cilMenu} size="lg" />
-        </CHeaderToggler>
-        <CHeaderNav className="d-none d-md-flex">
-          <CNavItem>
-            <CNavLink to="/" as={NavLink}>
-              {Language.dashboard}
-            </CNavLink>
-          </CNavItem>
-        </CHeaderNav>
-        <CHeaderNav className="ms-auto">
-          <CDropdown variant="nav-item" placement="bottom-end">
-            {t === 'English' ? (
-              <CDropdownToggle caret={false}>
-                <img src={EN} width={30} alt="English" />
-              </CDropdownToggle>
-            ) : t === 'French' ? (
-              <CDropdownToggle caret={false}>
-                <img src={FR} width={30} alt="Français" />
-              </CDropdownToggle>
-            ) : (
-              <CDropdownToggle caret={false}>
-                <img src={IT} width={30} alt="Italiano" />
-              </CDropdownToggle>
-            )}
+          <CIcon icon={cilMenu} />
+        </button>
+
+        {page && (
+          <div className="oc-header-where">
+            <div className="oc-header-crumb">
+              <span>{page.section}</span>
+              {page.parent && (
+                <>
+                  <CIcon icon={cilChevronRight} width={10} />
+                  <Link to={page.parent.to}>{page.parent.label}</Link>
+                </>
+              )}
+            </div>
+            <h1 className="oc-header-title">{page.title}</h1>
+          </div>
+        )}
+
+        <div className="oc-header-right">
+          <div className="oc-clock" aria-label="Current time">
+            <span className="oc-clock-time">{format(now, 'HH:mm')}</span>
+            <span className="oc-clock-date">
+              {format(now, 'EEE d MMM', { locale: dateLocale })}
+            </span>
+          </div>
+
+          <CDropdown placement="bottom-end">
+            <CDropdownToggle caret={false} className="oc-lang-toggle" aria-label="Language">
+              {currentLang[1]}
+            </CDropdownToggle>
             <CDropdownMenu>
-              <CDropdownItem
-                active={t === 'English'}
-                className="d-flex align-items-center"
-                as="button"
-                type="button"
-                onClick={() => dispatch({ type: 'set', language: 'English' })}
-              >
-                English
-              </CDropdownItem>
-              <CDropdownItem
-                active={t === 'French'}
-                className="d-flex align-items-center"
-                as="button"
-                type="button"
-                onClick={() => dispatch({ type: 'set', language: 'French' })}
-              >
-                Français
-              </CDropdownItem>
-              <CDropdownItem
-                active={t === 'Italian'}
-                className="d-flex align-items-center"
-                as="button"
-                type="button"
-                onClick={() => dispatch({ type: 'set', language: 'Italian' })}
-              >
-                Italiano
-              </CDropdownItem>
+              {LANGS.map(([key, , label]) => (
+                <CDropdownItem
+                  key={key}
+                  active={t === key}
+                  as="button"
+                  type="button"
+                  onClick={() => dispatch({ type: 'set', language: key })}
+                >
+                  {label}
+                </CDropdownItem>
+              ))}
             </CDropdownMenu>
           </CDropdown>
-          <li className="nav-item py-1">
-            <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
-          </li>
-          <NotificationBell />
-          <li className="nav-item py-1">
-            <div className="vr h-100 mx-2 text-body text-opacity-75"></div>
-          </li>
-          <AppHeaderDropdown />
-        </CHeaderNav>
-      </CContainer>
-      <CContainer className="px-4" fluid>
-        <AppBreadcrumb />
-      </CContainer>
+
+          <CHeaderNav className="align-items-center">
+            <NotificationBell />
+            <AppHeaderDropdown />
+          </CHeaderNav>
+        </div>
+      </div>
     </CHeader>
   )
 }

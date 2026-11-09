@@ -40,14 +40,14 @@ const SettingsModal = ({
       backdrop="static"
       className="modal-styled"
     >
-      <CModalHeader className="bg-gradient-dark text-white">
+      <CModalHeader className="oc-modal-header">
         <CIcon icon={cilSettings} className="me-2" />
         Account Security Settings
       </CModalHeader>
       <CModalBody className="p-4">
         <CCard className="shadow-sm">
           <CCardBody>
-            <h5 className="mb-4 text-dark">
+            <h5 className="mb-4 text-primary">
               <CIcon icon={cilLockLocked} className="me-2" />
               Change Password
             </h5>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { CButton, CModal, CFormInput, CFormSelect, CFormFeedback, CProgress } from '@coreui/react'
+import { CButton, CModal, CFormInput, CFormSelect, CFormFeedback } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import {
   cilPlus,
@@ -9,7 +9,6 @@ import {
   cilHome,
   cilCheck,
   cilX,
-  cilWarning,
   cilCheckCircle,
   cilReload,
 } from '@coreui/icons'
@@ -24,6 +23,7 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
   const [inventory, setInventory] = useState([])
   const [rawMaterials, setRawMaterials] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [stockFilter, setStockFilter] = useState('all')
   const [loading, setLoading] = useState(false)
 
   // Receive modal
@@ -91,14 +91,27 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
     (item.rawMaterial?.name || '').toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const getStockColor = (item) => {
-    const rl = item.rawMaterial?.reorderLevel || 0
-    if (rl === 0) return 'success'
-    const pct = (item.currentQuantity / rl) * 100
-    if (pct <= 30) return 'danger'
-    if (pct <= 60) return 'warning'
-    return 'success'
+  // 'out' and 'low' together are exactly the items lowStockRaw counts
+  // (quantity at or below the reorder level), so the filter count and the
+  // rows it shows always agree.
+  const stockState = (item) => {
+    const isLow = item.rawMaterial && item.currentQuantity <= item.rawMaterial.reorderLevel
+    if (!isLow) return 'ok'
+    return (Number(item.currentQuantity) || 0) <= 0 ? 'out' : 'low'
   }
+  const RANK = { out: 0, low: 1, ok: 2 }
+  const outOfStock = inventory.filter((item) => stockState(item) === 'out').length
+  const shownStock = filtered
+    .filter((item) => stockFilter === 'all' || stockState(item) !== 'ok')
+    .sort((a, b) => {
+      const r = RANK[stockState(a)] - RANK[stockState(b)]
+      if (r !== 0) return r
+      const ratio = (it) =>
+        (Number(it.currentQuantity) || 0) / (Number(it.rawMaterial?.reorderLevel) || 1)
+      return (
+        ratio(a) - ratio(b) || (a.rawMaterial?.name || '').localeCompare(b.rawMaterial?.name || '')
+      )
+    })
 
   /* ---------- receive ---------- */
   const openReceive = (prefilledId = '') => {
@@ -191,199 +204,199 @@ const InventoryTab = ({ activeTab, apiCall, showAlert, reportCount }) => {
 
   return (
     <>
-      {/* ---- Section top strip ---- */}
-      <div className="si-section-top">
-        <div className="si-section-top-left">
-          <h5 className="si-section-title">{Language.inventory || 'Inventory'}</h5>
-          <div className="si-section-meta">
-            <strong>{inventory.length}</strong> {inventory.length === 1 ? 'item' : 'items'} tracked
-            {' · '}
-            <strong>{lowStockRaw.length}</strong> low stock
-          </div>
+      {/* ---- Readings ---- */}
+      <section className="iv-strip">
+        <div className="iv-cell">
+          <span className="iv-value">{inventory.length}</span>
+          <span className="iv-label">{Language.totalItems || 'Items tracked'}</span>
         </div>
+        <div className={`iv-cell ${lowStockRaw.length ? 'is-alert' : 'is-ok'}`}>
+          <span className="iv-value">{lowStockRaw.length}</span>
+          <span className="iv-label">
+            {Language.ivAtOrBelow || 'at or below reorder level'}
+            {outOfStock > 0 && (
+              <>
+                {' · '}
+                <b>
+                  {outOfStock} {Language.ivOut || 'out of stock'}
+                </b>
+              </>
+            )}
+          </span>
+        </div>
+        <div className="iv-cell">
+          <span className="iv-value">
+            {totalStockValue.toFixed(2)}
+            <small>TND</small>
+          </span>
+          <span className="iv-label">{Language.stockValue || 'Stock value on hand'}</span>
+        </div>
+      </section>
 
-        <div className="si-section-top-right">
-          <div className="si-search">
-            <CIcon icon={cilSearch} className="si-search-icon" />
+      {/* ---- Toolbar ---- */}
+      <div className="oc-toolbar">
+        <div className="oc-toolbar-group">
+          <div className="oc-seg" role="group" aria-label="Filter stock">
+            <button
+              type="button"
+              className={stockFilter === 'all' ? 'is-active' : ''}
+              onClick={() => setStockFilter('all')}
+            >
+              {Language.tlAll || 'All'}
+              <span className="oc-seg-count">{inventory.length}</span>
+            </button>
+            <button
+              type="button"
+              className={stockFilter === 'low' ? 'is-active' : ''}
+              onClick={() => setStockFilter('low')}
+            >
+              {Language.ivNeedsRestock || 'Needs restock'}
+              <span className="oc-seg-count">{lowStockRaw.length}</span>
+            </button>
+          </div>
+          <label className="oc-search">
+            <CIcon icon={cilSearch} width={15} />
             <input
               type="text"
-              placeholder={Language.searchInventory || 'Search inventory...'}
+              placeholder={Language.searchInventory || 'Search inventory…'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search inventory"
             />
-          </div>
-          <CButton color="primary" onClick={() => openReceive()}>
-            <CIcon icon={cilPlus} className="me-2" />
-            {Language.receiveInventory || 'Receive stock'}
-          </CButton>
+          </label>
         </div>
+        <CButton color="primary" onClick={() => openReceive()}>
+          <CIcon icon={cilPlus} className="me-2" />
+          {Language.receiveInventory || 'Receive stock'}
+        </CButton>
       </div>
 
-      {/* ---- Stat strip ---- */}
-      <div className="si-stats">
-        <div className="si-stat">
-          <div className="si-stat-label">{Language.totalItems || 'Items tracked'}</div>
-          <div className="si-stat-value">{inventory.length}</div>
-        </div>
-        <div className="si-stat">
-          <div className="si-stat-label">{Language.lowStockItems || 'Low stock'}</div>
-          <div className={`si-stat-value ${lowStockRaw.length > 0 ? 'is-danger' : 'is-success'}`}>
-            {lowStockRaw.length}
+      {/* ---- Stock table ---- */}
+      <div className="oc-panel iv-panel">
+        {inventory.length === 0 && !loading ? (
+          <div className="oc-empty">
+            <span className="oc-empty-icon">
+              <CIcon icon={cilHome} />
+            </span>
+            <span className="oc-empty-title">
+              {Language.noInventoryYet || 'No stock tracked yet'}
+            </span>
+            <span className="oc-empty-body">
+              {Language.noInventoryHint || 'Receive stock to start tracking quantities and values.'}
+            </span>
+            <CButton color="primary" className="mt-2" onClick={() => openReceive()}>
+              <CIcon icon={cilPlus} className="me-2" />
+              {Language.receiveInventory || 'Receive stock'}
+            </CButton>
           </div>
-        </div>
-        <div className="si-stat">
-          <div className="si-stat-label">{Language.stockValue || 'Stock value'}</div>
-          <div className="si-stat-value">
-            {totalStockValue.toFixed(2)} <small className="si-stat-unit">TND</small>
+        ) : shownStock.length === 0 ? (
+          <div className="oc-empty">
+            <span className="oc-empty-icon">
+              <CIcon icon={stockFilter === 'low' ? cilCheckCircle : cilSearch} />
+            </span>
+            <span className="oc-empty-title">
+              {stockFilter === 'low' && !searchTerm
+                ? Language.allItemsWellStocked || 'Everything is well stocked'
+                : Language.noInventoryMatch || 'No items match'}
+            </span>
+            <span className="oc-empty-body">
+              {stockFilter === 'low' && !searchTerm
+                ? Language.allItemsWellStockedHint || 'Nothing is at or below its reorder level.'
+                : Language.noInventoryMatchHint || 'Try a different search.'}
+            </span>
           </div>
-        </div>
-      </div>
-
-      {/* ---- Two columns ---- */}
-      <div className="si-inv-layout">
-        {/* Current inventory */}
-        <div>
-          <div className="si-inv-col-title">{Language.currentInventory || 'Current inventory'}</div>
-
-          {inventory.length === 0 && !loading ? (
-            <div className="si-empty">
-              <CIcon icon={cilHome} size="xl" />
-              <div className="si-empty-title">
-                {Language.noInventoryYet || 'No stock tracked yet'}
-              </div>
-              <div className="si-empty-body">
-                {Language.noInventoryHint ||
-                  'Receive stock to start tracking quantities and values.'}
-              </div>
-              <CButton color="primary" className="si-empty-cta" onClick={() => openReceive()}>
-                <CIcon icon={cilPlus} className="me-2" />
-                {Language.receiveInventory || 'Receive stock'}
-              </CButton>
+        ) : (
+          <div className="iv-table" role="table">
+            <div className="iv-head" role="row">
+              <span role="columnheader">{Language.ivMaterial || 'Material'}</span>
+              <span role="columnheader">{Language.ivLevel || 'On hand vs. reorder level'}</span>
+              <span role="columnheader">{Language.ivStatus || 'Status'}</span>
+              <span role="columnheader" className="iv-num">
+                {Language.ivUnitCost || 'Unit cost'}
+              </span>
+              <span role="columnheader" />
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="si-empty">
-              <CIcon icon={cilSearch} size="xl" />
-              <div className="si-empty-title">{Language.noInventoryMatch || 'No items match'}</div>
-              <div className="si-empty-body">
-                {Language.noInventoryMatchHint || 'Try a different search.'}
-              </div>
-            </div>
-          ) : (
-            <div className="si-list">
-              {filtered.map((item) => {
-                const rl = item.rawMaterial?.reorderLevel || 0
-                const pct = rl > 0 ? Math.min(100, (item.currentQuantity / rl) * 100) : 100
-                return (
-                  <div className="si-row" key={item._id}>
-                    <div>
-                      <p className="si-row-title">{item.rawMaterial?.name || 'Unnamed material'}</p>
-                      <div className="si-row-meta">
-                        <span>
-                          On hand:{' '}
-                          <strong>
-                            {item.currentQuantity} {item.rawMaterial?.unit || ''}
-                          </strong>
-                        </span>
-                        <span>
-                          Reorder at{' '}
-                          <strong>
-                            {rl} {item.rawMaterial?.unit || ''}
-                          </strong>
-                        </span>
-                        <span>
-                          Cost{' '}
-                          <strong>
-                            {Number(item.rawMaterial?.costPerUnit || 0).toFixed(2)} TND /{' '}
-                            {item.rawMaterial?.unit || ''}
-                          </strong>
-                        </span>
-                      </div>
-                      <div className="si-inv-progress">
-                        <CProgress thin color={getStockColor(item)} value={pct} height={6} />
-                      </div>
-                    </div>
-
-                    <div className="si-row-actions">
-                      <CButton
-                        color="secondary"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEdit(item)}
-                        aria-label="Edit"
-                      >
-                        <CIcon icon={cilPencil} />
-                      </CButton>
-                      <CButton
-                        color="danger"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(item._id)}
-                        aria-label="Delete"
-                      >
-                        <CIcon icon={cilTrash} />
-                      </CButton>
-                    </div>
+            {shownStock.map((item) => {
+              const unit = item.rawMaterial?.unit || ''
+              const rl = Number(item.rawMaterial?.reorderLevel) || 0
+              const qty = Number(item.currentQuantity) || 0
+              const state = stockState(item)
+              // Scale: the reorder level sits at 50% of the track, so "how far
+              // above it" is as readable as "how far below".
+              const scaleMax = Math.max(rl * 2, qty, 1)
+              const fill = Math.min(100, (qty / scaleMax) * 100)
+              const marker = rl > 0 ? Math.min(100, (rl / scaleMax) * 100) : null
+              return (
+                <div className={`iv-row is-${state}`} key={item._id} role="row">
+                  <div className="iv-name" role="cell">
+                    {item.rawMaterial?.name || Language.ivUnnamed || 'Unnamed material'}
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Low stock alerts */}
-        <div>
-          <div className="si-inv-col-title">{Language.lowStockAlerts || 'Low stock alerts'}</div>
-
-          {lowStockRaw.length === 0 ? (
-            <div className="si-empty si-empty-success">
-              <CIcon icon={cilCheckCircle} size="xl" />
-              <div className="si-empty-title">
-                {Language.allItemsWellStocked || 'All items well stocked'}
-              </div>
-              <div className="si-empty-body">
-                {Language.allItemsWellStockedHint || 'Nothing below its reorder level right now.'}
-              </div>
-            </div>
-          ) : (
-            <div className="si-list">
-              {lowStockRaw.map((item) => (
-                <div className="si-row si-row-alert" key={item._id}>
-                  <div>
-                    <p className="si-row-title">
-                      <CIcon icon={cilWarning} className="me-2" style={{ color: '#dc3545' }} />
-                      {item.rawMaterial?.name}
-                    </p>
-                    <div className="si-row-meta">
-                      <span>
-                        Current:{' '}
-                        <strong>
-                          {item.currentQuantity} {item.rawMaterial?.unit || ''}
-                        </strong>
-                      </span>
-                      <span className="si-row-tag is-danger">
-                        Deficit {item.deficit} {item.rawMaterial?.unit || ''}
-                      </span>
-                    </div>
-                    <div className="si-inv-progress">
-                      <CProgress thin color="danger" value={item.percentage} height={6} />
-                    </div>
+                  <div className="iv-level" role="cell">
+                    <span className="iv-qty">
+                      <b>{qty}</b> {unit}
+                      {rl > 0 && (
+                        <span className="iv-qty-rl">
+                          {' / '}
+                          {rl} {unit}
+                        </span>
+                      )}
+                    </span>
+                    <span className="iv-gauge" aria-hidden="true">
+                      <span className="iv-gauge-fill" style={{ width: `${fill}%` }} />
+                      {marker != null && (
+                        <span className="iv-gauge-marker" style={{ left: `${marker}%` }} />
+                      )}
+                    </span>
                   </div>
-
-                  <div className="si-row-actions">
-                    <CButton
-                      color="primary"
-                      size="sm"
-                      onClick={() => openReceive(item.rawMaterial._id)}
+                  <div role="cell">
+                    <span className={`iv-status is-${state}`}>
+                      {state === 'out'
+                        ? Language.ivOutShort || 'Out of stock'
+                        : state === 'low'
+                          ? Language.ivLow || 'Restock'
+                          : Language.ivOk || 'OK'}
+                    </span>
+                  </div>
+                  <div className="iv-num" role="cell">
+                    {Number(item.rawMaterial?.costPerUnit || 0).toFixed(2)} TND
+                    <span className="iv-per"> / {unit}</span>
+                  </div>
+                  <div className="iv-actions" role="cell">
+                    {item.rawMaterial?._id && (
+                      <CButton
+                        color={state === 'ok' ? 'secondary' : 'primary'}
+                        variant={state === 'ok' ? 'outline' : undefined}
+                        size="sm"
+                        onClick={() => openReceive(item.rawMaterial._id)}
+                      >
+                        <CIcon icon={cilReload} className="me-1" />
+                        {Language.receive || 'Receive'}
+                      </CButton>
+                    )}
+                    <button
+                      type="button"
+                      className="oc-icon-btn iv-icon"
+                      onClick={() => openEdit(item)}
+                      aria-label={Language.ivAdjust || 'Adjust quantity'}
+                      title={Language.ivAdjust || 'Adjust quantity'}
                     >
-                      <CIcon icon={cilReload} className="me-1" />
-                      {Language.receive || 'Receive'}
-                    </CButton>
+                      <CIcon icon={cilPencil} width={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="oc-icon-btn iv-icon is-danger"
+                      onClick={() => handleDelete(item._id)}
+                      aria-label={Language.delete || 'Delete'}
+                      title={Language.delete || 'Delete'}
+                    >
+                      <CIcon icon={cilTrash} width={14} />
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* ---- Receive modal ---- */}

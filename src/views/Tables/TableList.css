@@ -1,3 +1,6 @@
+/* =========================================================================
+   Take-away order cards (used by OrderCard.js)
+   ========================================================================= */
 .clickable-card {
   transition:
     box-shadow 0.2s,
@@ -6,360 +9,204 @@
 
 .clickable-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--oc-shadow);
 }
 
-.plan-management-modal .modal-content {
-  border: none;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+/* =========================================================================
+   Floor view — `tl-area` groups and `tc-` table tiles
+   A tile answers the two questions staff have about a table: which one is
+   it, and does it owe money. The number leads; the bill state is the only
+   other thing on the tile.
+   ========================================================================= */
+
+.tl-tool-btn {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
 }
 
-.plan-card {
-  transition: transform 0.2s;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.plan-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.bg-gradient-primary {
-  background: linear-gradient(135deg, #321fdb 0%, #1f1498 100%);
-}
-/* Add to your stylesheet */
-.hover-shadow:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
-}
-.transition-all {
-  transition: all 0.3s ease;
-}
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-in-out;
-}
-.animate-slide-up {
-  animation: slideUp 0.4s ease-out;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-/* Add to your CSS file */
-.table-card-image {
-  transition: all 0.3s ease;
-}
-
-.table-card:hover .table-card-image {
-  filter: brightness(0.9);
-}
-/* Custom responsive adjustments */
-@media (max-width: 768px) {
-  .table-header-controls {
-    width: 100%;
-  }
-  .table-header-controls select {
-    margin-bottom: 0.5rem;
-  }
-}
-
-/*
-plan modal CSS
-*/
-/* Modal Container */
-.plan-management-modal {
-  max-height: 90vh;
+.tl-area {
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
-/* Header Styles */
-.modal-header {
-  background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
-  color: white;
-  padding: 1rem 1.5rem;
-  border-bottom: none;
-  position: sticky;
-  top: 0;
-  z-index: 1050;
-}
-
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+.tl-area-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--oc-border);
 }
 
-.modal-close-btn {
-  color: white;
-  font-size: 1.5rem;
-  opacity: 1;
-  padding: 0;
+.tl-area-title {
+  font-family: var(--oc-display-font);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--oc-ink);
   margin: 0;
-  background: transparent;
-  border: none;
 }
 
-/* Scrollable Content Area */
-.modal-scrollable-content {
-  overflow-y: auto;
-  max-height: calc(90vh - 120px); /* Adjust based on header/footer height */
-  flex: 1;
+.tl-area-meta {
+  font-size: 0.82rem;
+  color: var(--oc-ink-soft);
 }
 
-.modal-body-content {
-  padding: 1.5rem;
+.tl-area-meta b {
+  color: var(--oc-status-pending);
+  font-weight: 700;
 }
 
-/* Sections */
-.create-plan-section,
-.existing-plans-section {
-  margin-bottom: 2rem;
-  background: #f8f9fa;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
+.tl-floor {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
 }
 
-.section-header {
+.tc-card {
+  position: relative;
+  z-index: 1;
   display: flex;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.icon-wrapper {
-  background: #3a7bd5;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 1rem;
-}
-
-.icon-wrapper svg {
-  color: white;
-  width: 18px;
-  height: 18px;
-}
-
-/* Form Styles */
-.plan-form {
-  margin-top: 1.5rem;
-}
-
-.form-input {
-  margin-bottom: 1.25rem;
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-.submit-btn {
-  border-radius: 50px;
-  padding: 0.5rem 1.75rem;
-}
-
-/* Plans Grid */
-.plans-grid {
-  margin-top: 1rem;
-}
-
-.plan-card {
-  height: 100%;
-  border-radius: 0.5rem;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 118px;
+  padding: 12px 12px 12px 14px;
+  background: var(--oc-surface);
+  border: 1px solid var(--oc-border);
+  border-radius: var(--oc-radius);
+  cursor: pointer;
   transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-  margin-bottom: 1rem;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
-.plan-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+.tc-card:hover,
+.tc-card:focus-visible {
+  border-color: var(--oc-pine);
 }
 
-.plan-card .card-header {
+/* The open dropdown must paint above neighbouring tiles. */
+.tc-card:focus-within {
+  z-index: 20;
+}
+
+.tc-card-unpaid {
+  background: var(--oc-saffron-tint);
+  border-color: #efd28c;
+}
+
+.tc-card-unpaid:hover {
+  border-color: var(--oc-saffron);
+}
+
+.tc-card-top {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background-color: white;
-  border-bottom: 1px solid #eee;
+  gap: 6px;
 }
 
-.plan-title {
+.tc-id {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tc-label {
+  font-size: 0.72rem;
   font-weight: 600;
+  color: var(--oc-ink-soft);
 }
 
-.tables-count {
-  border-radius: 50px;
-  padding: 0.25rem 0.75rem;
+.tc-number {
+  font-family: var(--oc-display-font);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.card-body {
-  padding: 1.5rem;
-}
-
-.plan-description {
-  color: #6c757d;
-  margin-bottom: 1.5rem;
-}
-
-.card-actions {
-  display: flex;
-  gap: 0.75rem; /* Creates consistent space between all items */
-  justify-content: flex-end; /* Aligns buttons to the right */
-  padding: 0.5rem 0; /* Optional: adds vertical spacing */
-}
-
-.action-btn {
-  width: 2rem;
-  height: 2rem;
-  display: flex;
+.tc-menu-toggle {
+  width: 28px;
+  height: 28px;
+  padding: 0 !important;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--oc-ink-soft) !important;
+  flex-shrink: 0;
 }
 
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: #6c757d;
+.tc-menu-toggle::after {
+  display: none;
 }
 
-.empty-state svg {
-  margin-bottom: 1rem;
-  color: #dee2e6;
+.tc-menu-toggle:hover,
+.tc-menu-toggle:focus {
+  background: rgba(16, 30, 24, 0.06) !important;
+  color: var(--oc-ink) !important;
 }
 
-/* Footer */
-.modal-footer {
-  background: #f8f9fa;
-  border-top: 1px solid #eee;
-  padding: 1rem 1.5rem;
-  position: sticky;
-  bottom: 0;
-  z-index: 1050;
-}
-
-.close-btn {
-  border-radius: 50px;
-  padding: 0.5rem 1.75rem;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .modal-body-content {
-    padding: 1rem;
-  }
-
-  .create-plan-section,
-  .existing-plans-section {
-    padding: 1rem;
-  }
-
-  .plans-grid {
-    gap: 1rem;
-  }
-
-  .plan-card {
-    margin-bottom: 1rem;
-  }
-}
-/* Plan Card Styles */
-.plan-card {
-  transition: all 0.3s ease;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-}
-
-.plan-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-}
-
-.plan-card .card-header {
+.tc-bill {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 1.25rem;
-  background-color: #f8f9fa;
+  flex-direction: column;
+  gap: 1px;
 }
 
-.plan-title {
+.tc-amount {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: #7a5100;
+  font-variant-numeric: tabular-nums;
+}
+
+.tc-sub {
+  font-size: 0.74rem;
+  color: #8a6a1f;
+}
+
+.tc-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
   font-weight: 600;
-  display: flex;
-  align-items: center;
+  color: var(--oc-ink-faint);
 }
 
-.tables-count {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-}
-
-.card-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.action-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.tc-free::before {
+  content: '';
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-}
-/* Add to your stylesheet if needed */
-.dropdown-toggle::after {
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
+  background: var(--oc-status-completed);
+  opacity: 0.6;
 }
 
-.card-img-wrapper {
-  height: 150px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+@media (max-width: 575.98px) {
+  .tl-floor {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
+
 /* =========================================================================
-   Modal redesign (Scope B): Create Table, Move Orders, Manage Plans, Edit Plan
+   Modal redesign: Create Table, Move Orders, Manage Plans, Edit Plan
    All classes are namespaced with `tm-` (tables modal) to avoid collisions.
    ========================================================================= */
 
 /* ---- Shared modal chrome ---- */
 .tm-modal .modal-content {
   border-radius: 14px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   overflow: hidden;
 }
 
@@ -369,8 +216,8 @@ plan modal CSS
   justify-content: space-between;
   gap: 12px;
   padding: 14px 20px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-bottom: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .tm-header-title {
@@ -379,13 +226,13 @@ plan modal CSS
   gap: 8px;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0;
 }
 
 .tm-header-sub {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-top: 2px;
 }
 
@@ -394,18 +241,18 @@ plan modal CSS
   background: transparent;
   font-size: 1.35rem;
   line-height: 1;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   padding: 0 4px;
   cursor: pointer;
 }
 
 .tm-close:hover {
-  color: #1a1a1a;
+  color: var(--oc-ink);
 }
 
 .tm-body {
   padding: 16px 20px;
-  background: #fff;
+  background: var(--oc-surface);
 }
 
 .tm-footer {
@@ -414,8 +261,8 @@ plan modal CSS
   align-items: center;
   gap: 12px;
   padding: 14px 20px;
-  border-top: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
+  border-top: 1px solid var(--oc-border);
+  background: var(--oc-surface);
 }
 
 .tm-footer-right {
@@ -433,14 +280,14 @@ plan modal CSS
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 600;
   margin-bottom: 6px;
 }
 
 .tm-hint {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin-top: 4px;
 }
 
@@ -448,9 +295,9 @@ plan modal CSS
 .tm-list {
   max-height: 46vh;
   overflow-y: auto;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--oc-surface);
   margin-top: 12px;
 }
 
@@ -471,7 +318,7 @@ plan modal CSS
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-bottom: 1px solid var(--cui-border-color, #eceef1);
+  border-bottom: 1px solid var(--oc-border);
   cursor: pointer;
   transition: background-color 0.12s ease;
 }
@@ -480,12 +327,12 @@ plan modal CSS
   border-bottom: none;
 }
 .tm-row:hover {
-  background: #fafbfc;
+  background: var(--oc-surface-sunken);
 }
 
 .tm-row.is-selected {
-  background: rgba(13, 110, 253, 0.06);
-  box-shadow: inset 3px 0 0 0 var(--cui-primary, #0d6efd);
+  background: rgba(var(--cui-primary-rgb), 0.06);
+  box-shadow: inset 3px 0 0 0 var(--cui-primary);
 }
 
 .tm-row.is-disabled {
@@ -496,13 +343,13 @@ plan modal CSS
 .tm-row-title {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .tm-row-meta {
   font-size: 0.78rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
 }
 
 .tm-row-tag {
@@ -515,13 +362,13 @@ plan modal CSS
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  background: #e2e3e5;
-  color: #41464b;
+  background: var(--oc-surface-sunken);
+  color: var(--oc-ink-soft);
 }
 
 .tm-row-tag.is-current {
-  background: #cfe2ff;
-  color: #084298;
+  background: rgba(var(--cui-primary-rgb), 0.12);
+  color: var(--cui-primary);
 }
 
 /* ---- Manage Plans: two-column layout ---- */
@@ -536,7 +383,7 @@ plan modal CSS
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-weight: 700;
   margin-bottom: 12px;
 }
@@ -562,10 +409,10 @@ plan modal CSS
 }
 
 .tm-plan-card {
-  border: 1px solid var(--cui-border-color, #d8dbe0);
+  border: 1px solid var(--oc-border);
   border-radius: 10px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--oc-surface);
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 12px;
@@ -575,13 +422,13 @@ plan modal CSS
 .tm-plan-card-name {
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1a1a1a;
+  color: var(--oc-ink);
   margin: 0 0 2px 0;
 }
 
 .tm-plan-card-desc {
   font-size: 0.8rem;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   margin: 0;
 }
 
@@ -593,310 +440,37 @@ plan modal CSS
 .tm-plans-empty {
   text-align: center;
   padding: 32px 16px;
-  color: var(--cui-secondary-color, #6c757d);
+  color: var(--oc-ink-soft);
   font-size: 0.9rem;
-  border: 1px dashed var(--cui-border-color, #d8dbe0);
+  border: 1px dashed var(--oc-border);
   border-radius: 10px;
 }
 
-/* ---- Responsive ---- */
-@media (max-width: 767.98px) {
-  .tl-header-top {
-    padding: 14px 16px 10px 16px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .tl-top-right {
-    width: 100%;
-    margin-left: 0;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-
-  .tl-segments {
-    flex: 1 1 auto;
-  }
-
-  .tl-header-controls {
-    padding: 10px 16px 14px 16px;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .tl-controls-left {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    gap: 8px;
-  }
-
-  .tl-search {
-    max-width: 100%;
-    flex: 1 1 auto;
-    width: 100%;
-  }
-
-  .tl-filter {
-    width: 100%;
-    flex: 1 1 auto;
-  }
-
-  .tl-filter select {
-    max-width: 100%;
-    flex: 1;
-  }
-
-  .tl-controls-right {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    width: 100%;
-  }
-
-  .tl-action-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  /* If a third action button exists (Plans for superClients), it spans both columns */
-  .tl-controls-right > *:nth-child(3) {
-    grid-column: 1 / -1;
-  }
-}
-
-/* Prevent overflow on any viewport */
-.tl-header,
-.tl-header-top,
-.tl-header-controls,
-.tl-controls-left,
-.tl-controls-right {
-  min-width: 0;
-  box-sizing: border-box;
-}
 /* =========================================================================
-   Tables / Takeaway header (tl- namespace)
+   Tables / Takeaway header — `tl-` namespace
    ========================================================================= */
 
-.tl-header-top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px 20px 12px 20px;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  background: #fff;
-  flex-wrap: wrap;
-}
-
-.tl-title {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: #1a1a1a;
-  margin: 0 0 2px 0;
-}
-
-.tl-subtitle {
-  font-size: 0.82rem;
-  color: var(--cui-secondary-color, #6c757d);
-}
-
-.tl-subtitle strong {
-  color: #1a1a1a;
-}
-
-.tl-top-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
+/* Header wrapper — replaces CCardHeader so CoreUI's .card-header defaults
+   (flex, bg, padding) don't bleed into our layout. */
 
 /* Segmented control */
-.tl-segments {
-  display: inline-flex;
-  padding: 3px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
-  border-radius: 999px;
-  background: #f8f9fa;
-}
-
-.tl-segment {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  background: transparent;
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--cui-secondary-color, #6c757d);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.tl-segment.is-active {
-  background: var(--cui-primary, #0d6efd);
-  color: #fff;
-  box-shadow: 0 2px 6px rgba(13, 110, 253, 0.3);
-}
 
 .tl-paid-switch {
   margin-bottom: 0;
 }
 
 /* Controls row */
-.tl-header-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 20px 14px 20px;
-  background: #fff;
-  flex-wrap: wrap;
-}
-
-.tl-controls-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.tl-controls-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
 
 /* Search */
-.tl-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
-  border-radius: 10px;
-  padding: 7px 12px;
-  background: #fff;
-  flex: 1 1 260px;
-  max-width: 320px;
-}
-
-.tl-search input {
-  border: none;
-  outline: none;
-  flex: 1;
-  font-size: 0.9rem;
-  background: transparent;
-}
-
-.tl-search-icon {
-  color: var(--cui-secondary-color, #6c757d);
-  flex-shrink: 0;
-}
 
 /* Filter */
-.tl-filter {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--cui-border-color, #d8dbe0);
-  border-radius: 10px;
-  padding: 0 12px;
-  background: #fff;
-  height: 38px;
-}
-
-.tl-filter-icon {
-  color: var(--cui-secondary-color, #6c757d);
-  flex-shrink: 0;
-}
-
-.tl-filter select {
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: #1a1a1a;
-  cursor: pointer;
-  padding: 6px 0;
-  max-width: 180px;
-}
 
 /* Action buttons */
-.tl-action-btn {
-  display: inline-flex;
-  align-items: center;
-  font-weight: 600;
-  font-size: 0.88rem;
-}
 
-/* Responsive */
+/* Prevent overflow on any viewport */
+
+/* ---- Responsive ---- */
 @media (max-width: 767.98px) {
-  .tl-header-top {
-    padding: 14px 16px 10px 16px;
-  }
 
-  .tl-top-right {
-    width: 100%;
-    margin-left: 0;
-    justify-content: space-between;
-  }
-
-  .tl-header-controls {
-    padding: 10px 16px 14px 16px;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .tl-controls-left {
-    flex-wrap: wrap;
-    width: 100%;
-  }
-
-  .tl-search {
-    max-width: 100%;
-    flex-basis: 100%;
-  }
-
-  .tl-filter {
-    flex: 1 1 auto;
-  }
-
-  .tl-filter select {
-    max-width: 100%;
-  }
-
-  .tl-controls-right {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .tl-action-btn {
-    flex: 1 1 0;
-    justify-content: center;
-  }
-}
-/* =========================================================================
-   Header wrapper — replaces CCardHeader for the tl-* header so CoreUI's
-   .card-header defaults (flex, bg, padding) don't bleed into our layout.
-   ========================================================================= */
-.tl-header {
-  display: block;
-  background: #fff;
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
-  border-top-left-radius: var(--cui-card-border-radius, 0.375rem);
-  border-top-right-radius: var(--cui-card-border-radius, 0.375rem);
-}
-
-/* Remove the redundant border on the first row since the wrapper handles it */
-.tl-header-top {
-  border-bottom: 1px solid var(--cui-border-color, #d8dbe0);
+  /* If a third action button exists (Plans for superClients), it spans both columns */
 }

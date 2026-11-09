@@ -1,216 +1,258 @@
 /* =========================================================================
-   Login — premium split screen
+   Login — the ticket rail
    ========================================================================= */
 
-.lg-screen {
+.lg {
   min-height: 100vh;
-  display: flex;
-  background: var(--oc-surface-sunken);
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  background: var(--oc-canvas);
 }
 
-/* ---- Brand panel ---- */
+/* ---- Brand side ---- */
 .lg-brand {
   position: relative;
-  flex: 1 1 46%;
-  display: none;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 48px 56px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 36px;
+  padding: 44px 56px;
+  background: var(--oc-pine-deep);
   color: var(--oc-side-ink);
-  background: var(--oc-side-bg);
   overflow: hidden;
 }
 
-@media (min-width: 992px) {
-  .lg-brand {
-    display: flex;
-  }
-}
-
+/* A faint grid, like a kitchen pass's tiled wall */
 .lg-brand::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(
-    circle at 85% 12%,
-    rgba(232, 160, 108, 0.14) 0,
-    transparent 45%
-  );
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
   pointer-events: none;
 }
 
-.lg-brand-logo {
+.lg-brand > * {
   position: relative;
-  z-index: 1;
+}
+
+.lg-mark,
+.lg-form-mark {
   display: flex;
   align-items: center;
   gap: 12px;
+  font-family: var(--oc-display-font);
+  font-weight: 700;
+  font-size: 1.15rem;
 }
 
-.lg-brand-logo img {
-  height: 34px;
-  width: auto;
+.lg-mark img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
   filter: brightness(0) invert(1);
 }
 
-.lg-brand-copy {
-  position: relative;
-  z-index: 1;
-  max-width: 420px;
-}
-
-.lg-brand-copy h1 {
-  font-size: 2.1rem;
-  line-height: 1.22;
-  margin-bottom: 14px;
-}
-
-.lg-brand-copy p {
-  font-size: 0.98rem;
-  color: var(--oc-side-ink-soft);
-  margin-bottom: 0;
-}
-
-.lg-brand-features {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  list-style: none;
+.lg-pitch h1 {
+  font-family: var(--oc-display-font);
+  font-size: clamp(2rem, 3.2vw, 3rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: #fff;
+  max-width: 13em;
   margin: 0;
-  padding: 0;
 }
 
-.lg-brand-features li {
+.lg-pitch p {
+  margin: 16px 0 0;
+  font-size: 1.02rem;
+  color: var(--oc-side-ink-soft);
+  max-width: 30em;
+}
+
+/* Tickets hanging on a rail */
+.lg-rail {
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  font-size: 0.92rem;
-  color: var(--oc-side-ink);
+  gap: 18px;
+  padding-top: 22px;
 }
 
-.lg-brand-feature-icon {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--oc-side-accent-bg);
-  color: var(--oc-side-accent);
+.lg-rail::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: -56px;
+  right: -56px;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #d7dcd8 0%, #9aa49e 100%);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
-.lg-brand-foot {
-  position: relative;
-  z-index: 1;
-  font-size: 0.78rem;
-  color: var(--oc-side-ink-soft);
-}
-
-/* ---- Form panel ---- */
-.lg-form-panel {
-  flex: 1 1 54%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 24px;
-}
-
-.lg-form-card {
-  width: 100%;
-  max-width: 400px;
-}
-
-.lg-form-logo-mobile {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 28px;
-}
-
-.lg-form-logo-mobile img {
-  height: 32px;
-}
-
-@media (min-width: 992px) {
-  .lg-form-logo-mobile {
-    display: none;
-  }
-}
-
-.lg-form-title {
-  font-size: 1.5rem;
-  font-weight: 800;
+.lg-ticket {
+  flex: 0 0 188px;
+  background: #fbfbf7;
   color: var(--oc-ink);
-  margin-bottom: 4px;
+  border-radius: 4px 4px 6px 6px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.55);
+  transform-origin: top center;
+  font-family: var(--oc-font-ui);
+  /* torn bottom edge */
+  -webkit-mask: radial-gradient(5px at 50% 100%, #0000 98%, #000) 50% / 12px 100% repeat-x;
+  mask: radial-gradient(5px at 50% 100%, #0000 98%, #000) 50% / 12px 100% repeat-x;
+  padding-bottom: 20px;
 }
 
-.lg-form-subtitle {
-  font-size: 0.9rem;
+.lg-ticket-0 {
+  transform: rotate(-2.5deg);
+}
+.lg-ticket-1 {
+  transform: rotate(1.5deg) translateY(8px);
+}
+.lg-ticket-2 {
+  transform: rotate(-1deg) translateY(2px);
+}
+
+.lg-ticket header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px dashed #c9cec8;
+}
+
+.lg-ticket header strong {
+  font-family: var(--oc-display-font);
+  font-size: 1.05rem;
+}
+
+.lg-ticket header span {
+  font-size: 0.78rem;
   color: var(--oc-ink-soft);
-  margin-bottom: 28px;
+  font-variant-numeric: tabular-nums;
 }
 
-.lg-field-label {
-  font-size: 0.82rem;
+.lg-ticket ul {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.lg-foot {
+  font-size: 0.78rem;
+  color: var(--oc-side-ink-faint);
+}
+
+/* ---- Form side ---- */
+.lg-form-side {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.lg-form {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lg-form-mark {
+  display: none;
+  color: var(--oc-ink);
+  margin-bottom: 32px;
+}
+
+.lg-form-mark img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.lg-title {
+  font-family: var(--oc-display-font);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: var(--oc-ink);
+  margin: 0;
+}
+
+.lg-sub {
+  margin: 8px 0 28px;
+  color: var(--oc-ink-soft);
+  font-size: 0.95rem;
+}
+
+.lg-error {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin-bottom: 18px;
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-status-cancelled-bg);
+  color: #8f2a20;
+  font-size: 0.88rem;
+}
+
+.lg-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.lg-label {
+  font-size: 0.86rem;
   font-weight: 600;
   color: var(--oc-ink);
   margin-bottom: 6px;
-  display: block;
 }
 
-.lg-input-group {
-  margin-bottom: 18px;
+.lg-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 18px;
 }
 
-.lg-input-group .input-group-text {
-  background: var(--oc-surface);
-  border-color: var(--oc-border);
-  color: var(--oc-ink-soft);
-}
-
-.lg-input-group .form-control {
-  border-color: var(--oc-border);
-}
-
-.lg-input-group .form-control:focus {
-  box-shadow: none;
-  border-color: var(--cui-primary);
-}
-
-.lg-input-group .form-control:focus ~ .input-group-text,
-.lg-input-group:focus-within .input-group-text {
-  border-color: var(--cui-primary);
-}
-
-.lg-toggle-pwd {
+.lg-reveal {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--oc-pine);
   cursor: pointer;
 }
 
-.lg-alert {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  background: #fbeae4;
-  border: 1px solid #efc2ab;
-  color: #7c3c1f;
-  border-radius: var(--oc-radius);
-  padding: 12px 14px;
-  font-size: 0.86rem;
-  margin-bottom: 18px;
+.lg-input {
+  height: 46px;
+  font-size: 1rem;
 }
 
 .lg-submit {
-  width: 100%;
-  height: 46px;
-  font-weight: 700;
-  border-radius: var(--oc-radius);
+  margin-top: 28px;
+  height: 48px;
+  font-size: 1rem;
 }
 
-.lg-form-foot {
-  margin-top: 22px;
-  text-align: center;
-  font-size: 0.85rem;
-  color: var(--oc-ink-soft);
+@media (max-width: 991.98px) {
+  .lg {
+    grid-template-columns: 1fr;
+  }
+  .lg-brand {
+    display: none;
+  }
+  .lg-form-mark {
+    display: flex;
+  }
 }

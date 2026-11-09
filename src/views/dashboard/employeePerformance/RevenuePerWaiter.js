@@ -19,12 +19,15 @@ import {
   CWidgetStatsF,
 } from '@coreui/react'
 import axios from 'axios'
+import { useSelector } from 'react-redux'
+import translations from '../../../app/Language'
 import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import CIcon from '@coreui/icons-react'
 import { cilUser, cilCalendar, cilMoney } from '@coreui/icons'
 
 const RevenueByClient = () => {
+  const Language = translations[useSelector((state) => state.language)] || {}
   const [revenueData, setRevenueData] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -173,10 +176,16 @@ const RevenueByClient = () => {
                     client.monthlyRevenue.map((monthlyData, index) => (
                       <CTableRow key={`${client.clientId}-${index}`}>
                         <CTableDataCell>
-                          <div className="fw-semibold">{client.clientName}</div>
+                          <div className="fw-semibold">
+                            {index === 0
+                              ? client.clientName || Language.stUnassigned || 'Not assigned'
+                              : ''}
+                          </div>
                         </CTableDataCell>
                         <CTableDataCell>
-                          <CBadge color="secondary">{formatMonth(monthlyData.month)}</CBadge>
+                          <CBadge color="light" textColor="dark">
+                            {formatMonth(monthlyData.month)}
+                          </CBadge>
                         </CTableDataCell>
                         <CTableDataCell className="fw-bold">
                           {formatCurrency(monthlyData.totalRevenue)}
@@ -185,13 +194,7 @@ const RevenueByClient = () => {
                           <CProgress className="mb-1" height={10}>
                             <CProgressBar
                               value={calculatePercentage(monthlyData.totalRevenue)}
-                              color={
-                                calculatePercentage(monthlyData.totalRevenue) > 30
-                                  ? 'success'
-                                  : calculatePercentage(monthlyData.totalRevenue) > 10
-                                    ? 'warning'
-                                    : 'danger'
-                              }
+                              color="primary"
                             />
                           </CProgress>
                           <small>{calculatePercentage(monthlyData.totalRevenue).toFixed(1)}%</small>

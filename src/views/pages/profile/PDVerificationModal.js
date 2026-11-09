@@ -26,7 +26,7 @@ const PDVerificationModal = ({ visible, onClose, PDVerifCode, setPDVerifCode, on
       className="modal-styled"
       size="sm"
     >
-      <CModalHeader className="bg-gradient-success text-white">
+      <CModalHeader className="oc-modal-header">
         <CIcon icon={cilEnvelopeOpen} className="me-2" />
         Email Verification
       </CModalHeader>

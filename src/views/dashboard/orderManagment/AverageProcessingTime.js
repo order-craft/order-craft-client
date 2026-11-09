@@ -361,15 +361,18 @@ const AverageProcessingTime = () => {
           margin-bottom:20px;
         }
         .dashboard-card-header {
-          background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
-          color: white;
-          border-bottom: none;
+          background: var(--oc-surface);
+          color: var(--oc-ink);
+          border-bottom: 1px solid var(--oc-border);
           padding: 1.5rem;
         }
         .dashboard-title {
           margin: 0;
-          font-weight: 600;
-          color: white;
+          font-weight: 700;
+          color: var(--oc-ink);
+        }
+        .dashboard-title svg {
+          color: var(--cui-primary);
         }
         .progress-label {
           font-size: 0.8rem;

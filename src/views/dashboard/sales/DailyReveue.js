@@ -9,6 +9,7 @@ import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import { ACCENTS } from '../../../helpers/palette'
 import './sales.css'
 
 const paymentMethodIcons = {
@@ -18,16 +19,7 @@ const paymentMethodIcons = {
   'Bank Transfer': cilMoney,
 }
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-]
+const SLICE_COLORS = ACCENTS
 
 const DailyRevenue = ({ className }) => {
   const token = GetToken()

@@ -6,20 +6,10 @@ import { BaseUrl } from '../../helpers/BaseUrl'
 import { GetToken } from '../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../app/Language'
+import { SERIES } from '../../helpers/palette'
 import './productPerformance/productPerformance.css'
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-  '#dc3545',
-  '#6c757d',
-]
+const SLICE_COLORS = SERIES
 
 const MonthBarChart = () => {
   const token = GetToken()
@@ -137,7 +127,7 @@ const MonthBarChart = () => {
                       <span
                         style={{
                           fontWeight: 600,
-                          color: '#1a1a1a',
+                          color: 'var(--oc-ink)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -148,7 +138,7 @@ const MonthBarChart = () => {
                       <span
                         style={{
                           whiteSpace: 'nowrap',
-                          color: '#6c757d',
+                          color: 'var(--oc-ink-soft)',
                           fontSize: '0.78rem',
                         }}
                       >
@@ -160,7 +150,7 @@ const MonthBarChart = () => {
                         width: '100%',
                         height: 8,
                         borderRadius: 999,
-                        background: '#f1f3f5',
+                        background: 'var(--oc-surface-sunken)',
                         overflow: 'hidden',
                       }}
                     >
@@ -178,7 +168,7 @@ const MonthBarChart = () => {
                   <div
                     style={{
                       fontWeight: 700,
-                      color: '#1a1a1a',
+                      color: 'var(--oc-ink)',
                       fontSize: '0.9rem',
                       fontVariantNumeric: 'tabular-nums',
                       whiteSpace: 'nowrap',

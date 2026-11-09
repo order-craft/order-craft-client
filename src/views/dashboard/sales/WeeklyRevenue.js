@@ -12,18 +12,10 @@ import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import { ACCENTS } from '../../../helpers/palette'
 import './sales.css'
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-]
+const SLICE_COLORS = ACCENTS
 
 const CurrentWeekRevenue = ({ className }) => {
   const token = GetToken()
@@ -199,8 +191,12 @@ const CurrentWeekRevenue = ({ className }) => {
                     gap: 4,
                     padding: '3px 10px',
                     borderRadius: 999,
-                    background: growthPositive ? '#d1e7dd' : '#f8d7da',
-                    color: growthPositive ? '#0f5132' : '#842029',
+                    background: growthPositive
+                      ? 'var(--oc-status-completed-bg)'
+                      : 'var(--oc-status-cancelled-bg)',
+                    color: growthPositive
+                      ? 'var(--oc-status-completed)'
+                      : 'var(--oc-status-cancelled)',
                     fontSize: '0.78rem',
                     fontWeight: 700,
                   }}
@@ -225,7 +221,7 @@ const CurrentWeekRevenue = ({ className }) => {
                       <div className="sales-breakdown-top">
                         <span className="sales-breakdown-name">
                           {isToday ? (
-                            <strong style={{ color: 'var(--cui-primary, #b5502b)' }}>
+                            <strong style={{ color: 'var(--cui-primary)' }}>
                               {day.shortDayName}
                             </strong>
                           ) : (
@@ -243,7 +239,7 @@ const CurrentWeekRevenue = ({ className }) => {
                           className="sales-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: isToday ? 'var(--cui-primary, #b5502b)' : '#d8a98a',
+                            background: isToday ? 'var(--cui-primary)' : '#c5d5cd',
                           }}
                         />
                       </div>

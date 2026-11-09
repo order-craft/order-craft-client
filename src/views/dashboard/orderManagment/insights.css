@@ -1,0 +1,182 @@
+/* =========================================================================
+   Order insights — revenue per table (`rt-`)
+   ========================================================================= */
+
+.rt-panel {
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.rt-sub {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  color: var(--oc-ink-soft);
+}
+
+.rt-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--oc-border);
+}
+
+.rt-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 18px;
+  border-right: 1px solid var(--oc-border);
+}
+
+.rt-cell:last-child {
+  border-right: none;
+}
+
+.rt-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--oc-ink-soft);
+}
+
+.rt-value {
+  font-family: var(--oc-display-font);
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rt-hint {
+  font-size: 0.78rem;
+  color: var(--oc-ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.rt-cell.is-top {
+  background: var(--oc-saffron-tint);
+}
+
+.rt-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr);
+}
+
+.rt-chart {
+  padding: 16px 18px 18px;
+  border-right: 1px solid var(--oc-border);
+  min-width: 0;
+}
+
+.rt-share {
+  padding: 16px 18px 18px;
+}
+
+.rt-h {
+  font-family: var(--oc-font-ui);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  margin: 0 0 12px;
+}
+
+.rt-share-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rt-share-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.rt-share-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--oc-ink);
+}
+
+.rt-share-val {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--oc-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rt-share-val small {
+  margin-left: 8px;
+  font-weight: 500;
+  color: var(--oc-ink-faint);
+  font-size: 0.78rem;
+}
+
+.rt-rank {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--oc-pine-tint);
+  color: var(--oc-pine);
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-rank.is-first {
+  background: var(--oc-saffron);
+  color: #3d2a00;
+}
+
+.rt-bar {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--oc-surface-sunken);
+  overflow: hidden;
+}
+
+.rt-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--oc-pine);
+}
+
+.rt-bar span.is-first {
+  background: var(--oc-saffron);
+}
+
+.rt-share-others .rt-share-name {
+  color: var(--oc-ink-soft);
+  font-weight: 500;
+}
+
+@media (max-width: 991.98px) {
+  .rt-body {
+    grid-template-columns: 1fr;
+  }
+  .rt-chart {
+    border-right: none;
+    border-bottom: 1px solid var(--oc-border);
+  }
+  .rt-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rt-cell:nth-child(2) {
+    border-right: none;
+  }
+  .rt-cell:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--oc-border);
+  }
+}

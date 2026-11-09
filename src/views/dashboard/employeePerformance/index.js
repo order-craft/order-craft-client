@@ -18,8 +18,8 @@ const EmployeePerformance = () => {
     <>
       <DashboardSectionHeader
         icon={cilPeople}
-        accent="#2f8fae"
-        title={Language.EmployeePerformance}
+        accent="#2e7f8c"
+        title={Language.navStaffInsights || Language.EmployeePerformance}
         subtitle={Language.employeeHubDesc}
       />
       <OrderProcessingEfficiency />

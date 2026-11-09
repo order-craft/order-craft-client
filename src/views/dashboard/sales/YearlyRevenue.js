@@ -11,6 +11,7 @@ import { BaseUrl } from '../../../helpers/BaseUrl'
 import { GetToken } from '../../../helpers/GetToken'
 import { useSelector } from 'react-redux'
 import translations from '../../../app/Language'
+import { ACCENTS } from '../../../helpers/palette'
 import './sales.css'
 
 const MONTHS = [
@@ -28,16 +29,7 @@ const MONTHS = [
   'December',
 ]
 
-const SLICE_COLORS = [
-  '#0d6efd',
-  '#198754',
-  '#0dcaf0',
-  '#ffc107',
-  '#e83e8c',
-  '#6f42c1',
-  '#fd7e14',
-  '#20c997',
-]
+const SLICE_COLORS = ACCENTS
 
 const YearlyRevenue = ({ className }) => {
   const t = useSelector((state) => state.language)
@@ -191,11 +183,11 @@ const YearlyRevenue = ({ className }) => {
                   style={{
                     marginTop: 8,
                     fontSize: '0.8rem',
-                    color: '#6c757d',
+                    color: 'var(--oc-ink-soft)',
                   }}
                 >
                   {Language.bestMonth || 'Best month'}:{' '}
-                  <strong style={{ color: '#198754' }}>{bestMonth.month}</strong> ·{' '}
+                  <strong style={{ color: 'var(--oc-status-completed)' }}>{bestMonth.month}</strong> ·{' '}
                   {bestMonth.revenue.toFixed(2)} TND
                 </div>
               )}
@@ -215,12 +207,12 @@ const YearlyRevenue = ({ className }) => {
                   datasets: [
                     {
                       label: 'Monthly revenue',
-                      backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                      borderColor: 'rgba(13, 110, 253, 0.9)',
+                      backgroundColor: 'rgba(26, 90, 68, 0.1)',
+                      borderColor: '#1a5a44',
                       borderWidth: 2,
                       tension: 0.35,
                       pointBackgroundColor: '#fff',
-                      pointBorderColor: '#0d6efd',
+                      pointBorderColor: '#1a5a44',
                       pointBorderWidth: 2,
                       pointRadius: 4,
                       pointHoverRadius: 6,
@@ -267,7 +259,7 @@ const YearlyRevenue = ({ className }) => {
                       <div className="sales-breakdown-top">
                         <span className="sales-breakdown-name">
                           {isBest ? (
-                            <strong style={{ color: '#198754' }}>{r.month}</strong>
+                            <strong style={{ color: 'var(--oc-status-completed)' }}>{r.month}</strong>
                           ) : (
                             r.month
                           )}
@@ -282,7 +274,7 @@ const YearlyRevenue = ({ className }) => {
                           className="sales-bar-fill"
                           style={{
                             width: `${pct}%`,
-                            background: isBest ? '#198754' : color,
+                            background: isBest ? '#19804f' : color,
                           }}
                         />
                       </div>
